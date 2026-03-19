@@ -30,3 +30,15 @@
 *.exe
 *.out
 *.app
+
+# Build
+cmake-build-debug/
+cmake-build*
+
+# IDE
+.idea/
+
+# Secrets/ settings — never commit the real file, only the example
+.env.secrets.toml
+config.dev.toml
+config.prod.toml

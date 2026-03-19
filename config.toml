@@ -1,0 +1,30 @@
+debug = true
+production = false
+version = "1.0.0"
+base_url = ""
+
+[log]
+log_path = "logs"
+
+[shareframe_application]
+service_name = "shareframe.service"
+log_file = "shareframe-application.log"
+
+[database]
+database_path = "db"
+database_name = "shareframe.db"
+
+[auth_token]
+http_fetch_token_url = "/api/frames/obtain-frame-auth-token/"
+http_fetch_token_body_key = "access_token"
+http_verify_token_url = "/api/frames/verify-frame-auth-token/"
+
+[websocket]
+
+[display]
+
+[update]
+
+[dashboard]
+
+[heartbeat]
