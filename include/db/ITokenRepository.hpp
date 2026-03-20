@@ -1,5 +1,5 @@
 #pragma once
-#include "db/Token.hpp"
+#include "db/entity/Token.hpp"
 #include <optional>
 
 class ITokenRepository

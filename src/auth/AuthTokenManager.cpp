@@ -20,7 +20,7 @@ static int64_t parseIso8601ToUnix(const std::string& s)
 
 static bool isExpiredLocally(TokenRepository& repo)
 {
-    auto tokenOpt = repo.get();
+    const auto tokenOpt = repo.get();
     if (!tokenOpt.has_value())
     {
         spdlog::warn("No cached token found");
@@ -29,7 +29,7 @@ static bool isExpiredLocally(TokenRepository& repo)
     return std::time(nullptr) >= tokenOpt->expiresAt;
 }
 
-static bool isExpiredServer(HTTPClient& http, const AppConfig& cfg, TokenRepository& repo)
+static bool isExpiredServer(const HTTPClient& http, const AppConfig& cfg, TokenRepository& repo)
 {
     spdlog::info("Verifying token with server");
     auto tokenOpt = repo.get();
@@ -37,8 +37,7 @@ static bool isExpiredServer(HTTPClient& http, const AppConfig& cfg, TokenReposit
         return true;
 
     const nlohmann::json body = {{cfg.authToken.httpFetchTokenBodyKey, tokenOpt->value}};
-    const std::string prot = cfg.production ? "https://" : "http://";
-    const std::string url = prot + cfg.baseUrl + cfg.authToken.httpVerifyTokenUrl;
+    const std::string url = cfg.httpBaseUrl() + cfg.authToken.httpVerifyTokenUrl;
 
     const auto res = http.post(url, body.dump(), {{"Content-Type", "application/json"}});
     spdlog::info("Token verification result: {}", res.ok());
@@ -50,8 +49,7 @@ static bool fetchAndSaveToken(const HTTPClient& http, TokenRepository& repo, con
     spdlog::info("Fetching new auth token");
     try
     {
-        const std::string prot = cfg.production ? "https://" : "http://";
-        const std::string url = prot + cfg.baseUrl + cfg.authToken.httpFetchTokenUrl;
+        const std::string url = cfg.httpBaseUrl() + cfg.authToken.httpFetchTokenUrl;
 
         auto res = http.post(url, "{}", HTTPAuth::buildHTTPAuthHeaders(cfg));
         if (!res.ok())

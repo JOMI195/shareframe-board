@@ -1,13 +1,7 @@
-#include "db/TokenRepository.hpp"
+#include "db/repository/TokenRepository.hpp"
 
 TokenRepository::TokenRepository(SQLite::Database& db) : _db(db)
 {
-    _db.exec(
-        "CREATE TABLE IF NOT EXISTS tokens ("
-        "  value      TEXT    NOT NULL,"
-        "  expires_at INTEGER NOT NULL"
-        ")"
-    );
 }
 
 void TokenRepository::save(const Token& token)

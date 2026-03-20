@@ -73,6 +73,7 @@ void ConfigLoader::resolveField(std::string& field, const std::filesystem::path&
 void ConfigLoader::resolvePaths(AppConfig& cfg) {
     const std::filesystem::path base = std::filesystem::path(cfg.baseDir).lexically_normal();
     resolveField(cfg.log.logPath,          base);
-    resolveField(cfg.database.databasePath, base);
+    resolveField(cfg.database.databasePath,   base);
+    resolveField(cfg.database.migrationsPath, base);
     // update.backupDirName is a bare name fragment, not a path — not resolved here
 }

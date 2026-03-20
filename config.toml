@@ -11,8 +11,9 @@ service_name = "shareframe.service"
 log_file = "shareframe-application.log"
 
 [database]
-database_path = "db"
-database_name = "shareframe.db"
+database_path   = "db"
+database_name   = "shareframe.db"
+migrations_path = "migrations"
 
 [auth_token]
 http_fetch_token_url = "/api/frames/obtain-frame-auth-token/"

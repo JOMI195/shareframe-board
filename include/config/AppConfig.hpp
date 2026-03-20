@@ -24,6 +24,7 @@ struct DatabaseConfig
 {
     std::string databasePath;
     std::string databaseName;
+    std::string migrationsPath;
 };
 
 struct AuthTokenConfig

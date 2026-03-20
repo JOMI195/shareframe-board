@@ -44,8 +44,9 @@ struct glz::meta<DatabaseConfig>
 {
     using T = DatabaseConfig;
     static constexpr auto value = glz::object(
-        "database_path", &T::databasePath,
-        "database_name", &T::databaseName
+        "database_path",   &T::databasePath,
+        "database_name",   &T::databaseName,
+        "migrations_path", &T::migrationsPath
     );
 };
 

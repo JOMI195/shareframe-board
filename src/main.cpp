@@ -2,7 +2,7 @@
 #include "logging/FileLogger.hpp"
 #include "config/ConfigLoader.hpp"
 #include "db/Database.hpp"
-#include "db/TokenRepository.hpp"
+#include "db/repository/TokenRepository.hpp"
 #include <spdlog/spdlog.h>
 #include <iostream>
 #include <memory>
@@ -65,9 +65,7 @@ int main(int argc, char* argv[])
     TokenRepository tokenRepo(database.get());
 
     ix::WebSocket ws;
-    std::string wsProt = (cfg.production) ? "wss://" : "ws://";
-    std::string wsBaseUrl = wsProt + cfg.baseUrl + "/";
-    ws.setUrl(wsBaseUrl);
+    ws.setUrl(cfg.wsBaseUrl() + "/");
 
     ws.setOnMessageCallback([](const ix::WebSocketMessagePtr& msg)
     {
