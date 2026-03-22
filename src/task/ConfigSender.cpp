@@ -6,41 +6,16 @@
 #include <unistd.h>
 
 ConfigSender::ConfigSender(EventBus& bus, const AppConfig& cfg)
-    : bus_(bus), cfg_(cfg), logger_(spdlog::default_logger()->clone("ConfigSender"))
+    : PeriodicTask(bus, cfg, "ConfigSender")
 {
 }
 
-void ConfigSender::start()
+int ConfigSender::intervalSecs() const
 {
-    logger_->info("Starting config sender thread (interval={}s)", cfg_.configSender.intervalSecs);
-    thread_ = std::jthread([this](std::stop_token st) { _run(std::move(st)); });
+    return cfg_.configSender.intervalSecs;
 }
 
-void ConfigSender::stop()
-{
-    logger_->info("Stopping config sender thread");
-    thread_.request_stop();
-    cv_.notify_all();
-    if (thread_.joinable())
-        thread_.join();
-    logger_->info("Config sender thread stopped");
-}
-
-void ConfigSender::_run(std::stop_token st)
-{
-    while (!st.stop_requested())
-    {
-        _sendConfig();
-
-        std::unique_lock lock(mtx_);
-        cv_.wait_for(lock, std::chrono::seconds(cfg_.configSender.intervalSecs), [&st]
-        {
-            return st.stop_requested();
-        });
-    }
-}
-
-void ConfigSender::_sendConfig() const
+void ConfigSender::execute()
 {
     auto localIp = _getLocalIp();
     if (localIp.empty())
