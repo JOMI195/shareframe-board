@@ -78,12 +78,6 @@ AuthTokenManager::AuthTokenManager(AppConfig& cfg, TokenRepository& repo, HTTPCl
 {
 }
 
-bool AuthTokenManager::init() const
-{
-    spdlog::info("Initializing token manager");
-    return getOrFetchToken().has_value();
-}
-
 std::optional<std::string> AuthTokenManager::getOrFetchToken() const
 {
     if (!isExpiredLocally(_repo) || !isExpiredServer(_http, _cfg, _repo))

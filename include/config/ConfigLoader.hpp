@@ -62,6 +62,47 @@ struct glz::meta<AuthTokenConfig>
 };
 
 template <>
+struct glz::meta<WebsocketConfig>
+{
+    using T = WebsocketConfig;
+    static constexpr auto value = glz::object(
+        "ws_path", &T::wsPath
+    );
+};
+
+struct VersionConfig
+{
+    std::string version;
+};
+
+template <>
+struct glz::meta<VersionConfig>
+{
+    using T = VersionConfig;
+    static constexpr auto value = glz::object(
+        "version", &T::version
+    );
+};
+
+template <>
+struct glz::meta<HeartbeatConfig>
+{
+    using T = HeartbeatConfig;
+    static constexpr auto value = glz::object(
+        "interval_secs", &T::intervalSecs
+    );
+};
+
+template <>
+struct glz::meta<ConfigSenderConfig>
+{
+    using T = ConfigSenderConfig;
+    static constexpr auto value = glz::object(
+        "interval_secs", &T::intervalSecs
+    );
+};
+
+template <>
 struct glz::meta<AppConfig>
 {
     using T = AppConfig;
@@ -70,12 +111,14 @@ struct glz::meta<AppConfig>
         "debug", &T::debug,
         "production", &T::production,
         "mock_display", &T::mockDisplay,
-        "version", &T::version,
         "base_url", &T::baseUrl,
         "log", &T::log,
         "shareframe_application", &T::shareframeApplication,
         "database", &T::database,
-        "auth_token", &T::authToken
+        "auth_token", &T::authToken,
+        "websocket", &T::websocket,
+        "heartbeat", &T::heartbeat,
+        "config_sender", &T::configSender
     );
 };
 
@@ -88,7 +131,8 @@ public:
     static AppConfig load(
         Profile profile,
         const std::string& configFilePath = "config.toml",
-        const std::string& secretsFilePath = ".env.secrets.toml"
+        const std::string& secretsFilePath = ".env.secrets.toml",
+        const std::string& versionFilePath = "VERSION.toml"
     );
 
 private:

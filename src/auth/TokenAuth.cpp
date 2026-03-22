@@ -2,7 +2,7 @@
 #include <spdlog/spdlog.h>
 
 std::map<std::string, std::string> TokenAuth::buildTokenAuthHeaders(
-    AuthTokenManager& tokenManager
+    const AuthTokenManager& tokenManager
 )
 {
     auto token = tokenManager.getOrFetchToken();

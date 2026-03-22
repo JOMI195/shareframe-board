@@ -60,6 +60,7 @@ set(SQLITECPP_RUN_CPPLINT OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(sqlitecpp)
 target_link_libraries(vendor INTERFACE SQLiteCpp)
 
+
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
@@ -94,12 +95,18 @@ configure_file(
         COPYONLY
 )
 
+configure_file(
+        ${CMAKE_SOURCE_DIR}/VERSION.toml
+        ${CMAKE_BINARY_DIR}/VERSION.toml
+        COPYONLY
+)
+
 file(GLOB MIGRATION_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/migrations/*.sql)
-foreach(MIGRATION_FILE ${MIGRATION_FILES})
+foreach (MIGRATION_FILE ${MIGRATION_FILES})
     get_filename_component(MIGRATION_FILENAME ${MIGRATION_FILE} NAME)
     configure_file(
             ${MIGRATION_FILE}
             ${CMAKE_BINARY_DIR}/migrations/${MIGRATION_FILENAME}
             COPYONLY
     )
-endforeach()
+endforeach ()

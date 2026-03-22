@@ -1,17 +1,21 @@
-#include "logging/ConsoleLogger.hpp"
-#include "logging/FileLogger.hpp"
+#include "auth/AuthTokenManager.hpp"
 #include "config/ConfigLoader.hpp"
+#include "net/ConfigSender.hpp"
 #include "db/Database.hpp"
 #include "db/repository/TokenRepository.hpp"
-#include <spdlog/spdlog.h>
+#include "events/EventBus.hpp"
+#include "logging/ConsoleLogger.hpp"
+#include "net/HTTPClient.hpp"
+#include "logging/FileLogger.hpp"
+#include "net/Heartbeat.hpp"
+#include "net/WebsocketClient.hpp"
+#include <signal.h>
 #include <iostream>
 #include <memory>
+#include <spdlog/spdlog.h>
 #include <string>
 #include <string_view>
-#include <ixwebsocket/IXWebSocket.h>
 
-#include "auth/AuthTokenManager.hpp"
-#include "auth/TokenAuth.hpp"
 
 int main(int argc, char* argv[])
 {
@@ -45,13 +49,9 @@ int main(int argc, char* argv[])
     // setup logging
     std::unique_ptr<ILogger> logger;
     if (cfg.production)
-    {
         logger = std::make_unique<FileLogger>();
-    }
     else
-    {
         logger = std::make_unique<ConsoleLogger>();
-    }
 
     logger->init({
         .logDir = cfg.log.logPath,
@@ -59,30 +59,39 @@ int main(int argc, char* argv[])
         .debug = cfg.debug,
     });
 
+    spdlog::info("shareframe-board v{} starting [profile: {}]", cfg.version, profileName(profile));
+
     // setup db
     Database database;
     database.init(cfg.database);
     TokenRepository tokenRepo(database.get());
 
-    ix::WebSocket ws;
-    ws.setUrl(cfg.wsBaseUrl() + "/");
+    // setup auth
+    HTTPClient http(60, 600);
+    AuthTokenManager authTokenManager(cfg, tokenRepo, http);
 
-    ws.setOnMessageCallback([](const ix::WebSocketMessagePtr& msg)
-    {
-        if (msg->type == ix::WebSocketMessageType::Message)
-            spdlog::info("Received: {}", msg->str);
-    });
+    // setup event bus and websocket
+    EventBus bus;
+    WebsocketClient wsClient(bus, cfg, authTokenManager);
+    wsClient.start();
 
-    ws.start();
+    // setup heartbeat and config sender
+    Heartbeat heartbeat(bus, cfg);
+    ConfigSender configSender(bus, cfg);
+    heartbeat.start();
+    configSender.start();
 
-    HTTPClient http = HTTPClient(60, 600);
+    // block until signal
+    sigset_t sigset;
+    sigemptyset(&sigset);
+    sigaddset(&sigset, SIGINT);
+    sigaddset(&sigset, SIGTERM);
+    pthread_sigmask(SIG_BLOCK, &sigset, nullptr);
+    int sig;
+    sigwait(&sigset, &sig);
 
-    AuthTokenManager authTokenManager = AuthTokenManager(cfg, tokenRepo, http);
-    bool succesfull = authTokenManager.init();
-    std::map<std::string, std::string> headers = TokenAuth::buildTokenAuthHeaders(authTokenManager);
-    for (const auto& [k, v] : headers)
-        spdlog::debug("Header: {}: {}", k, v);
-
-    spdlog::info("shareframe-board starting [profile: {}]", profileName(profile));
-    return 0;
+    spdlog::info("Received signal {}, shutting down", sig);
+    configSender.stop();
+    heartbeat.stop();
+    wsClient.stop();
 }

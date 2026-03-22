@@ -36,6 +36,7 @@ struct AuthTokenConfig
 
 struct WebsocketConfig
 {
+    std::string wsPath;
 };
 
 struct DisplayConfig
@@ -52,6 +53,12 @@ struct DashboardConfig
 
 struct HeartbeatConfig
 {
+    int intervalSecs = 300;
+};
+
+struct ConfigSenderConfig
+{
+    int intervalSecs = 900;
 };
 
 
@@ -74,7 +81,9 @@ struct AppConfig
     UpdateConfig update;
     DashboardConfig dashboard;
     HeartbeatConfig heartbeat;
+    ConfigSenderConfig configSender;
 
     [[nodiscard]] std::string httpBaseUrl() const { return (production ? "https://" : "http://") + baseUrl; }
     [[nodiscard]] std::string wsBaseUrl() const { return (production ? "wss://" : "ws://") + baseUrl; }
+    [[nodiscard]] std::string wsUrl() const { return wsBaseUrl() + "/" + websocket.wsPath; }
 };

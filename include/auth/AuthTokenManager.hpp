@@ -16,11 +16,6 @@ public:
     /// @param http  HTTP client — used for token fetch and server verification.
     explicit AuthTokenManager(AppConfig& cfg, TokenRepository& repo, HTTPClient& http);
 
-    /// Checks the cached token on startup; fetches a new one if expired or
-    /// invalid. Call once after construction before making any API requests.
-    /// @return true if a valid token is available, false if the fetch failed.
-    bool init() const;
-
     /// Returns the cached token if still valid, or fetches and caches a new one.
     /// @return Token value on success, nullopt if the fetch fails.
     std::optional<std::string> getOrFetchToken() const;

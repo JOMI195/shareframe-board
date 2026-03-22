@@ -15,5 +15,5 @@ public:
     /// @param tokenManager  Manager used to retrieve or refresh the access token.
     /// @return Map containing {"Authorization": "Frame-Access-Token <token>"},
     ///         or an empty map if no valid token could be obtained.
-    static std::map<std::string, std::string> buildTokenAuthHeaders(AuthTokenManager& tokenManager);
+    static std::map<std::string, std::string> buildTokenAuthHeaders(const AuthTokenManager& tokenManager);
 };

@@ -24,7 +24,8 @@ static glz::error_ctx readTomlFile(auto& val, const std::string& path) {
 AppConfig ConfigLoader::load(
     Profile profile,
     const std::string& configFilePath,
-    const std::string& secretsFilePath
+    const std::string& secretsFilePath,
+    const std::string& versionFilePath
 ) {
     AppConfig cfg;
 
@@ -59,6 +60,15 @@ AppConfig ConfigLoader::load(
             std::string("Failed to load secrets '") + secretsFilePath
             + "': " + glz::format_error(serr, ""));
     cfg.secrets = secrets;
+
+    // Version
+    VersionConfig ver;
+    auto verr = readTomlFile(ver, versionFilePath);
+    if (verr)
+        throw std::runtime_error(
+            std::string("Failed to load version '") + versionFilePath
+            + "': " + glz::format_error(verr, ""));
+    cfg.version = ver.version;
 
     resolvePaths(cfg);
     return cfg;

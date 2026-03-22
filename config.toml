@@ -1,6 +1,5 @@
 debug = true
 production = false
-version = "1.0.0"
 base_url = ""
 
 [log]
@@ -11,8 +10,8 @@ service_name = "shareframe.service"
 log_file = "shareframe-application.log"
 
 [database]
-database_path   = "db"
-database_name   = "shareframe.db"
+database_path = "db"
+database_name = "shareframe.db"
 migrations_path = "migrations"
 
 [auth_token]
@@ -21,6 +20,7 @@ http_fetch_token_body_key = "access_token"
 http_verify_token_url = "/api/frames/verify-frame-auth-token/"
 
 [websocket]
+ws_path = "ws/frames/"
 
 [display]
 
@@ -29,3 +29,7 @@ http_verify_token_url = "/api/frames/verify-frame-auth-token/"
 [dashboard]
 
 [heartbeat]
+interval_secs = 60
+
+[config_sender]
+interval_secs = 900

@@ -8,3 +8,6 @@ log_path = "logs"
 
 [database]
 database_path = "db"
+
+[websocket]
+ws_path = "ws/frames/"
