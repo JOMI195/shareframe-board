@@ -25,6 +25,8 @@ public:
     void removeExpired() const;
 
 private:
+    void removeOrphaned() const;
+
     const AppConfig& _cfg;
     ImageRepository& _repo;
     std::filesystem::path _savePath;

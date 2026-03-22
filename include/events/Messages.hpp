@@ -13,9 +13,7 @@ using TopicMessage_t = typename TopicMessage<T>::type;
 // Outbound WebSocket message (JSON payload to send to server)
 template <> struct TopicMessage<Topic::WS_SEND> { using type = nlohmann::json; };
 
-// Extend as server message types are defined:
-//
-// namespace msg {
-//     struct FrameUpdate { int frame_id; std::string url; };
-// }
-// template <> struct TopicMessage<Topic::FRAME_UPDATE> { using type = msg::FrameUpdate; };
+// Inbound WebSocket message types (JSON payload from server)
+template <> struct TopicMessage<Topic::PICTURE>       { using type = nlohmann::json; };
+template <> struct TopicMessage<Topic::CLEAR_IMAGES>  { using type = nlohmann::json; };
+template <> struct TopicMessage<Topic::CLEAR_DISPLAY> { using type = nlohmann::json; };

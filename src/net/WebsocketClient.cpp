@@ -73,12 +73,21 @@ void WebsocketClient::_processMessage(const std::string& text) const
             return;
         }
 
-        // Dispatch by type string to typed publish.
-        // Extend as server message types are defined:
-        // if (type == "frame_update") {
-        //     bus_.publish<Topic::FRAME_UPDATE>(msg::FrameUpdate{...});
-        //     return;
-        // }
+        if (type == "picture")
+        {
+            bus_.publish<Topic::PICTURE>(json);
+            return;
+        }
+        if (type == "clear_specific_sent_images")
+        {
+            bus_.publish<Topic::CLEAR_IMAGES>(json);
+            return;
+        }
+        if (type == "clear_display")
+        {
+            bus_.publish<Topic::CLEAR_DISPLAY>(json);
+            return;
+        }
 
         logger_->warn("Unhandled message type: {}", type);
     }

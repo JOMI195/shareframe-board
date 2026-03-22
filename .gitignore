@@ -39,6 +39,9 @@ build/
 # IDE
 .idea/
 
+# AI
+.claude/
+
 # Secrets/ settings — never commit the real file, only the example
 .env.secrets.toml
 config.dev.toml

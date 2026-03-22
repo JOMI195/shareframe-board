@@ -48,11 +48,6 @@ void ImageCheck::_checkExpiry() const
 void ImageCheck::_checkMissing() const
 {
     const auto ids = repo_.getAllIds();
-    if (ids.empty())
-    {
-        logger_->debug("No images to check for missing");
-        return;
-    }
 
     const nlohmann::json payload = {
         {"type", "check_missing_images"},

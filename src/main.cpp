@@ -11,6 +11,7 @@
 #include "logging/FileLogger.hpp"
 #include "task/Heartbeat.hpp"
 #include "task/ImageCheck.hpp"
+#include "task/ImageUpdate.hpp"
 #include "net/WebsocketClient.hpp"
 #include <signal.h>
 #include <iostream>
@@ -75,8 +76,10 @@ int main(int argc, char* argv[])
     HTTPClient http(60, 600);
     AuthTokenManager authTokenManager(cfg, tokenRepo, http);
 
-    // setup event bus and websocket
+    // setup event bus, image update handler, and websocket
     EventBus bus;
+    ImageUpdate imageUpdate(bus, imageManager, imageRepo);
+    imageUpdate.start();
     WebsocketClient wsClient(bus, cfg, authTokenManager);
     wsClient.start();
 
@@ -102,4 +105,5 @@ int main(int argc, char* argv[])
     configSender.stop();
     heartbeat.stop();
     wsClient.stop();
+    imageUpdate.stop();
 }

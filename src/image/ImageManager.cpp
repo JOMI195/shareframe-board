@@ -3,6 +3,7 @@
 #include <spdlog/spdlog.h>
 #include <ctime>
 #include <fstream>
+#include <unordered_set>
 
 static std::vector<uint8_t> decodeBase64(const std::string& encoded)
 {
@@ -25,6 +26,7 @@ ImageManager::ImageManager(const AppConfig& cfg, ImageRepository& repo)
     : _cfg(cfg), _repo(repo), _savePath(cfg.image.imageSavePath)
 {
     std::filesystem::create_directories(_savePath);
+    removeOrphaned();
     spdlog::info("ImageManager initialized, save path: {}", _savePath.string());
 }
 
@@ -108,4 +110,31 @@ void ImageManager::removeExpired() const
         _repo.removeByIds(expiredIds);
         spdlog::info("Removed {} expired images", expiredIds.size());
     }
+}
+
+void ImageManager::removeOrphaned() const
+{
+    std::unordered_set<std::string> knownPaths;
+    for (const auto& img : _repo.getAll())
+        knownPaths.insert(img.imagePath.string());
+
+    int removed = 0;
+    for (const auto& entry : std::filesystem::directory_iterator(_savePath))
+    {
+        if (!entry.is_regular_file())
+            continue;
+
+        if (knownPaths.contains(entry.path().string()))
+            continue;
+
+        std::error_code ec;
+        std::filesystem::remove(entry.path(), ec);
+        if (ec)
+            spdlog::warn("Failed to delete orphaned image {}: {}", entry.path().string(), ec.message());
+        else
+            ++removed;
+    }
+
+    if (removed > 0)
+        spdlog::info("Removed {} orphaned image(s) from disk", removed);
 }
