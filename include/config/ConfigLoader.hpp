@@ -44,8 +44,8 @@ struct glz::meta<DatabaseConfig>
 {
     using T = DatabaseConfig;
     static constexpr auto value = glz::object(
-        "database_path",   &T::databasePath,
-        "database_name",   &T::databaseName,
+        "database_path", &T::databasePath,
+        "database_name", &T::databaseName,
         "migrations_path", &T::migrationsPath
     );
 };
@@ -56,7 +56,6 @@ struct glz::meta<AuthTokenConfig>
     using T = AuthTokenConfig;
     static constexpr auto value = glz::object(
         "http_fetch_token_url", &T::httpFetchTokenUrl,
-        "http_fetch_token_body_key", &T::httpFetchTokenBodyKey,
         "http_verify_token_url", &T::httpVerifyTokenUrl
     );
 };
@@ -67,6 +66,15 @@ struct glz::meta<WebsocketConfig>
     using T = WebsocketConfig;
     static constexpr auto value = glz::object(
         "ws_path", &T::wsPath
+    );
+};
+
+template <>
+struct glz::meta<ImageConfig>
+{
+    using T = ImageConfig;
+    static constexpr auto value = glz::object(
+        "image_save_path", &T::imageSavePath
     );
 };
 
@@ -117,6 +125,7 @@ struct glz::meta<AppConfig>
         "database", &T::database,
         "auth_token", &T::authToken,
         "websocket", &T::websocket,
+        "image", &T::image,
         "heartbeat", &T::heartbeat,
         "config_sender", &T::configSender
     );

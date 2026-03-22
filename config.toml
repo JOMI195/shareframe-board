@@ -16,11 +16,13 @@ migrations_path = "migrations"
 
 [auth_token]
 http_fetch_token_url = "/api/frames/obtain-frame-auth-token/"
-http_fetch_token_body_key = "access_token"
 http_verify_token_url = "/api/frames/verify-frame-auth-token/"
 
 [websocket]
 ws_path = "ws/frames/"
+
+[image]
+image_save_path = "images"
 
 [display]
 

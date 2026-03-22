@@ -8,13 +8,15 @@
 #include <unordered_map>
 #include <vector>
 
-class EventBus {
+class EventBus
+{
 public:
     template <Topic T>
     void subscribe(std::function<void(const TopicMessage_t<T>&)> handler)
     {
         handlers_[static_cast<int>(T)].push_back(
-            [h = std::move(handler)](const std::any& a) {
+            [h = std::move(handler)](const std::any& a)
+            {
                 h(std::any_cast<const TopicMessage_t<T>&>(a));
             }
         );
@@ -30,7 +32,7 @@ public:
         cv_.notify_one();
     }
 
-    void waitAndProcess(std::stop_token token)
+    void waitAndProcess(const std::stop_token& token)
     {
         std::vector<std::pair<int, std::any>> batch;
         {
@@ -40,9 +42,12 @@ public:
                 return;
             batch.swap(queue_);
         }
-        for (auto& [topicId, payload] : batch) {
-            if (auto it = handlers_.find(topicId); it != handlers_.end()) {
-                for (auto& handler : it->second) {
+        for (auto& [topicId, payload] : batch)
+        {
+            if (auto it = handlers_.find(topicId); it != handlers_.end())
+            {
+                for (auto& handler : it->second)
+                {
                     handler(payload);
                 }
             }

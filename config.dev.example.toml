@@ -8,6 +8,7 @@ log_path = "logs"
 
 [database]
 database_path = "db"
+migrations_path = "migrations"
 
-[websocket]
-ws_path = "ws/frames/"
+[image]
+image_save_path = "images"

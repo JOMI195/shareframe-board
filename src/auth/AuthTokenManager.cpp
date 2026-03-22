@@ -36,7 +36,8 @@ static bool isExpiredServer(const HTTPClient& http, const AppConfig& cfg, TokenR
     if (!tokenOpt.has_value())
         return true;
 
-    const nlohmann::json body = {{cfg.authToken.httpFetchTokenBodyKey, tokenOpt->value}};
+    const std::string httpFetchTokenBodyKey = "access_token";
+    const nlohmann::json body = {{httpFetchTokenBodyKey, tokenOpt->value}};
     const std::string url = cfg.httpBaseUrl() + cfg.authToken.httpVerifyTokenUrl;
 
     const auto res = http.post(url, body.dump(), {{"Content-Type", "application/json"}});

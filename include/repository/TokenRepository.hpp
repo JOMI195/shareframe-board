@@ -1,5 +1,5 @@
 #pragma once
-#include "db/ITokenRepository.hpp"
+#include "repository/ITokenRepository.hpp"
 #include <SQLiteCpp/SQLiteCpp.h>
 
 class TokenRepository : public ITokenRepository

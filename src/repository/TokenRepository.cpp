@@ -1,4 +1,4 @@
-#include "db/repository/TokenRepository.hpp"
+#include "repository/TokenRepository.hpp"
 
 TokenRepository::TokenRepository(SQLite::Database& db) : _db(db)
 {
@@ -15,9 +15,8 @@ void TokenRepository::save(const Token& token)
 
 std::optional<Token> TokenRepository::get()
 {
-    SQLite::Statement query(_db, "SELECT value, expires_at FROM tokens LIMIT 1");
-    if (query.executeStep())
-        return Token{ query.getColumn(0).getString(), query.getColumn(1).getInt64() };
+    if (SQLite::Statement query(_db, "SELECT value, expires_at FROM tokens LIMIT 1"); query.executeStep())
+        return Token{query.getColumn(0).getString(), query.getColumn(1).getInt64()};
     return std::nullopt;
 }
 

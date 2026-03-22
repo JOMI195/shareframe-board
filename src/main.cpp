@@ -1,13 +1,15 @@
 #include "auth/AuthTokenManager.hpp"
 #include "config/ConfigLoader.hpp"
-#include "net/ConfigSender.hpp"
+#include "task/ConfigSender.hpp"
 #include "db/Database.hpp"
-#include "db/repository/TokenRepository.hpp"
+#include "repository/ImageRepository.hpp"
+#include "repository/TokenRepository.hpp"
+#include "image/ImageManager.hpp"
 #include "events/EventBus.hpp"
 #include "logging/ConsoleLogger.hpp"
 #include "net/HTTPClient.hpp"
 #include "logging/FileLogger.hpp"
-#include "net/Heartbeat.hpp"
+#include "task/Heartbeat.hpp"
 #include "net/WebsocketClient.hpp"
 #include <signal.h>
 #include <iostream>
@@ -65,6 +67,8 @@ int main(int argc, char* argv[])
     Database database;
     database.init(cfg.database);
     TokenRepository tokenRepo(database.get());
+    ImageRepository imageRepo(database.get());
+    ImageManager imageManager(cfg, imageRepo);
 
     // setup auth
     HTTPClient http(60, 600);

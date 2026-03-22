@@ -1,6 +1,6 @@
 #pragma once
 #include "config/AppConfig.hpp"
-#include "db/repository/TokenRepository.hpp"
+#include "repository/TokenRepository.hpp"
 #include "net/HTTPClient.hpp"
 #include <optional>
 #include <string>

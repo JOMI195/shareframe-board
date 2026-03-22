@@ -1,4 +1,4 @@
-#include "net/ConfigSender.hpp"
+#include "task/ConfigSender.hpp"
 #include "events/Topic.hpp"
 #include <arpa/inet.h>
 #include <nlohmann/json.hpp>

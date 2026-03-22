@@ -30,13 +30,17 @@ struct DatabaseConfig
 struct AuthTokenConfig
 {
     std::string httpFetchTokenUrl;
-    std::string httpFetchTokenBodyKey;
     std::string httpVerifyTokenUrl;
 };
 
 struct WebsocketConfig
 {
     std::string wsPath;
+};
+
+struct ImageConfig
+{
+    std::string imageSavePath;
 };
 
 struct DisplayConfig
@@ -77,6 +81,7 @@ struct AppConfig
     DatabaseConfig database;
     AuthTokenConfig authToken;
     WebsocketConfig websocket;
+    ImageConfig image;
     DisplayConfig display;
     UpdateConfig update;
     DashboardConfig dashboard;
