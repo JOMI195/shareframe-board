@@ -57,12 +57,17 @@ struct DashboardConfig
 
 struct HeartbeatConfig
 {
-    int intervalSecs = 300;
+    int intervalSecs;
 };
 
 struct ConfigSenderConfig
 {
-    int intervalSecs = 900;
+    int intervalSecs;
+};
+
+struct ImageCheckConfig
+{
+    int intervalSecs;
 };
 
 
@@ -87,6 +92,7 @@ struct AppConfig
     DashboardConfig dashboard;
     HeartbeatConfig heartbeat;
     ConfigSenderConfig configSender;
+    ImageCheckConfig imageCheck;
 
     [[nodiscard]] std::string httpBaseUrl() const { return (production ? "https://" : "http://") + baseUrl; }
     [[nodiscard]] std::string wsBaseUrl() const { return (production ? "wss://" : "ws://") + baseUrl; }

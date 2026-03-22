@@ -10,6 +10,7 @@
 #include "net/HTTPClient.hpp"
 #include "logging/FileLogger.hpp"
 #include "task/Heartbeat.hpp"
+#include "task/ImageCheck.hpp"
 #include "net/WebsocketClient.hpp"
 #include <signal.h>
 #include <iostream>
@@ -79,11 +80,13 @@ int main(int argc, char* argv[])
     WebsocketClient wsClient(bus, cfg, authTokenManager);
     wsClient.start();
 
-    // setup heartbeat and config sender
+    // setup periodic tasks
     Heartbeat heartbeat(bus, cfg);
     ConfigSender configSender(bus, cfg);
+    ImageCheck imageCheck(bus, cfg, imageRepo);
     heartbeat.start();
     configSender.start();
+    imageCheck.start();
 
     // block until signal
     sigset_t sigset;
@@ -95,6 +98,7 @@ int main(int argc, char* argv[])
     sigwait(&sigset, &sig);
 
     spdlog::info("Received signal {}, shutting down", sig);
+    imageCheck.stop();
     configSender.stop();
     heartbeat.stop();
     wsClient.stop();

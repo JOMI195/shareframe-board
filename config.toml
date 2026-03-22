@@ -35,3 +35,6 @@ interval_secs = 60
 
 [config_sender]
 interval_secs = 900
+
+[image_check]
+interval_secs = 900

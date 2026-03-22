@@ -17,7 +17,7 @@ public:
     void stop();
 
 protected:
-    virtual int intervalSecs() const = 0;
+    [[nodiscard]] virtual int intervalSecs() const = 0;
     virtual void execute() = 0;
 
     EventBus& bus_;

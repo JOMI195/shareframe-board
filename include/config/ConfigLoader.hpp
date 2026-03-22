@@ -111,6 +111,15 @@ struct glz::meta<ConfigSenderConfig>
 };
 
 template <>
+struct glz::meta<ImageCheckConfig>
+{
+    using T = ImageCheckConfig;
+    static constexpr auto value = glz::object(
+        "interval_secs", &T::intervalSecs
+    );
+};
+
+template <>
 struct glz::meta<AppConfig>
 {
     using T = AppConfig;
@@ -127,7 +136,8 @@ struct glz::meta<AppConfig>
         "websocket", &T::websocket,
         "image", &T::image,
         "heartbeat", &T::heartbeat,
-        "config_sender", &T::configSender
+        "config_sender", &T::configSender,
+        "image_check", &T::imageCheck
     );
 };
 

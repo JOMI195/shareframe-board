@@ -8,7 +8,7 @@ public:
     ConfigSender(EventBus& bus, const AppConfig& cfg);
 
 protected:
-    int intervalSecs() const override;
+    [[nodiscard]] int intervalSecs() const override;
     void execute() override;
 
 private:
