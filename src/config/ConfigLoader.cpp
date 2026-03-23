@@ -86,5 +86,7 @@ void ConfigLoader::resolvePaths(AppConfig& cfg) {
     resolveField(cfg.database.databasePath,   base);
     resolveField(cfg.database.migrationsPath, base);
     resolveField(cfg.image.imageSavePath,       base);
+    resolveField(cfg.display.loadingImagePath,  base);
+    resolveField(cfg.display.defaultImagesPath, base);
     // update.backupDirName is a bare name fragment, not a path — not resolved here
 }

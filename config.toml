@@ -25,6 +25,11 @@ ws_path = "ws/frames/"
 image_save_path = "images"
 
 [display]
+mock_display = false
+interval_secs = 900
+min_refresh_secs = 120
+loading_image_path = "static/image/loading"
+default_images_path = "static/image/default"
 
 [update]
 

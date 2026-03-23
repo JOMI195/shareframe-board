@@ -120,6 +120,19 @@ struct glz::meta<ImageCheckConfig>
 };
 
 template <>
+struct glz::meta<DisplayConfig>
+{
+    using T = DisplayConfig;
+    static constexpr auto value = glz::object(
+        "mock_display", &T::mockDisplay,
+        "interval_secs", &T::intervalSecs,
+        "min_refresh_secs", &T::minRefreshSecs,
+        "loading_image_path", &T::loadingImagePath,
+        "default_images_path", &T::defaultImagesPath
+    );
+};
+
+template <>
 struct glz::meta<AppConfig>
 {
     using T = AppConfig;
@@ -127,7 +140,6 @@ struct glz::meta<AppConfig>
         "base_dir", &T::baseDir,
         "debug", &T::debug,
         "production", &T::production,
-        "mock_display", &T::mockDisplay,
         "base_url", &T::baseUrl,
         "log", &T::log,
         "shareframe_application", &T::shareframeApplication,
@@ -135,6 +147,7 @@ struct glz::meta<AppConfig>
         "auth_token", &T::authToken,
         "websocket", &T::websocket,
         "image", &T::image,
+        "display", &T::display,
         "heartbeat", &T::heartbeat,
         "config_sender", &T::configSender,
         "image_check", &T::imageCheck

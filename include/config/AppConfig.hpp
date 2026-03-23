@@ -45,6 +45,11 @@ struct ImageConfig
 
 struct DisplayConfig
 {
+    bool mockDisplay = false;
+    int intervalSecs = 900;
+    int minRefreshSecs = 120;
+    std::string loadingImagePath = "static/image/loading";
+    std::string defaultImagesPath = "static/image/default";
 };
 
 struct UpdateConfig
@@ -76,7 +81,6 @@ struct AppConfig
     std::string baseDir;
     bool debug;
     bool production;
-    bool mockDisplay;
     std::string version;
     std::string baseUrl;
 

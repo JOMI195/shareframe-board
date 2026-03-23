@@ -12,6 +12,8 @@
 #include "task/Heartbeat.hpp"
 #include "task/ImageCheck.hpp"
 #include "task/ImageUpdate.hpp"
+#include "task/DisplayImageLoop.hpp"
+#include "display/DisplayManager.hpp"
 #include "net/WebsocketClient.hpp"
 #include <signal.h>
 #include <iostream>
@@ -71,6 +73,9 @@ int main(int argc, char* argv[])
     TokenRepository tokenRepo(database.get());
     ImageRepository imageRepo(database.get());
     ImageManager imageManager(cfg, imageRepo);
+    DisplayManager displayManager(cfg);
+    displayManager.init();
+    displayManager.displayImage(cfg.display.loadingImagePath + "/logo-frame-loading-shareframe.jpg");
 
     // setup auth
     HTTPClient http(60, 600);
@@ -80,6 +85,8 @@ int main(int argc, char* argv[])
     EventBus bus;
     ImageUpdate imageUpdate(bus, imageManager, imageRepo);
     imageUpdate.start();
+    DisplayImageLoop displayImageLoop(bus, cfg, imageRepo, displayManager);
+    displayImageLoop.start();
     WebsocketClient wsClient(bus, cfg, authTokenManager);
     wsClient.start();
 
@@ -105,5 +112,6 @@ int main(int argc, char* argv[])
     configSender.stop();
     heartbeat.stop();
     wsClient.stop();
+    displayImageLoop.stop();
     imageUpdate.stop();
 }

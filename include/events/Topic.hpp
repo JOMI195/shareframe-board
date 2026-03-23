@@ -5,4 +5,5 @@ enum class Topic {
     PICTURE,
     CLEAR_IMAGES,
     CLEAR_DISPLAY,
+    IMAGE_REMOVED,
 };

@@ -1,4 +1,5 @@
 #include "task/ImageUpdate.hpp"
+#include "events/Messages.hpp"
 #include "events/Topic.hpp"
 
 ImageUpdate::ImageUpdate(EventBus& bus, ImageManager& imgMgr, ImageRepository& repo)
@@ -112,6 +113,7 @@ void ImageUpdate::_onClearImages(const nlohmann::json& msg) const
 
         logger_->info("Clearing {} specific images", ids.size());
         imgMgr_.removeImages(ids);
+        bus_.publish<Topic::IMAGE_REMOVED>(ids);
     }
     catch (const std::exception& e)
     {
@@ -137,6 +139,7 @@ void ImageUpdate::_onClearDisplay(const nlohmann::json& msg) const
 
         logger_->info("Clearing all {} images", allIds.size());
         imgMgr_.removeImages(allIds);
+        bus_.publish<Topic::IMAGE_REMOVED>(allIds);
     }
     catch (const std::exception& e)
     {

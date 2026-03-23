@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 4.1)
-project(shareframe-service VERSION 1.0.0 LANGUAGES CXX)
+project(shareframe-service VERSION 1.0.0 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -61,6 +61,9 @@ FetchContent_MakeAvailable(sqlitecpp)
 target_link_libraries(vendor INTERFACE SQLiteCpp)
 
 
+add_subdirectory(external/waveshare)
+add_subdirectory(external/stb)
+
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
@@ -69,7 +72,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
         ${CMAKE_SOURCE_DIR}/include
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE vendor)
+target_link_libraries(${PROJECT_NAME} PRIVATE vendor waveshare_epd stb)
 
 configure_file(
         ${CMAKE_SOURCE_DIR}/config.toml
