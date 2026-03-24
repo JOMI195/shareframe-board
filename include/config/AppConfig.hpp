@@ -3,10 +3,10 @@
 
 struct SecretsConfig
 {
-    std::string privateSerialNumber;
     std::string publicSerialNumber;
-    std::string frameAuthSecretKey;
+    std::string ed25519PrivateKey;
     std::string updateHashSecretKey;
+    std::string serverEd25519PublicKey;
 };
 
 struct LogConfig

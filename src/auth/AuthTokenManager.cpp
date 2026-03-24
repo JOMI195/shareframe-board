@@ -1,5 +1,5 @@
 #include "auth/AuthTokenManager.hpp"
-#include "auth/HTTPAuth.hpp"
+#include "auth/Ed25519Auth.hpp"
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 #include <ctime>
@@ -52,7 +52,7 @@ static bool fetchAndSaveToken(const HTTPClient& http, TokenRepository& repo, con
     {
         const std::string url = cfg.httpBaseUrl() + cfg.authToken.httpFetchTokenUrl;
 
-        auto res = http.post(url, "{}", HTTPAuth::buildHTTPAuthHeaders(cfg));
+        auto res = http.post(url, "{}", Ed25519Auth::buildHTTPAuthHeaders(cfg));
         if (!res.ok())
         {
             spdlog::error("Failed to obtain token: HTTP {}", res.statusCode);

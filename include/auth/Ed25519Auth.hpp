@@ -1,11 +1,11 @@
 #pragma once
-#include <string>
 #include <map>
+#include <string>
 
 #include "config/AppConfig.hpp"
 #include "util/NonInstantiable.hpp"
 
-class HTTPAuth : NonInstantiable
+class Ed25519Auth : NonInstantiable
 {
 public:
     static std::map<std::string, std::string> buildHTTPAuthHeaders(
@@ -13,9 +13,8 @@ public:
     );
 
 private:
-    static std::string generateHTTPAuthHash(
-        const std::string& privateSerialNumber,
-        const std::string& timestamp,
-        const std::string& secretKey
+    static std::string sign(
+        const std::string& message,
+        const std::string& base64PrivateKey
     );
 };

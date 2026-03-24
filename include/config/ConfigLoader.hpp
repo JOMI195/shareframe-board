@@ -13,10 +13,10 @@ struct glz::meta<SecretsConfig>
 {
     using T = SecretsConfig;
     static constexpr auto value = glz::object(
-        "private_serial_number", &T::privateSerialNumber,
         "public_serial_number", &T::publicSerialNumber,
-        "frame_auth_secret_key", &T::frameAuthSecretKey,
-        "update_hash_secret_key", &T::updateHashSecretKey
+        "ed25519_private_key", &T::ed25519PrivateKey,
+        "update_hash_secret_key", &T::updateHashSecretKey,
+        "server_ed25519_public_key", &T::serverEd25519PublicKey
     );
 };
 

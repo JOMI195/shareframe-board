@@ -75,7 +75,7 @@ int main(int argc, char* argv[])
     ImageManager imageManager(cfg, imageRepo);
     DisplayManager displayManager(cfg);
     displayManager.init();
-    displayManager.displayImage(cfg.display.loadingImagePath + "/logo-frame-loading-shareframe.jpg");
+    bool _ = displayManager.displayImage(cfg.display.loadingImagePath + "/logo-frame-loading-shareframe.jpg");
 
     // setup auth
     HTTPClient http(60, 600);
