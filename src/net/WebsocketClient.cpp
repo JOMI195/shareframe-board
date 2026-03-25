@@ -172,7 +172,20 @@ void WebsocketClient::start()
     busThread_ = std::jthread([this](const std::stop_token& st)
     {
         while (!st.stop_requested())
-            bus_.waitAndProcess(st);
+        {
+            try
+            {
+                bus_.waitAndProcess(st);
+            }
+            catch (const std::exception& e)
+            {
+                logger_->error("Bus processing failed: {}", e.what());
+            }
+            catch (...)
+            {
+                logger_->error("Bus processing failed with unknown exception");
+            }
+        }
     });
 
     logger_->info("WebSocket client started");

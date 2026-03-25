@@ -56,86 +56,103 @@ void DisplayImageLoop::_run(const std::stop_token st)
 {
     while (!st.stop_requested())
     {
-        auto ids = repo_.getAllIds();
-
-        if (ids.empty())
+        try
         {
-            // Show default images when no user images exist
-            auto defaultImages = _loadDefaultImages();
-            if (defaultImages.empty())
+            auto ids = repo_.getAllIds();
+
+            if (ids.empty())
             {
-                logger_->debug("No images available, waiting");
-                std::unique_lock lk(mtx_);
-                cv_.wait_for(lk, std::chrono::seconds(cfg_.display.intervalSecs),
-                             [&st, this] { return st.stop_requested() || skipCurrent_; });
+                // Show default images when no user images exist
+                auto defaultImages = _loadDefaultImages();
+                if (defaultImages.empty())
+                {
+                    logger_->debug("No images available, waiting");
+                    std::unique_lock lk(mtx_);
+                    cv_.wait_for(lk, std::chrono::seconds(cfg_.display.intervalSecs),
+                                 [&st, this] { return st.stop_requested() || skipCurrent_; });
+                    continue;
+                }
+
+                while (!st.stop_requested())
+                {
+                    // Check if user images appeared
+                    if (!repo_.getAllIds().empty())
+                    {
+                        logger_->info("User images available, switching from defaults");
+                        defaultImageIdx_ = 0;
+                        break;
+                    }
+
+                    if (defaultImageIdx_ >= defaultImages.size())
+                        defaultImageIdx_ = 0;
+
+                    const auto& path = defaultImages[defaultImageIdx_];
+                    if (display_.displayImage(path))
+                        logger_->info("Displaying default image ({})", path.string());
+                    else
+                        logger_->error("Failed to display default image: {}", path.string());
+
+                    ++defaultImageIdx_;
+
+                    std::unique_lock lk(mtx_);
+                    skipCurrent_ = false;
+                    cv_.wait_for(lk, std::chrono::seconds(cfg_.display.intervalSecs),
+                                 [&st, this] { return st.stop_requested() || skipCurrent_; });
+                }
                 continue;
             }
 
-            while (!st.stop_requested())
+            // Find next image ID > currentImageId_, or wrap to lowest
+            std::ranges::sort(ids);
+            auto it = std::ranges::upper_bound(ids, currentImageId_);
+            int64_t nextId = (it != ids.end()) ? *it : ids.front();
+
+            // Fetch the image to get its file path
+            auto images = repo_.getByIds({nextId});
+            if (images.empty())
             {
-                // Check if user images appeared
-                if (!repo_.getAllIds().empty())
-                {
-                    logger_->info("User images available, switching from defaults");
-                    defaultImageIdx_ = 0;
-                    break;
-                }
+                logger_->warn("Image {} not found in repository, skipping", nextId);
+                currentImageId_ = nextId;
+                continue;
+            }
 
-                if (defaultImageIdx_ >= defaultImages.size())
-                    defaultImageIdx_ = 0;
+            const auto& image = images.front();
+            if (!std::filesystem::exists(image.imagePath))
+            {
+                logger_->warn("Image file missing: {}, skipping", image.imagePath.string());
+                currentImageId_ = nextId;
+                continue;
+            }
 
-                const auto& path = defaultImages[defaultImageIdx_];
-                if (display_.displayImage(path))
-                    logger_->info("Displaying default image ({})", path.string());
-                else
-                    logger_->error("Failed to display default image: {}", path.string());
+            // Display the image (DisplayManager enforces min refresh)
+            if (display_.displayImage(image.imagePath))
+                logger_->info("Displaying image {} ({})", nextId, image.imagePath.string());
+            else
+                logger_->error("Failed to display image {}", nextId);
 
-                ++defaultImageIdx_;
+            currentImageId_ = nextId;
 
+            // Wait for interval or skip signal
+            {
                 std::unique_lock lk(mtx_);
                 skipCurrent_ = false;
                 cv_.wait_for(lk, std::chrono::seconds(cfg_.display.intervalSecs),
                              [&st, this] { return st.stop_requested() || skipCurrent_; });
             }
-            continue;
         }
-
-        // Find next image ID > currentImageId_, or wrap to lowest
-        std::ranges::sort(ids);
-        auto it = std::ranges::upper_bound(ids, currentImageId_);
-        int64_t nextId = (it != ids.end()) ? *it : ids.front();
-
-        // Fetch the image to get its file path
-        auto images = repo_.getByIds({nextId});
-        if (images.empty())
+        catch (const std::exception& e)
         {
-            logger_->warn("Image {} not found in repository, skipping", nextId);
-            currentImageId_ = nextId;
-            continue;
-        }
-
-        const auto& image = images.front();
-        if (!std::filesystem::exists(image.imagePath))
-        {
-            logger_->warn("Image file missing: {}, skipping", image.imagePath.string());
-            currentImageId_ = nextId;
-            continue;
-        }
-
-        // Display the image (DisplayManager enforces min refresh)
-        if (display_.displayImage(image.imagePath))
-            logger_->info("Displaying image {} ({})", nextId, image.imagePath.string());
-        else
-            logger_->error("Failed to display image {}", nextId);
-
-        currentImageId_ = nextId;
-
-        // Wait for interval or skip signal
-        {
+            logger_->error("DisplayImageLoop iteration failed: {}", e.what());
             std::unique_lock lk(mtx_);
-            skipCurrent_ = false;
-            cv_.wait_for(lk, std::chrono::seconds(cfg_.display.intervalSecs),
-                         [&st, this] { return st.stop_requested() || skipCurrent_; });
+            cv_.wait_for(lk, std::chrono::seconds(5),
+                         [&st] { return st.stop_requested(); });
+        }
+        catch (...)
+        {
+            logger_->error("DisplayImageLoop iteration failed with unknown exception");
+            std::unique_lock lk(mtx_);
+            cv_.wait_for(lk, std::chrono::seconds(5),
+                         [&st] { return st.stop_requested(); });
         }
     }
 }

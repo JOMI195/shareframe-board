@@ -15,7 +15,18 @@ void PeriodicTask::_run(std::stop_token st)
 {
     while (!st.stop_requested())
     {
-        execute();
+        try
+        {
+            execute();
+        }
+        catch (const std::exception& e)
+        {
+            logger_->error("{} execute() failed: {}", name_, e.what());
+        }
+        catch (...)
+        {
+            logger_->error("{} execute() failed with unknown exception", name_);
+        }
 
         std::unique_lock lock(mtx_);
         cv_.wait_for(lock, std::chrono::seconds(intervalSecs()), [&st]

@@ -4,6 +4,7 @@
 #include <condition_variable>
 #include <functional>
 #include <mutex>
+#include <spdlog/spdlog.h>
 #include <stop_token>
 #include <unordered_map>
 #include <vector>
@@ -48,7 +49,18 @@ public:
             {
                 for (auto& handler : it->second)
                 {
-                    handler(payload);
+                    try
+                    {
+                        handler(payload);
+                    }
+                    catch (const std::exception& e)
+                    {
+                        spdlog::error("EventBus handler failed for topic {}: {}", topicId, e.what());
+                    }
+                    catch (...)
+                    {
+                        spdlog::error("EventBus handler failed for topic {} with unknown exception", topicId);
+                    }
                 }
             }
         }
