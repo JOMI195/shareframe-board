@@ -21,3 +21,10 @@ template <> struct TopicMessage<Topic::CLEAR_DISPLAY> { using type = nlohmann::j
 
 // Internal events
 template <> struct TopicMessage<Topic::IMAGE_REMOVED> { using type = std::vector<int64_t>; };
+
+// Dashboard IPC events
+struct SkipImageEvent {};
+struct UpdateDisplayIntervalEvent { int intervalSecs; };
+
+template <> struct TopicMessage<Topic::SKIP_IMAGE>                { using type = SkipImageEvent; };
+template <> struct TopicMessage<Topic::UPDATE_DISPLAY_INTERVAL>   { using type = UpdateDisplayIntervalEvent; };

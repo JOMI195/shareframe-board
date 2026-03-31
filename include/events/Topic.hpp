@@ -6,4 +6,6 @@ enum class Topic {
     CLEAR_IMAGES,
     CLEAR_DISPLAY,
     IMAGE_REMOVED,
+    SKIP_IMAGE,
+    UPDATE_DISPLAY_INTERVAL,
 };

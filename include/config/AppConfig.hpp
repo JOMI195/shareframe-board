@@ -56,8 +56,14 @@ struct UpdateConfig
 {
 };
 
-struct DashboardConfig
+struct DashboardApplicationConfig
 {
+    std::string serviceName = "shareframe-dashboard.service";
+    std::string logFile = "shareframe-dashboard.log";
+    std::string socketPath = "/tmp/shareframe-ipc.sock";
+    int port = 8080;
+    std::string host = "0.0.0.0";
+    std::string httpVerifyOtpUrl = "/api/frames/verify-frame-otp/";
 };
 
 struct HeartbeatConfig
@@ -93,7 +99,7 @@ struct AppConfig
     ImageConfig image;
     DisplayConfig display;
     UpdateConfig update;
-    DashboardConfig dashboard;
+    DashboardApplicationConfig dashboardApplication;
     HeartbeatConfig heartbeat;
     ConfigSenderConfig configSender;
     ImageCheckConfig imageCheck;

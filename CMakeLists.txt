@@ -64,15 +64,59 @@ target_link_libraries(vendor INTERFACE SQLiteCpp)
 add_subdirectory(external/waveshare)
 add_subdirectory(external/stb)
 
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
-
-add_executable(${PROJECT_NAME} ${SOURCES})
-
-target_include_directories(${PROJECT_NAME} PRIVATE
-        ${CMAKE_SOURCE_DIR}/include
+# --- shareframe-common: shared static library ---
+set(COMMON_SOURCES
+    src/config/AppConfig.cpp
+    src/config/ConfigLoader.cpp
+    src/db/Database.cpp
+    src/db/MigrationRunner.cpp
+    src/logging/ConsoleLogger.cpp
+    src/logging/FileLogger.cpp
+    src/net/HTTPClient.cpp
+    src/auth/AuthTokenManager.cpp
+    src/auth/Ed25519Auth.cpp
+    src/auth/TokenAuth.cpp
+    src/auth/ServerSignedResponse.cpp
+    src/util/Base64.cpp
+    src/repository/TokenRepository.cpp
+    src/repository/ImageRepository.cpp
+    src/repository/SettingsRepository.cpp
+    src/app/Bootstrap.cpp
 )
+add_library(shareframe-common STATIC ${COMMON_SOURCES})
+target_include_directories(shareframe-common PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(shareframe-common PUBLIC vendor)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE vendor waveshare_epd stb)
+# --- shareframe-service: main process ---
+set(SERVICE_SOURCES
+    apps/service/main.cpp
+    src/display/DisplayManager.cpp
+    src/display/stb_impl.cpp
+    src/image/ImageManager.cpp
+    src/net/WebsocketClient.cpp
+    src/task/Task.cpp
+    src/task/PeriodicTask.cpp
+    src/task/DisplayImageLoop.cpp
+    src/task/DisplayClear.cpp
+    src/task/ImageUpdate.cpp
+    src/task/Heartbeat.cpp
+    src/task/ConfigSender.cpp
+    src/task/ImageCheck.cpp
+    src/ipc/IpcServer.cpp
+    src/settings/RuntimeSettings.cpp
+)
+add_executable(shareframe-service ${SERVICE_SOURCES})
+target_link_libraries(shareframe-service PRIVATE shareframe-common waveshare_epd stb)
+
+# --- shareframe-dashboard: dashboard process ---
+set(DASHBOARD_SOURCES
+    apps/dashboard/main.cpp
+    src/dashboard/DashboardServer.cpp
+    src/dashboard/SessionManager.cpp
+    src/dashboard/IpcClient.cpp
+)
+add_executable(shareframe-dashboard ${DASHBOARD_SOURCES})
+target_link_libraries(shareframe-dashboard PRIVATE shareframe-common)
 
 configure_file(
         ${CMAKE_SOURCE_DIR}/config.toml
@@ -103,6 +147,16 @@ configure_file(
         ${CMAKE_BINARY_DIR}/VERSION.toml
         COPYONLY
 )
+
+file(GLOB_RECURSE STATIC_IMAGE_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/static/image/*)
+foreach (STATIC_FILE ${STATIC_IMAGE_FILES})
+    file(RELATIVE_PATH REL_PATH ${CMAKE_SOURCE_DIR} ${STATIC_FILE})
+    configure_file(
+            ${STATIC_FILE}
+            ${CMAKE_BINARY_DIR}/${REL_PATH}
+            COPYONLY
+    )
+endforeach ()
 
 file(GLOB MIGRATION_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/migrations/*.sql)
 foreach (MIGRATION_FILE ${MIGRATION_FILES})

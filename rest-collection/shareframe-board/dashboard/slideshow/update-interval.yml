@@ -1,0 +1,23 @@
+info:
+  name: update-interval
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "http://localhost:8080/api/frame/slideshow/display-images-loop-interval"
+  body:
+    type: json
+    data: |-
+      {
+        "interval_seconds": 300
+      }
+  headers:
+    Cookie: "session={{sessionCookie}}"
+  auth: none
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

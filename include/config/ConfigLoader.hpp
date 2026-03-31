@@ -133,6 +133,20 @@ struct glz::meta<DisplayConfig>
 };
 
 template <>
+struct glz::meta<DashboardApplicationConfig>
+{
+    using T = DashboardApplicationConfig;
+    static constexpr auto value = glz::object(
+        "service_name", &T::serviceName,
+        "log_file", &T::logFile,
+        "socket_path", &T::socketPath,
+        "port", &T::port,
+        "host", &T::host,
+        "http_verify_otp_url", &T::httpVerifyOtpUrl
+    );
+};
+
+template <>
 struct glz::meta<AppConfig>
 {
     using T = AppConfig;
@@ -148,6 +162,7 @@ struct glz::meta<AppConfig>
         "websocket", &T::websocket,
         "image", &T::image,
         "display", &T::display,
+        "dashboard_application", &T::dashboardApplication,
         "heartbeat", &T::heartbeat,
         "config_sender", &T::configSender,
         "image_check", &T::imageCheck

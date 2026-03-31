@@ -1,0 +1,73 @@
+#pragma once
+#include <nlohmann/json.hpp>
+#include <optional>
+#include <string>
+
+enum class IpcMessageType
+{
+    SkipImage,
+    UpdateDisplayInterval,
+    GetDisplayInterval,
+};
+
+struct IpcMessage
+{
+    IpcMessageType type;
+    nlohmann::json data;
+};
+
+inline std::string ipcMessageTypeToString(IpcMessageType t)
+{
+    switch (t)
+    {
+    case IpcMessageType::SkipImage:              return "skip_image";
+    case IpcMessageType::UpdateDisplayInterval:   return "update_display_interval";
+    case IpcMessageType::GetDisplayInterval:      return "get_display_interval";
+    }
+    return "unknown";
+}
+
+inline std::optional<IpcMessageType> ipcMessageTypeFromString(const std::string& s)
+{
+    if (s == "skip_image")               return IpcMessageType::SkipImage;
+    if (s == "update_display_interval")  return IpcMessageType::UpdateDisplayInterval;
+    if (s == "get_display_interval")     return IpcMessageType::GetDisplayInterval;
+    return std::nullopt;
+}
+
+inline std::string toJson(const IpcMessage& msg)
+{
+    nlohmann::json j;
+    j["type"] = ipcMessageTypeToString(msg.type);
+    if (!msg.data.is_null())
+        j["data"] = msg.data;
+    return j.dump() + "\n";
+}
+
+inline std::optional<IpcMessage> parseIpcMessage(const std::string& line)
+{
+    try
+    {
+        auto j = nlohmann::json::parse(line);
+        auto typeStr = j.at("type").get<std::string>();
+        auto type = ipcMessageTypeFromString(typeStr);
+        if (!type)
+            return std::nullopt;
+        nlohmann::json data;
+        if (j.contains("data"))
+            data = j["data"];
+        return IpcMessage{*type, std::move(data)};
+    }
+    catch (...)
+    {
+        return std::nullopt;
+    }
+}
+
+inline std::string toJsonResponse(const nlohmann::json& data)
+{
+    nlohmann::json j;
+    j["type"] = "response";
+    j["data"] = data;
+    return j.dump() + "\n";
+}

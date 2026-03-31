@@ -33,7 +33,13 @@ default_images_path = "static/image/default"
 
 [update]
 
-[dashboard]
+[dashboard_application]
+service_name = "shareframe-dashboard.service"
+log_file = "shareframe-dashboard.log"
+socket_path = "/tmp/shareframe-ipc.sock"
+port = 8080
+host = "0.0.0.0"
+http_verify_otp_url = "/api/frames/verify-frame-otp/"
 
 [heartbeat]
 interval_secs = 60

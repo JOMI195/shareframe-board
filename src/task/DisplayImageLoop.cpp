@@ -1,11 +1,14 @@
 #include "task/DisplayImageLoop.hpp"
 #include "events/Messages.hpp"
+#include "settings/RuntimeSettings.hpp"
 #include <algorithm>
 #include <filesystem>
 
 DisplayImageLoop::DisplayImageLoop(EventBus& bus, const AppConfig& cfg,
-                                   ImageRepository& repo, DisplayManager& display)
-    : Task(bus, "DisplayImageLoop"), cfg_(cfg), repo_(repo), display_(display)
+                                   ImageRepository& repo, DisplayManager& display,
+                                   RuntimeSettings& settings)
+    : Task(bus, "DisplayImageLoop"), cfg_(cfg), repo_(repo), display_(display),
+      settings_(settings)
 {
 }
 
@@ -13,9 +16,13 @@ void DisplayImageLoop::start()
 {
     bus_.subscribe<Topic::IMAGE_REMOVED>(
         [this](const std::vector<int64_t>& ids) { _onImageRemoved(ids); });
+    bus_.subscribe<Topic::SKIP_IMAGE>(
+        [this](const SkipImageEvent&) { _onSkipImage(); });
+    bus_.subscribe<Topic::UPDATE_DISPLAY_INTERVAL>(
+        [this](const UpdateDisplayIntervalEvent& evt) { _onUpdateInterval(evt); });
 
     logger_->info("Starting DisplayImageLoop (interval={}s, minRefresh={}s)",
-                  cfg_.display.intervalSecs, cfg_.display.minRefreshSecs);
+                  settings_.getDisplayInterval(), cfg_.display.minRefreshSecs);
     Task::start();
 }
 
@@ -68,7 +75,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
                 {
                     logger_->debug("No images available, waiting");
                     std::unique_lock lk(mtx_);
-                    cv_.wait_for(lk, std::chrono::seconds(cfg_.display.intervalSecs),
+                    cv_.wait_for(lk, std::chrono::seconds(settings_.getDisplayInterval()),
                                  [&st, this] { return st.stop_requested() || skipCurrent_; });
                     continue;
                 }
@@ -86,8 +93,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
                     if (defaultImageIdx_ >= defaultImages.size())
                         defaultImageIdx_ = 0;
 
-                    const auto& path = defaultImages[defaultImageIdx_];
-                    if (display_.displayImage(path))
+                    if (const auto& path = defaultImages[defaultImageIdx_]; display_.displayImage(path))
                         logger_->info("Displaying default image ({})", path.string());
                     else
                         logger_->error("Failed to display default image: {}", path.string());
@@ -96,7 +102,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
 
                     std::unique_lock lk(mtx_);
                     skipCurrent_ = false;
-                    cv_.wait_for(lk, std::chrono::seconds(cfg_.display.intervalSecs),
+                    cv_.wait_for(lk, std::chrono::seconds(settings_.getDisplayInterval()),
                                  [&st, this] { return st.stop_requested() || skipCurrent_; });
                 }
                 continue;
@@ -136,7 +142,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
             {
                 std::unique_lock lk(mtx_);
                 skipCurrent_ = false;
-                cv_.wait_for(lk, std::chrono::seconds(cfg_.display.intervalSecs),
+                cv_.wait_for(lk, std::chrono::seconds(settings_.getDisplayInterval()),
                              [&st, this] { return st.stop_requested() || skipCurrent_; });
             }
         }
@@ -155,4 +161,18 @@ void DisplayImageLoop::_run(const std::stop_token st)
                          [&st] { return st.stop_requested(); });
         }
     }
+}
+
+void DisplayImageLoop::_onSkipImage()
+{
+    std::lock_guard lk(mtx_);
+    logger_->info("Skip image requested via IPC");
+    skipCurrent_ = true;
+    cv_.notify_one();
+}
+
+void DisplayImageLoop::_onUpdateInterval(const UpdateDisplayIntervalEvent& evt) const
+{
+    logger_->info("Updating display interval to {}s", evt.intervalSecs);
+    settings_.setDisplayInterval(evt.intervalSecs);
 }
