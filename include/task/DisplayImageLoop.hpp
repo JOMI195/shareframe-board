@@ -16,8 +16,10 @@ public:
 
     void start() override;
 
-private:
+protected:
     void _run(std::stop_token st) override;
+
+private:
     void _onImageRemoved(const std::vector<int64_t>& removedIds);
     void _onSkipImage();
     void _onUpdateInterval(const UpdateDisplayIntervalEvent& evt) const;

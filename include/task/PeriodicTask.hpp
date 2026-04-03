@@ -15,6 +15,6 @@ protected:
 
     const AppConfig& cfg_;
 
-private:
+protected:
     void _run(std::stop_token st) override;
 };
