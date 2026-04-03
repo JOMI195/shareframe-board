@@ -40,26 +40,31 @@ int main(int argc, char* argv[])
     HTTPClient http(60, 600);
     AuthTokenManager authTokenManager(cfg, tokenRepo, http);
 
-    // setup event bus, image update handler, and websocket
-    EventBus bus;
-    ImageUpdate imageUpdate(bus, imageManager, imageRepo);
-    imageUpdate.start();
-    DisplayImageLoop displayImageLoop(bus, cfg, imageRepo, displayManager, runtimeSettings);
-    displayImageLoop.start();
-    WebsocketClient wsClient(bus, cfg, authTokenManager);
-    wsClient.start();
-
+    // setup event bus
+    EventBus eventBus;
+    
     // setup IPC server for dashboard communication
-    IpcServer ipcServer(bus, cfg, runtimeSettings);
+    IpcServer ipcServer(eventBus, cfg, runtimeSettings);
     ipcServer.start();
 
+    // setup tasks
+    ImageUpdate imageUpdate(eventBus, imageManager, imageRepo);
+    imageUpdate.start();
+    DisplayImageLoop displayImageLoop(eventBus, cfg, imageRepo, displayManager, runtimeSettings);
+    displayImageLoop.start();
+    WebsocketClient wsClient(eventBus, cfg, authTokenManager);
+    wsClient.start();
+
     // setup periodic tasks
-    Heartbeat heartbeat(bus, cfg);
-    ConfigSender configSender(bus, cfg);
-    ImageCheck imageCheck(bus, cfg, imageRepo);
+    Heartbeat heartbeat(eventBus, cfg);
     heartbeat.start();
+    ConfigSender configSender(eventBus, cfg);
     configSender.start();
+    ImageCheck imageCheck(eventBus, cfg, imageRepo);
     imageCheck.start();
+
+    // start eventbus
+    eventBus.start();
 
     int sig = waitForSignal();
     spdlog::info("Received signal {}, shutting down", sig);
@@ -70,4 +75,5 @@ int main(int argc, char* argv[])
     wsClient.stop();
     displayImageLoop.stop();
     imageUpdate.stop();
+    eventBus.stop();
 }
