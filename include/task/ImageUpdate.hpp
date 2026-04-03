@@ -11,9 +11,11 @@ public:
 
     void start() override;
 
-private:
-    void _enqueue(const std::string& topic, const nlohmann::json& msg);
+protected:
     void _run(std::stop_token st) override;
+
+private:
+    void _enqueue(Topic topic, const nlohmann::json& msg);
 
     void _onPicture(const nlohmann::json& msg) const;
     void _onClearImages(const nlohmann::json& msg) const;
@@ -21,5 +23,5 @@ private:
 
     ImageManager& imgMgr_;
     ImageRepository& repo_;
-    std::queue<std::pair<std::string, nlohmann::json>> queue_;
+    std::queue<std::pair<Topic, nlohmann::json>> queue_;
 };

@@ -9,15 +9,15 @@ ImageUpdate::ImageUpdate(EventBus& bus, ImageManager& imgMgr, ImageRepository& r
 
 void ImageUpdate::start()
 {
-    bus_.subscribe<Topic::PICTURE>([this](const nlohmann::json& msg) { _enqueue("picture", msg); });
-    bus_.subscribe<Topic::CLEAR_IMAGES>([this](const nlohmann::json& msg) { _enqueue("clear_images", msg); });
-    bus_.subscribe<Topic::CLEAR_DISPLAY>([this](const nlohmann::json& msg) { _enqueue("clear_display", msg); });
+    bus_.subscribe<Topic::PICTURE>([this](const nlohmann::json& msg) { _enqueue(Topic::PICTURE, msg); });
+    bus_.subscribe<Topic::CLEAR_IMAGES>([this](const nlohmann::json& msg) { _enqueue(Topic::CLEAR_IMAGES, msg); });
+    bus_.subscribe<Topic::CLEAR_DISPLAY>([this](const nlohmann::json& msg) { _enqueue(Topic::CLEAR_DISPLAY, msg); });
 
     logger_->info("Starting ImageUpdate thread");
     Task::start();
 }
 
-void ImageUpdate::_enqueue(const std::string& topic, const nlohmann::json& msg)
+void ImageUpdate::_enqueue(Topic topic, const nlohmann::json& msg)
 {
     {
         std::lock_guard lk(mtx_);
@@ -30,7 +30,7 @@ void ImageUpdate::_run(const std::stop_token st)
 {
     while (!st.stop_requested())
     {
-        std::queue<std::pair<std::string, nlohmann::json>> batch;
+        std::queue<std::pair<Topic, nlohmann::json>> batch;
         {
             std::unique_lock lk(mtx_);
             cv_.wait(lk, st, [this] { return !queue_.empty(); });
@@ -44,12 +44,20 @@ void ImageUpdate::_run(const std::stop_token st)
             auto [topic, msg] = std::move(batch.front());
             batch.pop();
 
-            if (topic == "picture")
+            switch (topic)
+            {
+            case Topic::PICTURE:
                 _onPicture(msg);
-            else if (topic == "clear_images")
+                break;
+            case Topic::CLEAR_IMAGES:
                 _onClearImages(msg);
-            else if (topic == "clear_display")
+                break;
+            case Topic::CLEAR_DISPLAY:
                 _onClearDisplay(msg);
+                break;
+            default:
+                break;
+            }
         }
     }
 }
