@@ -13,15 +13,15 @@ DashboardServer::DashboardServer(const AppConfig& cfg, IpcClient& ipc,
 void DashboardServer::start()
 {
     server_.setOnConnectionCallback(
-        [this](ix::HttpRequestPtr req, std::shared_ptr<ix::ConnectionState> connState)
+        [this](const ix::HttpRequestPtr& req, const std::shared_ptr<ix::ConnectionState>& connState)
         {
-            return _handleRequest(std::move(req), std::move(connState));
+            return _handleRequest(req, connState);
         });
 
-    auto [ok, errMsg] = server_.listen();
-    if (!ok)
+    if (auto [ok, errMsg] = server_.listen(); !ok)
     {
-        logger_->error("Failed to listen on {}:{}: {}", cfg_.dashboardApplication.host, cfg_.dashboardApplication.port, errMsg);
+        logger_->error("Failed to listen on {}:{}: {}", cfg_.dashboardApplication.host, cfg_.dashboardApplication.port,
+                       errMsg);
         return;
     }
 
@@ -38,7 +38,7 @@ void DashboardServer::stop()
 // --- Routing ---
 
 ix::HttpResponsePtr DashboardServer::_handleRequest(
-    ix::HttpRequestPtr req, std::shared_ptr<ix::ConnectionState> connState)
+    const ix::HttpRequestPtr& req, const std::shared_ptr<ix::ConnectionState>& connState) const
 {
     logger_->debug("{} {} from {}:{}", req->method, req->uri,
                    connState->getRemoteIp(), connState->getRemotePort());
@@ -76,7 +76,7 @@ ix::HttpResponsePtr DashboardServer::_handleRequest(
 
 // --- Auth Endpoints ---
 
-ix::HttpResponsePtr DashboardServer::_handleLogin(const ix::HttpRequestPtr& req)
+ix::HttpResponsePtr DashboardServer::_handleLogin(const ix::HttpRequestPtr& req) const
 {
     nlohmann::json body;
     try
@@ -92,7 +92,7 @@ ix::HttpResponsePtr DashboardServer::_handleLogin(const ix::HttpRequestPtr& req)
     if (otpIt == body.end() || !otpIt->is_string())
         return _jsonResponse(400, "Bad Request", {{"success", false}, {"message", "Missing otp field"}});
 
-    std::string otp = otpIt->get<std::string>();
+    auto otp = otpIt->get<std::string>();
 
     // Build Ed25519 auth headers for the board→server request
     auto authHeaders = Ed25519Auth::buildHTTPAuthHeaders(cfg_);
@@ -181,27 +181,25 @@ ix::HttpResponsePtr DashboardServer::_handleLogin(const ix::HttpRequestPtr& req)
         200, "OK", ix::HttpErrorCode::Ok, respHeaders, respBody.dump());
 }
 
-ix::HttpResponsePtr DashboardServer::_handleCheckAuth(const ix::HttpRequestPtr& req)
+ix::HttpResponsePtr DashboardServer::_handleCheckAuth(const ix::HttpRequestPtr& req) const
 {
-    std::string sessionId = _extractSessionId(req);
+    const std::string sessionId = _extractSessionId(req);
     bool authenticated = !sessionId.empty() && sessions_.isValid(sessionId);
     return _jsonResponse(200, "OK", {{"authenticated", authenticated}});
 }
 
-ix::HttpResponsePtr DashboardServer::_handleLogout(const ix::HttpRequestPtr& req)
+ix::HttpResponsePtr DashboardServer::_handleLogout(const ix::HttpRequestPtr& req) const
 {
-    std::string sessionId = _extractSessionId(req);
-    if (!sessionId.empty())
+    if (const std::string sessionId = _extractSessionId(req); !sessionId.empty())
         sessions_.removeSession(sessionId);
     return _jsonResponse(200, "OK", {{"success", true}});
 }
 
 // --- Slideshow Endpoints ---
 
-ix::HttpResponsePtr DashboardServer::_handleSkipImage(const ix::HttpRequestPtr& /*req*/)
+ix::HttpResponsePtr DashboardServer::_handleSkipImage(const ix::HttpRequestPtr& /*req*/) const
 {
-    IpcMessage msg{IpcMessageType::SkipImage, {}};
-    if (!ipc_.send(msg))
+    if (const IpcMessage msg{IpcMessageType::SkipImage, {}}; !ipc_.send(msg))
     {
         logger_->error("Failed to send skip_image via IPC");
         return _jsonResponse(500, "Internal Server Error",
@@ -210,9 +208,9 @@ ix::HttpResponsePtr DashboardServer::_handleSkipImage(const ix::HttpRequestPtr& 
     return _jsonResponse(200, "OK", {{"success", true}});
 }
 
-ix::HttpResponsePtr DashboardServer::_handleGetInterval(const ix::HttpRequestPtr& /*req*/)
+ix::HttpResponsePtr DashboardServer::_handleGetInterval(const ix::HttpRequestPtr& /*req*/) const
 {
-    auto result = ipc_.sendAndReceive(IpcMessage{IpcMessageType::GetDisplayInterval, {}});
+    const auto result = ipc_.sendAndReceive(IpcMessage{IpcMessageType::GetDisplayInterval, {}});
     if (!result)
     {
         logger_->error("Failed to query display interval via IPC");
@@ -224,7 +222,7 @@ ix::HttpResponsePtr DashboardServer::_handleGetInterval(const ix::HttpRequestPtr
     return _jsonResponse(200, "OK", {{"success", true}, {"interval_seconds", intervalSecs}});
 }
 
-ix::HttpResponsePtr DashboardServer::_handleUpdateInterval(const ix::HttpRequestPtr& req)
+ix::HttpResponsePtr DashboardServer::_handleUpdateInterval(const ix::HttpRequestPtr& req) const
 {
     nlohmann::json body;
     try
@@ -243,9 +241,8 @@ ix::HttpResponsePtr DashboardServer::_handleUpdateInterval(const ix::HttpRequest
                              {{"success", false}, {"message", "interval_seconds must be between 180 and 86400"}});
     }
 
-    nlohmann::json data = {{"interval_secs", secs}};
-    IpcMessage msg{IpcMessageType::UpdateDisplayInterval, data};
-    if (!ipc_.send(msg))
+    const nlohmann::json data = {{"interval_secs", secs}};
+    if (const IpcMessage msg{IpcMessageType::UpdateDisplayInterval, data}; !ipc_.send(msg))
     {
         logger_->error("Failed to send update_display_interval via IPC");
         return _jsonResponse(500, "Internal Server Error",
@@ -258,7 +255,7 @@ ix::HttpResponsePtr DashboardServer::_handleUpdateInterval(const ix::HttpRequest
 // --- Helpers ---
 
 ix::HttpResponsePtr DashboardServer::_jsonResponse(int status, const std::string& statusText,
-                                                    const nlohmann::json& body)
+                                                   const nlohmann::json& body)
 {
     ix::WebSocketHttpHeaders headers;
     headers["Content-Type"] = "application/json";
@@ -266,10 +263,9 @@ ix::HttpResponsePtr DashboardServer::_jsonResponse(int status, const std::string
         status, statusText, ix::HttpErrorCode::Ok, headers, body.dump());
 }
 
-ix::HttpResponsePtr DashboardServer::_loginRequired(const ix::HttpRequestPtr& req)
+ix::HttpResponsePtr DashboardServer::_loginRequired(const ix::HttpRequestPtr& req) const
 {
-    std::string sessionId = _extractSessionId(req);
-    if (sessionId.empty() || !sessions_.isValid(sessionId))
+    if (const std::string sessionId = _extractSessionId(req); sessionId.empty() || !sessions_.isValid(sessionId))
     {
         return _jsonResponse(401, "Unauthorized",
                              {{"success", false}, {"message", "Authentication required"}});
@@ -279,18 +275,18 @@ ix::HttpResponsePtr DashboardServer::_loginRequired(const ix::HttpRequestPtr& re
 
 std::string DashboardServer::_extractSessionId(const ix::HttpRequestPtr& req)
 {
-    auto it = req->headers.find("cookie");
+    const auto it = req->headers.find("cookie");
     if (it == req->headers.end())
         return {};
 
     // Parse "session=<id>" from cookie header
     const std::string& cookie = it->second;
     const std::string prefix = "session=";
-    size_t pos = cookie.find(prefix);
+    const size_t pos = cookie.find(prefix);
     if (pos == std::string::npos)
         return {};
 
-    size_t start = pos + prefix.size();
+    const size_t start = pos + prefix.size();
     size_t end = cookie.find(';', start);
     if (end == std::string::npos)
         end = cookie.size();
