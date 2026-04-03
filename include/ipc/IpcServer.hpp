@@ -19,7 +19,7 @@ public:
 
 private:
     void _acceptLoop(const std::stop_token& st);
-    void _handleClient(int clientFd, const std::stop_token& st);
+    void _handleClient(int clientFd, const std::stop_token& st) const;
     void _dispatch(int clientFd, const std::string& line) const;
 
     EventBus& bus_;

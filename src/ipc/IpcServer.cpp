@@ -119,7 +119,7 @@ void IpcServer::_acceptLoop(const std::stop_token& st)
     }
 }
 
-void IpcServer::_handleClient(int clientFd, const std::stop_token& st)
+void IpcServer::_handleClient(int clientFd, const std::stop_token& st) const
 {
     std::string buffer;
     char chunk[1024];
