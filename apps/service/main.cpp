@@ -12,6 +12,7 @@
 #include "repository/TokenRepository.hpp"
 #include "settings/RuntimeSettings.hpp"
 #include "task/ConfigSender.hpp"
+#include "task/DisplayClear.hpp"
 #include "task/DisplayImageLoop.hpp"
 #include "task/Heartbeat.hpp"
 #include "task/ImageCheck.hpp"
@@ -62,12 +63,15 @@ int main(int argc, char* argv[])
     configSender.start();
     ImageCheck imageCheck(eventBus, cfg, imageRepo);
     imageCheck.start();
+    DisplayClear displayClear(eventBus, cfg, displayManager);
+    displayClear.start();
 
     // start eventbus
     eventBus.start();
 
     int sig = waitForSignal();
     spdlog::info("Received signal {}, shutting down", sig);
+    displayClear.stop();
     imageCheck.stop();
     configSender.stop();
     heartbeat.stop();

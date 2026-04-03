@@ -50,6 +50,7 @@ struct DisplayConfig
     int minRefreshSecs = 120;
     std::string loadingImagePath = "assets/image/loading";
     std::string defaultImagesPath = "assets/image/default";
+    int clearTargetHour = 2;
 };
 
 struct UpdateConfig

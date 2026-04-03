@@ -128,7 +128,8 @@ struct glz::meta<DisplayConfig>
         "interval_secs", &T::intervalSecs,
         "min_refresh_secs", &T::minRefreshSecs,
         "loading_image_path", &T::loadingImagePath,
-        "default_images_path", &T::defaultImagesPath
+        "default_images_path", &T::defaultImagesPath,
+        "clear_target_hour", &T::clearTargetHour
     );
 };
 

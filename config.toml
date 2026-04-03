@@ -30,6 +30,7 @@ interval_secs = 900
 min_refresh_secs = 120
 loading_image_path = "assets/image/loading"
 default_images_path = "assets/image/default"
+clear_target_hour = 2
 
 [update]
 
