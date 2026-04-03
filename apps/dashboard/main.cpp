@@ -11,13 +11,10 @@ int main(int argc, char* argv[])
     initLogging(cfg, cfg.dashboardApplication.logFile);
     spdlog::info("shareframe-dashboard v{} starting [profile: {}]", cfg.version, profileName(profile));
 
-    // Connect to main service via IPC
+    // Connect to main service via IPC (will reconnect automatically on each request)
     IpcClient ipc(cfg.dashboardApplication.socketPath);
     if (!ipc.connect())
-    {
-        spdlog::error("Failed to connect to service IPC socket at {}", cfg.dashboardApplication.socketPath);
-        return 1;
-    }
+        spdlog::warn("Service IPC socket not available yet, will retry on first request");
 
     // Setup HTTP client (for OTP verification requests to ShareFrame server)
     HTTPClient http(60, 600);

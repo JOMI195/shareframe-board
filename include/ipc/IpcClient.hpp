@@ -21,6 +21,8 @@ public:
         std::chrono::milliseconds timeout = std::chrono::milliseconds{2000});
 
 private:
+    bool _connect(); // caller must hold mtx_
+
     std::string socketPath_;
     std::shared_ptr<spdlog::logger> logger_;
     int fd_ = -1;

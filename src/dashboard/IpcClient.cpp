@@ -15,11 +15,13 @@ IpcClient::~IpcClient()
     disconnect();
 }
 
-bool IpcClient::connect()
+bool IpcClient::_connect()
 {
-    std::lock_guard lk(mtx_);
     if (fd_ >= 0)
-        return true;
+    {
+        ::close(fd_);
+        fd_ = -1;
+    }
 
     fd_ = ::socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd_ < 0)
@@ -44,6 +46,14 @@ bool IpcClient::connect()
     return true;
 }
 
+bool IpcClient::connect()
+{
+    std::lock_guard lk(mtx_);
+    if (fd_ >= 0)
+        return true;
+    return _connect();
+}
+
 void IpcClient::disconnect()
 {
     std::lock_guard lk(mtx_);
@@ -63,11 +73,8 @@ bool IpcClient::isConnected() const
 bool IpcClient::send(const IpcMessage& msg)
 {
     std::lock_guard lk(mtx_);
-    if (fd_ < 0)
-    {
-        logger_->error("Cannot send IPC message: not connected");
+    if (fd_ < 0 && !_connect())
         return false;
-    }
 
     std::string data = toJson(msg); // includes trailing newline
     ssize_t sent = ::send(fd_, data.c_str(), data.size(), MSG_NOSIGNAL);
@@ -86,11 +93,8 @@ std::optional<nlohmann::json> IpcClient::sendAndReceive(
     const IpcMessage& msg, std::chrono::milliseconds timeout)
 {
     std::lock_guard lk(mtx_);
-    if (fd_ < 0)
-    {
-        logger_->error("Cannot send IPC message: not connected");
+    if (fd_ < 0 && !_connect())
         return std::nullopt;
-    }
 
     // Send
     std::string data = toJson(msg);
