@@ -1,5 +1,6 @@
 #include "task/ConfigSender.hpp"
 #include "events/Topic.hpp"
+#include "net/WsProtocol.hpp"
 #include <arpa/inet.h>
 #include <nlohmann/json.hpp>
 #include <sys/socket.h>
@@ -25,7 +26,7 @@ void ConfigSender::execute()
     }
 
     const nlohmann::json payload = {
-        {"type", "config"},
+        {"type", wsMessageTypeToString(WsMessageType::Config)},
         {"local_ip_address", localIp},
         {"version", cfg_.version}
     };

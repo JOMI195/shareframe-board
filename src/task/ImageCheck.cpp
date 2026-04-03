@@ -1,5 +1,6 @@
 #include "task/ImageCheck.hpp"
 #include "events/Topic.hpp"
+#include "net/WsProtocol.hpp"
 #include <nlohmann/json.hpp>
 
 ImageCheck::ImageCheck(EventBus& bus, const AppConfig& cfg, ImageRepository& repo)
@@ -37,7 +38,7 @@ void ImageCheck::_checkExpiry() const
     }
 
     const nlohmann::json payload = {
-        {"type", "check_sent_images_expiry"},
+        {"type", wsMessageTypeToString(WsMessageType::CheckSentImagesExpiry)},
         {"user_frame_images", imageArray}
     };
 
@@ -50,7 +51,7 @@ void ImageCheck::_checkMissing() const
     const auto ids = repo_.getAllIds();
 
     const nlohmann::json payload = {
-        {"type", "check_missing_images"},
+        {"type", wsMessageTypeToString(WsMessageType::CheckMissingImages)},
         {"sent_image_ids", ids}
     };
 
