@@ -28,8 +28,8 @@ image_save_path = "images"
 mock_display = false
 interval_secs = 900
 min_refresh_secs = 120
-loading_image_path = "static/image/loading"
-default_images_path = "static/image/default"
+loading_image_path = "assets/image/loading"
+default_images_path = "assets/image/default"
 
 [update]
 

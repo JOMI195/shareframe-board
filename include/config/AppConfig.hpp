@@ -48,8 +48,8 @@ struct DisplayConfig
     bool mockDisplay = false;
     int intervalSecs = 900;
     int minRefreshSecs = 120;
-    std::string loadingImagePath = "static/image/loading";
-    std::string defaultImagesPath = "static/image/default";
+    std::string loadingImagePath = "assets/image/loading";
+    std::string defaultImagesPath = "assets/image/default";
 };
 
 struct UpdateConfig
