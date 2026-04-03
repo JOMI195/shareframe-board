@@ -1,16 +1,12 @@
 #include "net/WebsocketClient.hpp"
 #include "auth/TokenAuth.hpp"
 #include "net/WsCloseCodes.hpp"
+#include "net/WsProtocol.hpp"
 #include <nlohmann/json.hpp>
 
 WebsocketClient::WebsocketClient(EventBus& bus, const AppConfig& cfg, AuthTokenManager& authMgr)
-    : bus_(bus), cfg_(cfg), authMgr_(authMgr), logger_(spdlog::default_logger()->clone("WebSocket"))
+    : Task(bus, "WebSocket"), cfg_(cfg), authMgr_(authMgr)
 {
-}
-
-WebsocketClient::~WebsocketClient()
-{
-    stop();
 }
 
 // ------- CONNECTION
@@ -73,23 +69,25 @@ void WebsocketClient::_processMessage(const std::string& text) const
             return;
         }
 
-        if (type == "picture")
+        const auto msgType = wsMessageTypeFromString(type);
+        if (!msgType)
         {
-            bus_.publish<Topic::PICTURE>(json);
-            return;
-        }
-        if (type == "clear_specific_sent_images")
-        {
-            bus_.publish<Topic::CLEAR_IMAGES>(json);
-            return;
-        }
-        if (type == "clear_display")
-        {
-            bus_.publish<Topic::CLEAR_DISPLAY>(json);
+            logger_->warn("Unhandled message type: {}", type);
             return;
         }
 
-        logger_->warn("Unhandled message type: {}", type);
+        switch (*msgType)
+        {
+        case WsMessageType::Picture:
+            bus_.publish<Topic::PICTURE>(json);
+            break;
+        case WsMessageType::ClearImages:
+            bus_.publish<Topic::CLEAR_IMAGES>(json);
+            break;
+        case WsMessageType::ClearDisplay:
+            bus_.publish<Topic::CLEAR_DISPLAY>(json);
+            break;
+        }
     }
     catch (const nlohmann::json::parse_error&)
     {
@@ -150,10 +148,6 @@ void WebsocketClient::_flushSendQueue()
 
 void WebsocketClient::start()
 {
-    logger_->info("Starting WebSocket client");
-    _setupWebsocket();
-    ws_.start();
-
     bus_.subscribe<Topic::WS_SEND>([this](const nlohmann::json& msg)
     {
         std::lock_guard lk(sendMtx_);
@@ -169,34 +163,20 @@ void WebsocketClient::start()
         }
     });
 
-    busThread_ = std::jthread([this](const std::stop_token& st)
-    {
-        while (!st.stop_requested())
-        {
-            try
-            {
-                bus_.waitAndProcess(st);
-            }
-            catch (const std::exception& e)
-            {
-                logger_->error("Bus processing failed: {}", e.what());
-            }
-            catch (...)
-            {
-                logger_->error("Bus processing failed with unknown exception");
-            }
-        }
-    });
-
-    logger_->info("WebSocket client started");
+    Task::start();
 }
 
-void WebsocketClient::stop()
+void WebsocketClient::_run(const std::stop_token st)
 {
-    logger_->info("Stopping WebSocket client");
-    busThread_.request_stop();
-    if (busThread_.joinable())
-        busThread_.join();
+    _setupWebsocket();
+    ws_.start();
+    logger_->info("WebSocket client started");
+
+    {
+        std::unique_lock lk(mtx_);
+        cv_.wait(lk, st, [] { return false; });
+    }
+
     ws_.stop();
     logger_->info("WebSocket client stopped");
 }
