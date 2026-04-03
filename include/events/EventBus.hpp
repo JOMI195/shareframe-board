@@ -6,12 +6,51 @@
 #include <mutex>
 #include <spdlog/spdlog.h>
 #include <stop_token>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
 class EventBus
 {
 public:
+    ~EventBus() { stop(); }
+
+    void start()
+    {
+        logger_ = spdlog::default_logger()->clone("EventBus");
+        dispatchThread_ = std::jthread([this](const std::stop_token& st)
+        {
+            logger_->info("EventBus dispatch thread started");
+            while (!st.stop_requested())
+            {
+                try
+                {
+                    waitAndProcess(st);
+                }
+                catch (const std::exception& e)
+                {
+                    logger_->error("EventBus dispatch failed: {}", e.what());
+                }
+                catch (...)
+                {
+                    logger_->error("EventBus dispatch failed with unknown exception");
+                }
+            }
+            logger_->info("EventBus dispatch thread stopped");
+        });
+    }
+
+    void stop()
+    {
+        if (!dispatchThread_.joinable())
+            return;
+        logger_->info("Stopping EventBus dispatch thread");
+        dispatchThread_.request_stop();
+        cv_.notify_all();
+        dispatchThread_.join();
+        logger_->info("EventBus dispatch thread stopped");
+    }
+
     template <Topic T>
     void subscribe(std::function<void(const TopicMessage_t<T>&)> handler)
     {
@@ -73,4 +112,6 @@ private:
     std::condition_variable_any cv_;
     std::vector<std::pair<int, std::any>> queue_;
     std::unordered_map<int, std::vector<ErasedHandler>> handlers_;
+    std::jthread dispatchThread_;
+    std::shared_ptr<spdlog::logger> logger_;
 };
