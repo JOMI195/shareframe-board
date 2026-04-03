@@ -31,18 +31,27 @@ DisplayManager::~DisplayManager()
 
 void DisplayManager::init()
 {
-    if (_cfg.display.mockDisplay)
+    if (!_cfg.display.mockDisplay)
+    {
+#ifdef EPD_HARDWARE_ENABLED
+        if (!_hwInit())
+        {
+            _logger->error("Display init failed");
+            return;
+        }
+#else
+        _logger->warn("EPD hardware not available (built without ENABLE_EPD_HARDWARE)");
+        return;
+#endif
+    }
+    else
     {
         _logger->info("[mock] Display init");
-        return;
     }
 
-#ifdef EPD_HARDWARE_ENABLED
-    if (!_hwInit())
-        _logger->error("Display init failed");
-#else
-    _logger->warn("EPD hardware not available (built without ENABLE_EPD_HARDWARE)");
-#endif
+    if (!displayImage(std::filesystem::path(_cfg.display.loadingImagePath) /
+                      "logo-frame-loading-shareframe.jpg"))
+        _logger->error("Failed to display loading image");
 }
 
 void DisplayManager::clear()
@@ -139,14 +148,13 @@ void DisplayManager::_hwSleep()
 #endif
 }
 
-void DisplayManager::_waitMinRefresh()
+void DisplayManager::_waitMinRefresh() const
 {
-    auto elapsed = std::chrono::steady_clock::now() - _lastDisplayTime;
-    auto minRefresh = std::chrono::seconds(_cfg.display.minRefreshSecs);
+    const auto elapsed = std::chrono::steady_clock::now() - _lastDisplayTime;
 
-    if (elapsed < minRefresh)
+    if (const auto minRefresh = std::chrono::seconds(_cfg.display.minRefreshSecs); elapsed < minRefresh)
     {
-        auto remaining = std::chrono::duration_cast<std::chrono::seconds>(minRefresh - elapsed);
+        const auto remaining = std::chrono::duration_cast<std::chrono::seconds>(minRefresh - elapsed);
         _logger->info("Waiting {}s for minimum refresh interval", remaining.count());
         std::this_thread::sleep_for(minRefresh - elapsed);
     }

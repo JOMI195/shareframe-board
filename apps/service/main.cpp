@@ -30,11 +30,11 @@ int main(int argc, char* argv[])
     TokenRepository tokenRepo(database.get());
     ImageRepository imageRepo(database.get());
     SettingsRepository settingsRepo(database.get());
+
     RuntimeSettings runtimeSettings(settingsRepo, cfg);
     ImageManager imageManager(cfg, imageRepo);
     DisplayManager displayManager(cfg);
     displayManager.init();
-    bool _ = displayManager.displayImage(cfg.display.loadingImagePath + "/logo-frame-loading-shareframe.jpg");
 
     // setup auth
     HTTPClient http(60, 600);
@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
 
     // setup event bus
     EventBus eventBus;
-    
+
     // setup IPC server for dashboard communication
     IpcServer ipcServer(eventBus, cfg, runtimeSettings);
     ipcServer.start();

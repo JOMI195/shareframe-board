@@ -33,7 +33,7 @@ public:
 private:
     [[nodiscard]] bool _hwInit();
     void _hwSleep();
-    void _waitMinRefresh();
+    void _waitMinRefresh() const;
     [[nodiscard]] std::vector<uint8_t> _prepareImageBuffer(
         const std::filesystem::path& imagePath) const;
 
