@@ -11,7 +11,6 @@ void ImageUpdate::start()
 {
     bus_.subscribe<Topic::PICTURE>([this](const nlohmann::json& msg) { _enqueue(Topic::PICTURE, msg); });
     bus_.subscribe<Topic::CLEAR_IMAGES>([this](const nlohmann::json& msg) { _enqueue(Topic::CLEAR_IMAGES, msg); });
-    bus_.subscribe<Topic::CLEAR_DISPLAY>([this](const nlohmann::json& msg) { _enqueue(Topic::CLEAR_DISPLAY, msg); });
 
     logger_->info("Starting ImageUpdate thread");
     Task::start();
@@ -51,9 +50,6 @@ void ImageUpdate::_run(const std::stop_token st)
                 break;
             case Topic::CLEAR_IMAGES:
                 _onClearImages(msg);
-                break;
-            case Topic::CLEAR_DISPLAY:
-                _onClearDisplay(msg);
                 break;
             default:
                 break;
@@ -129,28 +125,3 @@ void ImageUpdate::_onClearImages(const nlohmann::json& msg) const
     }
 }
 
-void ImageUpdate::_onClearDisplay(const nlohmann::json& msg) const
-{
-    try
-    {
-        const auto allImages = repo_.getAll();
-        if (allImages.empty())
-        {
-            logger_->debug("No images to clear");
-            return;
-        }
-
-        std::vector<int64_t> allIds;
-        allIds.reserve(allImages.size());
-        for (const auto& img : allImages)
-            allIds.push_back(img.id);
-
-        logger_->info("Clearing all {} images", allIds.size());
-        imgMgr_.removeImages(allIds);
-        bus_.publish<Topic::IMAGE_REMOVED>(allIds);
-    }
-    catch (const std::exception& e)
-    {
-        logger_->error("Error handling clear display message: {}", e.what());
-    }
-}

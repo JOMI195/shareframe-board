@@ -1,6 +1,7 @@
 #pragma once
 #include "config/AppConfig.hpp"
 #include "events/EventBus.hpp"
+#include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <thread>
@@ -21,6 +22,7 @@ private:
     void _acceptLoop(const std::stop_token& st);
     void _handleClient(int clientFd, const std::stop_token& st) const;
     void _dispatch(int clientFd, const std::string& line) const;
+    void _sendResponse(int clientFd, const nlohmann::json& data) const;
 
     EventBus& bus_;
     const AppConfig& cfg_;

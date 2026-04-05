@@ -1,11 +1,11 @@
 info:
-  name: skip-image
+  name: info
   type: http
-  seq: 1
+  seq: 4
 
 http:
-  method: POST
-  url: "http://localhost:8080/api/frame/slideshow/skip"
+  method: GET
+  url: "http://localhost:8080/api/system/info"
   headers:
     Cookie: "session={{sessionCookie}}"
   auth: none

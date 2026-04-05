@@ -8,4 +8,5 @@ enum class Topic {
     IMAGE_REMOVED,
     SKIP_IMAGE,
     UPDATE_DISPLAY_INTERVAL,
+    SET_SLIDESHOW_ACTIVE,
 };

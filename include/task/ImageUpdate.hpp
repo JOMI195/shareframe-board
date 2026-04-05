@@ -19,7 +19,6 @@ private:
 
     void _onPicture(const nlohmann::json& msg) const;
     void _onClearImages(const nlohmann::json& msg) const;
-    void _onClearDisplay(const nlohmann::json& msg) const;
 
     ImageManager& imgMgr_;
     ImageRepository& repo_;

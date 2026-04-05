@@ -6,6 +6,7 @@
 #include <vector>
 
 class RuntimeSettings;
+struct SetSlideshowActiveEvent;
 
 class DisplayImageLoop : public Task
 {
@@ -23,6 +24,7 @@ private:
     void _onImageRemoved(const std::vector<int64_t>& removedIds);
     void _onSkipImage();
     void _onUpdateInterval(const UpdateDisplayIntervalEvent& evt) const;
+    void _onSetSlideshowActive(const SetSlideshowActiveEvent& evt);
     [[nodiscard]] std::vector<std::filesystem::path> _loadDefaultImages() const;
 
     const AppConfig& cfg_;

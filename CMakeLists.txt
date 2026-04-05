@@ -70,8 +70,7 @@ set(COMMON_SOURCES
     src/config/ConfigLoader.cpp
     src/db/Database.cpp
     src/db/MigrationRunner.cpp
-    src/logging/ConsoleLogger.cpp
-    src/logging/FileLogger.cpp
+    src/logging/Logger.cpp
     src/net/HTTPClient.cpp
     src/auth/AuthTokenManager.cpp
     src/auth/Ed25519Auth.cpp
@@ -82,14 +81,15 @@ set(COMMON_SOURCES
     src/repository/ImageRepository.cpp
     src/repository/SettingsRepository.cpp
     src/app/Bootstrap.cpp
+    src/util/Subprocess.cpp
 )
 add_library(shareframe-common STATIC ${COMMON_SOURCES})
 target_include_directories(shareframe-common PUBLIC ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(shareframe-common PUBLIC vendor)
 
-# --- shareframe-service: main process ---
+# --- shareframe-application: main process ---
 set(SERVICE_SOURCES
-    apps/service/main.cpp
+    apps/application/main.cpp
     src/display/DisplayManager.cpp
     src/display/stb_impl.cpp
     src/image/ImageManager.cpp
@@ -105,8 +105,8 @@ set(SERVICE_SOURCES
     src/ipc/IpcServer.cpp
     src/settings/RuntimeSettings.cpp
 )
-add_executable(shareframe-service ${SERVICE_SOURCES})
-target_link_libraries(shareframe-service PRIVATE shareframe-common waveshare_epd stb)
+add_executable(shareframe-application ${SERVICE_SOURCES})
+target_link_libraries(shareframe-application PRIVATE shareframe-common waveshare_epd stb)
 
 # --- shareframe-dashboard: dashboard process ---
 set(DASHBOARD_SOURCES
@@ -114,6 +114,10 @@ set(DASHBOARD_SOURCES
     src/dashboard/DashboardServer.cpp
     src/dashboard/SessionManager.cpp
     src/dashboard/IpcClient.cpp
+    src/dashboard/WifiManager.cpp
+    src/dashboard/WifiHandlers.cpp
+    src/dashboard/FrameHandlers.cpp
+    src/dashboard/SystemHandlers.cpp
 )
 add_executable(shareframe-dashboard ${DASHBOARD_SOURCES})
 target_link_libraries(shareframe-dashboard PRIVATE shareframe-common)

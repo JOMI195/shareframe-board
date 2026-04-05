@@ -1,13 +1,19 @@
 info:
-  name: skip-image
+  name: slideshow-control
   type: http
   seq: 1
 
 http:
   method: POST
-  url: "http://localhost:8080/api/frame/slideshow/skip"
+  url: "http://localhost:8080/api/frame/slideshow"
   headers:
     Cookie: "session={{sessionCookie}}"
+  body:
+    type: json
+    data: |-
+      {
+        "action": "stop"
+      }
   auth: none
 
 settings:

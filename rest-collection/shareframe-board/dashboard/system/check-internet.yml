@@ -1,11 +1,11 @@
 info:
-  name: skip-image
+  name: check-internet
   type: http
   seq: 1
 
 http:
-  method: POST
-  url: "http://localhost:8080/api/frame/slideshow/skip"
+  method: GET
+  url: "http://localhost:8080/api/system/check-internet"
   headers:
     Cookie: "session={{sessionCookie}}"
   auth: none

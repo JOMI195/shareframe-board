@@ -8,6 +8,9 @@ enum class IpcMessageType
     SkipImage,
     UpdateDisplayInterval,
     GetDisplayInterval,
+    ClearDisplay,
+    SetSlideshowActive,
+    GetSlideshowActive,
 };
 
 struct IpcMessage
@@ -23,6 +26,9 @@ inline std::string ipcMessageTypeToString(IpcMessageType t)
     case IpcMessageType::SkipImage:              return "skip_image";
     case IpcMessageType::UpdateDisplayInterval:   return "update_display_interval";
     case IpcMessageType::GetDisplayInterval:      return "get_display_interval";
+    case IpcMessageType::ClearDisplay:            return "clear_display";
+    case IpcMessageType::SetSlideshowActive:      return "set_slideshow_active";
+    case IpcMessageType::GetSlideshowActive:      return "get_slideshow_active";
     }
     return "unknown";
 }
@@ -32,6 +38,9 @@ inline std::optional<IpcMessageType> ipcMessageTypeFromString(const std::string&
     if (s == "skip_image")               return IpcMessageType::SkipImage;
     if (s == "update_display_interval")  return IpcMessageType::UpdateDisplayInterval;
     if (s == "get_display_interval")     return IpcMessageType::GetDisplayInterval;
+    if (s == "clear_display")           return IpcMessageType::ClearDisplay;
+    if (s == "set_slideshow_active")    return IpcMessageType::SetSlideshowActive;
+    if (s == "get_slideshow_active")    return IpcMessageType::GetSlideshowActive;
     return std::nullopt;
 }
 

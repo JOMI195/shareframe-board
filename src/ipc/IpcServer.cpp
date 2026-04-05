@@ -1,4 +1,5 @@
 #include "ipc/IpcServer.hpp"
+#include "events/Messages.hpp"
 #include "ipc/IpcProtocol.hpp"
 #include "settings/RuntimeSettings.hpp"
 #include <poll.h>
@@ -196,9 +197,48 @@ void IpcServer::_dispatch(const int clientFd, const std::string& line) const
         {
             int secs = settings_.getDisplayInterval();
             logger_->debug("IPC: get_display_interval -> {}s", secs);
-            const std::string resp = toJsonResponse({{"interval_secs", secs}});
-            ::send(clientFd, resp.c_str(), resp.size(), MSG_NOSIGNAL);
+            _sendResponse(clientFd, {{"interval_secs", secs}});
             break;
         }
+
+    case IpcMessageType::ClearDisplay:
+        logger_->info("IPC: clear display");
+        bus_.publish<Topic::CLEAR_DISPLAY>(nlohmann::json{});
+        break;
+
+    case IpcMessageType::SetSlideshowActive:
+        {
+            bool active = msg->data.value("active", true);
+            logger_->info("IPC: set slideshow active -> {}", active);
+            bus_.publish<Topic::SET_SLIDESHOW_ACTIVE>(SetSlideshowActiveEvent{active});
+            break;
+        }
+
+    case IpcMessageType::GetSlideshowActive:
+        {
+            bool active = settings_.isSlideshowActive();
+            logger_->debug("IPC: get_slideshow_active -> {}", active);
+            _sendResponse(clientFd, {{"active", active}});
+            break;
+        }
+    }
+}
+
+void IpcServer::_sendResponse(int clientFd, const nlohmann::json& data) const
+{
+    const std::string resp = toJsonResponse(data);
+    size_t totalSent = 0;
+    while (totalSent < resp.size())
+    {
+        ssize_t n = ::send(clientFd, resp.c_str() + totalSent,
+                           resp.size() - totalSent, MSG_NOSIGNAL);
+        if (n < 0)
+        {
+            if (errno == EINTR)
+                continue;
+            logger_->error("IPC send failed on fd {}: {}", clientFd, strerror(errno));
+            return;
+        }
+        totalSent += static_cast<size_t>(n);
     }
 }

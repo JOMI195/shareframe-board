@@ -20,6 +20,14 @@ RuntimeSettings::RuntimeSettings(SettingsRepository& repo, const AppConfig& cfg)
         }
         catch (...) {}
     }
+
+    // Restore slideshow active state
+    auto storedActive = repo_.get("slideshow_active");
+    if (storedActive)
+    {
+        slideshowActive_ = (*storedActive == "1");
+        logger_->info("Restored slideshow active from DB: {}", slideshowActive_);
+    }
 }
 
 int RuntimeSettings::getDisplayInterval() const
@@ -34,4 +42,18 @@ void RuntimeSettings::setDisplayInterval(int secs)
     displayIntervalSecs_ = secs;
     repo_.set("display_interval", std::to_string(secs));
     logger_->info("Display interval updated to {}s (persisted)", secs);
+}
+
+bool RuntimeSettings::isSlideshowActive() const
+{
+    std::lock_guard lk(mtx_);
+    return slideshowActive_;
+}
+
+void RuntimeSettings::setSlideshowActive(bool active)
+{
+    std::lock_guard lk(mtx_);
+    slideshowActive_ = active;
+    repo_.set("slideshow_active", active ? "1" : "0");
+    logger_->info("Slideshow active updated to {} (persisted)", active);
 }

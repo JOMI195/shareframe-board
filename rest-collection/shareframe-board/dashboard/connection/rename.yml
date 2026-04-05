@@ -1,0 +1,24 @@
+info:
+  name: rename
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "http://localhost:8080/api/connection/rename"
+  headers:
+    Cookie: "session={{sessionCookie}}"
+  body:
+    type: json
+    data: |-
+      {
+        "old_name": "MyNetwork",
+        "new_name": "MyNewNetwork"
+      }
+  auth: none
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

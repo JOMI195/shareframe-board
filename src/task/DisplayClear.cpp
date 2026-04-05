@@ -1,4 +1,5 @@
 #include "task/DisplayClear.hpp"
+#include "events/Messages.hpp"
 #include <chrono>
 #include <ctime>
 
@@ -9,10 +10,21 @@ DisplayClear::DisplayClear(EventBus& bus, const AppConfig& cfg, DisplayManager& 
 
 void DisplayClear::start()
 {
+    bus_.subscribe<Topic::CLEAR_DISPLAY>(
+        [this](const nlohmann::json&) { _onClearDisplay(); });
+
     const int waitSecs = _secsUntilNextTarget();
     logger_->info("Starting {} thread (next clear in {}s, target hour={})",
                   name_, waitSecs, cfg_.display.clearTargetHour);
     Task::start();
+}
+
+void DisplayClear::_onClearDisplay()
+{
+    std::lock_guard lk(mtx_);
+    logger_->info("Clear display requested");
+    clearRequested_ = true;
+    cv_.notify_one();
 }
 
 void DisplayClear::_run(std::stop_token st)
@@ -24,9 +36,10 @@ void DisplayClear::_run(std::stop_token st)
 
         {
             std::unique_lock lock(mtx_);
-            cv_.wait_for(lock, std::chrono::seconds(waitSecs), [&st]
+            clearRequested_ = false;
+            cv_.wait_for(lock, std::chrono::seconds(waitSecs), [&st, this]
             {
-                return st.stop_requested();
+                return st.stop_requested() || clearRequested_;
             });
         }
 

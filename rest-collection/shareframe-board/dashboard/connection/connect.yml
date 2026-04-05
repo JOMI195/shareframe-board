@@ -1,19 +1,20 @@
 info:
-  name: update-interval
+  name: connect
   type: http
   seq: 3
 
 http:
   method: POST
-  url: "http://localhost:8080/api/frame/slideshow/interval"
+  url: "http://localhost:8080/api/connection/connect"
+  headers:
+    Cookie: "session={{sessionCookie}}"
   body:
     type: json
     data: |-
       {
-        "interval_seconds": 300
+        "ssid": "MyNetwork",
+        "password": "MyPassword123"
       }
-  headers:
-    Cookie: "session={{sessionCookie}}"
   auth: none
 
 settings:

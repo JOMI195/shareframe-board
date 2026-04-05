@@ -1,10 +1,8 @@
 #include "app/Bootstrap.hpp"
 #include "config/ConfigLoader.hpp"
-#include "logging/ConsoleLogger.hpp"
-#include "logging/FileLogger.hpp"
+#include "logging/Logger.hpp"
 #include <cstdlib>
 #include <iostream>
-#include <memory>
 #include <signal.h>
 #include <spdlog/spdlog.h>
 #include <string_view>
@@ -38,13 +36,7 @@ BootstrapResult bootstrap(const int argc, char* argv[])
 
 void initLogging(const AppConfig& cfg, const std::string& logFile)
 {
-    std::unique_ptr<ILogger> logger;
-    if (cfg.production)
-        logger = std::make_unique<FileLogger>();
-    else
-        logger = std::make_unique<ConsoleLogger>();
-
-    logger->init({
+    Logger::init({
         .logDir = cfg.log.logPath,
         .logFullPath = cfg.log.logPath + "/" + logFile,
         .debug = cfg.debug,

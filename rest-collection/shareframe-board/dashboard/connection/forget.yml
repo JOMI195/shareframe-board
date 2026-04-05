@@ -1,13 +1,19 @@
 info:
-  name: skip-image
+  name: forget
   type: http
-  seq: 1
+  seq: 4
 
 http:
   method: POST
-  url: "http://localhost:8080/api/frame/slideshow/skip"
+  url: "http://localhost:8080/api/connection/forget"
   headers:
     Cookie: "session={{sessionCookie}}"
+  body:
+    type: json
+    data: |-
+      {
+        "ssid": "MyNetwork"
+      }
   auth: none
 
 settings:

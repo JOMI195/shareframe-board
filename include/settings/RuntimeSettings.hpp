@@ -12,9 +12,13 @@ public:
     [[nodiscard]] int getDisplayInterval() const;
     void setDisplayInterval(int secs);
 
+    [[nodiscard]] bool isSlideshowActive() const;
+    void setSlideshowActive(bool active);
+
 private:
     SettingsRepository& repo_;
     std::shared_ptr<spdlog::logger> logger_;
     mutable std::mutex mtx_;
     int displayIntervalSecs_;
+    bool slideshowActive_ = true;
 };

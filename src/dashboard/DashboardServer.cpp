@@ -1,13 +1,23 @@
 #include "dashboard/DashboardServer.hpp"
 #include "auth/Ed25519Auth.hpp"
 #include "auth/ServerSignedResponse.hpp"
+#include "dashboard/ResponseUtil.hpp"
+#include "util/HttpUtil.hpp"
 
-DashboardServer::DashboardServer(const AppConfig& cfg, IpcClient& ipc,
-                                 HTTPClient& http, SessionManager& sessions)
-    : cfg_(cfg), ipc_(ipc), http_(http), sessions_(sessions),
+using dashboard::errorResponse;
+using dashboard::jsonResponse;
+
+DashboardServer::DashboardServer(AppConfig& cfg, IpcClient& ipc,
+                                 HTTPClient& http, SessionManager& sessions,
+                                 AuthTokenManager& authTokenManager, WifiManager& wifi)
+    : cfg_(cfg), http_(http), sessions_(sessions),
       server_(cfg.dashboardApplication.port, cfg.dashboardApplication.host),
-      logger_(spdlog::default_logger()->clone("DashboardServer"))
+      logger_(spdlog::default_logger()->clone("DashboardServer")),
+      wifiHandlers_(wifi),
+      frameHandlers_(ipc, cfg),
+      systemHandlers_(cfg, http, authTokenManager)
 {
+    _initRoutes();
 }
 
 void DashboardServer::start()
@@ -37,41 +47,62 @@ void DashboardServer::stop()
 
 // --- Routing ---
 
+void DashboardServer::_initRoutes()
+{
+    publicRoutes_ = {
+        {"POST", "/api/auth/login",      [this](auto& req, auto&) { return _handleLogin(req); }},
+        {"GET",  "/api/auth/status",      [this](auto& req, auto&) { return _handleCheckAuth(req); }},
+        {"POST", "/api/auth/logout",      [this](auto& req, auto&) { return _handleLogout(req); }},
+    };
+
+    protectedRoutes_ = {
+        // Frame / Slideshow
+        {"GET",  "/api/frame/slideshow/status",   [this](auto& req, auto&) { return frameHandlers_.handleStatus(req); }},
+        {"POST", "/api/frame/slideshow",          [this](auto& req, auto&) { return frameHandlers_.handleControl(req); }},
+        {"POST", "/api/frame/slideshow/interval", [this](auto& req, auto&) { return frameHandlers_.handleUpdateInterval(req); }},
+        {"POST", "/api/frame/slideshow/skip",     [this](auto& req, auto&) { return frameHandlers_.handleSkip(req); }},
+        {"POST", "/api/frame/clear",              [this](auto& req, auto&) { return frameHandlers_.handleClear(req); }},
+
+        // WiFi / Connection
+        {"GET",  "/api/connection/status",         [this](auto& req, auto&) { return wifiHandlers_.handleStatus(req); }},
+        {"GET",  "/api/connection/saved-networks", [this](auto& req, auto&) { return wifiHandlers_.handleSavedNetworks(req); }},
+        {"POST", "/api/connection/connect",        [this](auto& req, auto&) { return wifiHandlers_.handleConnect(req); }},
+        {"POST", "/api/connection/forget",         [this](auto& req, auto&) { return wifiHandlers_.handleForget(req); }},
+        {"POST", "/api/connection/rename",         [this](auto& req, auto&) { return wifiHandlers_.handleRename(req); }},
+
+        // System
+        {"GET",  "/api/system/info",             [this](auto& req, auto&) { return systemHandlers_.handleInfo(req); }},
+        {"GET",  "/api/system/check-internet",   [this](auto& req, auto&) { return systemHandlers_.handleCheckInternet(req); }},
+        {"POST", "/api/system/restart",          [this](auto& req, auto&) { return systemHandlers_.handleRestart(req); }},
+        {"POST", "/api/system/shutdown",         [this](auto& req, auto&) { return systemHandlers_.handleShutdown(req); }},
+        {"GET",  "/api/system/logs",             [this](auto& req, auto& qp) { return systemHandlers_.handleLogs(req, qp); }},
+        {"GET",  "/api/system/updates/latest",   [this](auto& req, auto&) { return systemHandlers_.handleLatestUpdate(req); }},
+    };
+}
+
 ix::HttpResponsePtr DashboardServer::_handleRequest(
     const ix::HttpRequestPtr& req, const std::shared_ptr<ix::ConnectionState>& connState) const
 {
-    logger_->debug("{} {} from {}:{}", req->method, req->uri,
+    auto [path, queryParams] = HttpUtil::parseUri(req->uri);
+
+    logger_->debug("{} {} from {}:{}", req->method, path,
                    connState->getRemoteIp(), connState->getRemotePort());
 
-    // Auth endpoints
-    if (req->uri == "/api/auth/login" && req->method == "POST")
-        return _handleLogin(req);
-    if (req->uri == "/api/auth/check-auth" && req->method == "GET")
-        return _handleCheckAuth(req);
-    if (req->uri == "/api/auth/logout" && req->method == "POST")
-        return _handleLogout(req);
+    // Public routes (no auth required)
+    for (const auto& [method, routePath, handler] : publicRoutes_)
+        if (req->method == method && path == routePath)
+            return handler(req, queryParams);
 
-    // Slideshow endpoints (all require auth)
-    if (req->uri == "/api/frame/slideshow/skip-slideshow-image" && req->method == "POST")
-    {
-        if (auto denied = _loginRequired(req))
-            return denied;
-        return _handleSkipImage(req);
-    }
-    if (req->uri == "/api/frame/slideshow/display-images-loop-interval" && req->method == "GET")
-    {
-        if (auto denied = _loginRequired(req))
-            return denied;
-        return _handleGetInterval(req);
-    }
-    if (req->uri == "/api/frame/slideshow/display-images-loop-interval" && req->method == "POST")
-    {
-        if (auto denied = _loginRequired(req))
-            return denied;
-        return _handleUpdateInterval(req);
-    }
+    // All remaining routes require auth
+    if (auto denied = _loginRequired(req))
+        return denied;
 
-    return _jsonResponse(404, "Not Found", {{"error", "Not found"}});
+    // Protected routes
+    for (const auto& [method, routePath, handler] : protectedRoutes_)
+        if (req->method == method && path == routePath)
+            return handler(req, queryParams);
+
+    return errorResponse(404, "Not Found", "Not found");
 }
 
 // --- Auth Endpoints ---
@@ -85,12 +116,12 @@ ix::HttpResponsePtr DashboardServer::_handleLogin(const ix::HttpRequestPtr& req)
     }
     catch (...)
     {
-        return _jsonResponse(400, "Bad Request", {{"success", false}, {"message", "Invalid JSON"}});
+        return errorResponse(400, "Bad Request", "Invalid JSON");
     }
 
     auto otpIt = body.find("otp");
     if (otpIt == body.end() || !otpIt->is_string())
-        return _jsonResponse(400, "Bad Request", {{"success", false}, {"message", "Missing otp field"}});
+        return errorResponse(400, "Bad Request", "Missing otp field");
 
     auto otp = otpIt->get<std::string>();
 
@@ -110,8 +141,7 @@ ix::HttpResponsePtr DashboardServer::_handleLogin(const ix::HttpRequestPtr& req)
     if (!resp.ok())
     {
         logger_->warn("OTP verification request failed: {} {}", resp.statusCode, resp.errorMsg);
-        return _jsonResponse(401, "Unauthorized",
-                             {{"success", false}, {"message", "OTP verification failed"}});
+        return errorResponse(401, "Unauthorized", "OTP verification failed");
     }
 
     // Parse server response and extract signed_response
@@ -123,16 +153,14 @@ ix::HttpResponsePtr DashboardServer::_handleLogin(const ix::HttpRequestPtr& req)
     catch (...)
     {
         logger_->error("Failed to parse OTP server response");
-        return _jsonResponse(500, "Internal Server Error",
-                             {{"success", false}, {"message", "Internal error"}});
+        return errorResponse(500, "Internal Server Error", "Internal error");
     }
 
     auto srIt = serverResp.find("signed_response");
     if (srIt == serverResp.end() || !srIt->is_string())
     {
         logger_->error("Server response missing signed_response field");
-        return _jsonResponse(500, "Internal Server Error",
-                             {{"success", false}, {"message", "Internal error"}});
+        return errorResponse(500, "Internal Server Error", "Internal error");
     }
 
     // Verify server's Ed25519 signature
@@ -144,8 +172,7 @@ ix::HttpResponsePtr DashboardServer::_handleLogin(const ix::HttpRequestPtr& req)
     catch (const std::exception& e)
     {
         logger_->error("Signed response verification failed: {}", e.what());
-        return _jsonResponse(401, "Unauthorized",
-                             {{"success", false}, {"message", "Server verification failed"}});
+        return errorResponse(401, "Unauthorized", "Server verification failed");
     }
 
     // Check that data contains valid=true
@@ -157,14 +184,12 @@ ix::HttpResponsePtr DashboardServer::_handleLogin(const ix::HttpRequestPtr& req)
     catch (...)
     {
         logger_->error("Failed to parse verified data payload");
-        return _jsonResponse(500, "Internal Server Error",
-                             {{"success", false}, {"message", "Internal error"}});
+        return errorResponse(500, "Internal Server Error", "Internal error");
     }
 
     if (!data.value("valid", false))
     {
-        return _jsonResponse(401, "Unauthorized",
-                             {{"success", false}, {"message", "OTP invalid"}});
+        return errorResponse(401, "Unauthorized", "OTP invalid");
     }
 
     // Create session
@@ -176,7 +201,7 @@ ix::HttpResponsePtr DashboardServer::_handleLogin(const ix::HttpRequestPtr& req)
     respHeaders["Set-Cookie"] = "session=" + sessionId
         + "; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800";
 
-    nlohmann::json respBody = {{"success", true}, {"message", "Login erfolgreich"}};
+    nlohmann::json respBody = {{"message", "Login erfolgreich"}};
     return std::make_shared<ix::HttpResponse>(
         200, "OK", ix::HttpErrorCode::Ok, respHeaders, respBody.dump());
 }
@@ -185,90 +210,23 @@ ix::HttpResponsePtr DashboardServer::_handleCheckAuth(const ix::HttpRequestPtr& 
 {
     const std::string sessionId = _extractSessionId(req);
     bool authenticated = !sessionId.empty() && sessions_.isValid(sessionId);
-    return _jsonResponse(200, "OK", {{"authenticated", authenticated}});
+    return jsonResponse(200, "OK", {{"authenticated", authenticated}});
 }
 
 ix::HttpResponsePtr DashboardServer::_handleLogout(const ix::HttpRequestPtr& req) const
 {
     if (const std::string sessionId = _extractSessionId(req); !sessionId.empty())
         sessions_.removeSession(sessionId);
-    return _jsonResponse(200, "OK", {{"success", true}});
-}
-
-// --- Slideshow Endpoints ---
-
-ix::HttpResponsePtr DashboardServer::_handleSkipImage(const ix::HttpRequestPtr& /*req*/) const
-{
-    if (const IpcMessage msg{IpcMessageType::SkipImage, {}}; !ipc_.send(msg))
-    {
-        logger_->error("Failed to send skip_image via IPC");
-        return _jsonResponse(500, "Internal Server Error",
-                             {{"success", false}, {"message", "IPC error"}});
-    }
-    return _jsonResponse(200, "OK", {{"success", true}});
-}
-
-ix::HttpResponsePtr DashboardServer::_handleGetInterval(const ix::HttpRequestPtr& /*req*/) const
-{
-    const auto result = ipc_.sendAndReceive(IpcMessage{IpcMessageType::GetDisplayInterval, {}});
-    if (!result)
-    {
-        logger_->error("Failed to query display interval via IPC");
-        return _jsonResponse(500, "Internal Server Error",
-                             {{"success", false}, {"message", "Service unavailable"}});
-    }
-
-    int intervalSecs = result->value("interval_secs", cfg_.display.intervalSecs);
-    return _jsonResponse(200, "OK", {{"success", true}, {"interval_seconds", intervalSecs}});
-}
-
-ix::HttpResponsePtr DashboardServer::_handleUpdateInterval(const ix::HttpRequestPtr& req) const
-{
-    nlohmann::json body;
-    try
-    {
-        body = nlohmann::json::parse(req->body);
-    }
-    catch (...)
-    {
-        return _jsonResponse(400, "Bad Request", {{"success", false}, {"message", "Invalid JSON"}});
-    }
-
-    int secs = body.value("interval_seconds", 0);
-    if (secs < 180 || secs > 86400)
-    {
-        return _jsonResponse(400, "Bad Request",
-                             {{"success", false}, {"message", "interval_seconds must be between 180 and 86400"}});
-    }
-
-    const nlohmann::json data = {{"interval_secs", secs}};
-    if (const IpcMessage msg{IpcMessageType::UpdateDisplayInterval, data}; !ipc_.send(msg))
-    {
-        logger_->error("Failed to send update_display_interval via IPC");
-        return _jsonResponse(500, "Internal Server Error",
-                             {{"success", false}, {"message", "IPC error"}});
-    }
-
-    return _jsonResponse(200, "OK", {{"success", true}, {"interval_seconds", secs}});
+    return jsonResponse(200, "OK", nlohmann::json::object());
 }
 
 // --- Helpers ---
-
-ix::HttpResponsePtr DashboardServer::_jsonResponse(int status, const std::string& statusText,
-                                                   const nlohmann::json& body)
-{
-    ix::WebSocketHttpHeaders headers;
-    headers["Content-Type"] = "application/json";
-    return std::make_shared<ix::HttpResponse>(
-        status, statusText, ix::HttpErrorCode::Ok, headers, body.dump());
-}
 
 ix::HttpResponsePtr DashboardServer::_loginRequired(const ix::HttpRequestPtr& req) const
 {
     if (const std::string sessionId = _extractSessionId(req); sessionId.empty() || !sessions_.isValid(sessionId))
     {
-        return _jsonResponse(401, "Unauthorized",
-                             {{"success", false}, {"message", "Authentication required"}});
+        return errorResponse(401, "Unauthorized", "Authentication required");
     }
     return nullptr; // authenticated
 }

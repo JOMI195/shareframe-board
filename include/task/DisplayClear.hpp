@@ -14,8 +14,10 @@ protected:
     void _run(std::stop_token st) override;
 
 private:
+    void _onClearDisplay();
     [[nodiscard]] int _secsUntilNextTarget() const;
 
     const AppConfig& cfg_;
     DisplayManager& display_;
+    bool clearRequested_ = false;
 };

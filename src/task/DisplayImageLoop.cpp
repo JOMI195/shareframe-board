@@ -20,9 +20,12 @@ void DisplayImageLoop::start()
         [this](const SkipImageEvent&) { _onSkipImage(); });
     bus_.subscribe<Topic::UPDATE_DISPLAY_INTERVAL>(
         [this](const UpdateDisplayIntervalEvent& evt) { _onUpdateInterval(evt); });
+    bus_.subscribe<Topic::SET_SLIDESHOW_ACTIVE>(
+        [this](const SetSlideshowActiveEvent& evt) { _onSetSlideshowActive(evt); });
 
-    logger_->info("Starting DisplayImageLoop (interval={}s, minRefresh={}s)",
-                  settings_.getDisplayInterval(), cfg_.display.minRefreshSecs);
+    logger_->info("Starting DisplayImageLoop (interval={}s, minRefresh={}s, active={})",
+                  settings_.getDisplayInterval(), cfg_.display.minRefreshSecs,
+                  settings_.isSlideshowActive());
     Task::start();
 }
 
@@ -63,6 +66,15 @@ void DisplayImageLoop::_run(const std::stop_token st)
 {
     while (!st.stop_requested())
     {
+        if (!settings_.isSlideshowActive())
+        {
+            logger_->debug("Slideshow inactive, waiting");
+            std::unique_lock lk(mtx_);
+            cv_.wait_for(lk, std::chrono::seconds(settings_.getDisplayInterval()),
+                         [&st, this] { return st.stop_requested() || settings_.isSlideshowActive(); });
+            continue;
+        }
+
         try
         {
             auto ids = repo_.getAllIds();
@@ -76,7 +88,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
                     logger_->debug("No images available, waiting");
                     std::unique_lock lk(mtx_);
                     cv_.wait_for(lk, std::chrono::seconds(settings_.getDisplayInterval()),
-                                 [&st, this] { return st.stop_requested() || skipCurrent_; });
+                                 [&st, this] { return st.stop_requested() || skipCurrent_ || !settings_.isSlideshowActive(); });
                     continue;
                 }
 
@@ -103,7 +115,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
                     std::unique_lock lk(mtx_);
                     skipCurrent_ = false;
                     cv_.wait_for(lk, std::chrono::seconds(settings_.getDisplayInterval()),
-                                 [&st, this] { return st.stop_requested() || skipCurrent_; });
+                                 [&st, this] { return st.stop_requested() || skipCurrent_ || !settings_.isSlideshowActive(); });
                 }
                 continue;
             }
@@ -143,7 +155,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
                 std::unique_lock lk(mtx_);
                 skipCurrent_ = false;
                 cv_.wait_for(lk, std::chrono::seconds(settings_.getDisplayInterval()),
-                             [&st, this] { return st.stop_requested() || skipCurrent_; });
+                             [&st, this] { return st.stop_requested() || skipCurrent_ || !settings_.isSlideshowActive(); });
             }
         }
         catch (const std::exception& e)
@@ -175,4 +187,12 @@ void DisplayImageLoop::_onUpdateInterval(const UpdateDisplayIntervalEvent& evt) 
 {
     logger_->info("Updating display interval to {}s", evt.intervalSecs);
     settings_.setDisplayInterval(evt.intervalSecs);
+}
+
+void DisplayImageLoop::_onSetSlideshowActive(const SetSlideshowActiveEvent& evt)
+{
+    std::lock_guard lk(mtx_);
+    logger_->info("Slideshow active set to {}", evt.active);
+    settings_.setSlideshowActive(evt.active);
+    cv_.notify_one();
 }

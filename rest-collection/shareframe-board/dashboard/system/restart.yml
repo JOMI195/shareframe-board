@@ -1,11 +1,11 @@
 info:
-  name: skip-image
+  name: restart
   type: http
-  seq: 1
+  seq: 2
 
 http:
   method: POST
-  url: "http://localhost:8080/api/frame/slideshow/skip"
+  url: "http://localhost:8080/api/system/restart"
   headers:
     Cookie: "session={{sessionCookie}}"
   auth: none

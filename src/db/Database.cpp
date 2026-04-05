@@ -11,6 +11,7 @@ void Database::init(const DatabaseConfig& config)
     const std::string fullPath = config.databasePath + "/" + config.databaseName;
     spdlog::info("Opening database: {}", fullPath);
     _db = std::make_unique<SQLite::Database>(fullPath, SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
+    _db->exec("PRAGMA journal_mode=WAL");
 
     spdlog::info("Running migrations from: {}", config.migrationsPath);
     MigrationRunner runner(*_db, config.migrationsPath);

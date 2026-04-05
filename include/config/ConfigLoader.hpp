@@ -134,6 +134,15 @@ struct glz::meta<DisplayConfig>
 };
 
 template <>
+struct glz::meta<UpdateConfig>
+{
+    using T = UpdateConfig;
+    static constexpr auto value = glz::object(
+        "http_latest_url", &T::httpLatestUrl
+    );
+};
+
+template <>
 struct glz::meta<DashboardApplicationConfig>
 {
     using T = DashboardApplicationConfig;
@@ -166,7 +175,8 @@ struct glz::meta<AppConfig>
         "dashboard_application", &T::dashboardApplication,
         "heartbeat", &T::heartbeat,
         "config_sender", &T::configSender,
-        "image_check", &T::imageCheck
+        "image_check", &T::imageCheck,
+        "update", &T::update
     );
 };
 

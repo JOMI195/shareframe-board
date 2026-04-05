@@ -55,6 +55,7 @@ struct DisplayConfig
 
 struct UpdateConfig
 {
+    std::string httpLatestUrl = "/api/frame-updates/latest/";
 };
 
 struct DashboardApplicationConfig

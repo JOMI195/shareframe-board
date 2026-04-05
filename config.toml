@@ -33,6 +33,7 @@ default_images_path = "assets/image/default"
 clear_target_hour = 2
 
 [update]
+http_latest_url = "/api/frame-updates/latest/"
 
 [dashboard_application]
 service_name = "shareframe-dashboard.service"

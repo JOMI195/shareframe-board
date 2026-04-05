@@ -13,7 +13,7 @@ struct BootstrapResult
 /// Prints to stderr and calls std::exit(1) on failure.
 BootstrapResult bootstrap(int argc, char* argv[]);
 
-/// Sets up spdlog (console or file logger depending on cfg.production).
+/// Sets up spdlog with file logging (and console fallback if file sink fails).
 void initLogging(const AppConfig& cfg, const std::string& logFile);
 
 /// Blocks until SIGINT or SIGTERM is received. Returns the signal number.
