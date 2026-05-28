@@ -46,3 +46,4 @@ build/
 .env.secrets.toml
 config.dev.toml
 config.prod.toml
+config.prod.local.toml

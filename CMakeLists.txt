@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.1)
+cmake_minimum_required(VERSION 3.28)
 project(shareframe-service VERSION 1.0.0 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -6,7 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(FetchContent)
-add_library(vendor INTERFACE)
+find_package(Threads REQUIRED)
+add_library(external INTERFACE)
 
 # glaze
 FetchContent_Declare(
@@ -16,15 +17,15 @@ FetchContent_Declare(
         GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(glaze)
-target_link_libraries(vendor INTERFACE glaze::glaze)
+target_link_libraries(external INTERFACE glaze::glaze)
 
 # nlohmann_json
 FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz)
 FetchContent_MakeAvailable(json)
-target_link_libraries(vendor INTERFACE nlohmann_json::nlohmann_json)
+target_link_libraries(external INTERFACE nlohmann_json::nlohmann_json)
 
 # spdlog
-find_package(spdlog QUIET)
+find_package(spdlog 1.17.0 QUIET)
 if (NOT spdlog_FOUND)
     FetchContent_Declare(
             spdlog
@@ -34,19 +35,25 @@ if (NOT spdlog_FOUND)
     )
     FetchContent_MakeAvailable(spdlog)
 endif ()
-target_link_libraries(vendor INTERFACE spdlog::spdlog)
+target_link_libraries(external INTERFACE spdlog::spdlog)
 
 # IXWebSocket
+set(USE_TLS ON CACHE BOOL "Enable TLS support in IXWebSocket" FORCE)
 FetchContent_Declare(ixwebsocket
         GIT_REPOSITORY https://github.com/machinezone/IXWebSocket.git
         GIT_TAG v11.4.5
         GIT_SHALLOW TRUE)
 FetchContent_MakeAvailable(ixwebsocket)
-target_link_libraries(vendor INTERFACE ixwebsocket)
+target_link_libraries(external INTERFACE ixwebsocket)
 
 # OpenSSL
 find_package(OpenSSL REQUIRED)
-target_link_libraries(vendor INTERFACE OpenSSL::Crypto)
+target_link_libraries(external INTERFACE OpenSSL::Crypto)
+
+# ARMv6 lacks native 64-bit atomics — GCC emits libatomic calls
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
+    target_link_libraries(external INTERFACE atomic)
+endif()
 
 # SQLiteCpp
 FetchContent_Declare(
@@ -58,7 +65,7 @@ FetchContent_Declare(
 set(SQLITECPP_RUN_CPPCHECK OFF CACHE BOOL "" FORCE)
 set(SQLITECPP_RUN_CPPLINT OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(sqlitecpp)
-target_link_libraries(vendor INTERFACE SQLiteCpp)
+target_link_libraries(external INTERFACE SQLiteCpp)
 
 
 add_subdirectory(external/waveshare)
@@ -85,7 +92,7 @@ set(COMMON_SOURCES
 )
 add_library(shareframe-common STATIC ${COMMON_SOURCES})
 target_include_directories(shareframe-common PUBLIC ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(shareframe-common PUBLIC vendor)
+target_link_libraries(shareframe-common PUBLIC external)
 
 # --- shareframe-application: main process ---
 set(SERVICE_SOURCES
@@ -122,35 +129,10 @@ set(DASHBOARD_SOURCES
 add_executable(shareframe-dashboard ${DASHBOARD_SOURCES})
 target_link_libraries(shareframe-dashboard PRIVATE shareframe-common)
 
-configure_file(
-        ${CMAKE_SOURCE_DIR}/config.toml
-        ${CMAKE_BINARY_DIR}/config.toml
-        COPYONLY
-)
-
-configure_file(
-        ${CMAKE_SOURCE_DIR}/.env.secrets.toml
-        ${CMAKE_BINARY_DIR}/.env.secrets.toml
-        COPYONLY
-)
-
-configure_file(
-        ${CMAKE_SOURCE_DIR}/config.dev.toml
-        ${CMAKE_BINARY_DIR}/config.dev.toml
-        COPYONLY
-)
-
-configure_file(
-        ${CMAKE_SOURCE_DIR}/config.prod.toml
-        ${CMAKE_BINARY_DIR}/config.prod.toml
-        COPYONLY
-)
-
-configure_file(
-        ${CMAKE_SOURCE_DIR}/VERSION.toml
-        ${CMAKE_BINARY_DIR}/VERSION.toml
-        COPYONLY
-)
+set(CONFIG_FILES config.toml .env.secrets.toml config.dev.toml config.prod.toml VERSION.toml)
+foreach(f ${CONFIG_FILES})
+    configure_file(${CMAKE_SOURCE_DIR}/${f} ${CMAKE_BINARY_DIR}/${f} COPYONLY)
+endforeach()
 
 file(GLOB_RECURSE ASSET_IMAGE_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/assets/image/*)
 foreach (ASSET_FILE ${ASSET_IMAGE_FILES})
