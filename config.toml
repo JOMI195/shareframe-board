@@ -43,11 +43,13 @@ port = 8080
 host = "0.0.0.0"
 http_verify_otp_url = "/api/frames/verify-frame-otp/"
 
+[heartbeat_application]
+service_name = "shareframe-heartbeat.service"
+log_file = "shareframe-heartbeat.log"
+
 [heartbeat]
 interval_secs = 60
-
-[config_sender]
-interval_secs = 900
+http_url = "/api/frames/frame-hearbeat/"
 
 [image_check]
 interval_secs = 900

@@ -53,6 +53,7 @@ void DashboardServer::_initRoutes()
         {"POST", "/api/auth/login",      [this](auto& req, auto&) { return _handleLogin(req); }},
         {"GET",  "/api/auth/status",      [this](auto& req, auto&) { return _handleCheckAuth(req); }},
         {"POST", "/api/auth/logout",      [this](auto& req, auto&) { return _handleLogout(req); }},
+        {"GET",  "/api/system/health",   [this](auto& req, auto&) { return systemHandlers_.handleHealth(req); }},
     };
 
     protectedRoutes_ = {

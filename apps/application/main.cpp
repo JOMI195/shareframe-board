@@ -11,10 +11,8 @@
 #include "repository/SettingsRepository.hpp"
 #include "repository/TokenRepository.hpp"
 #include "settings/RuntimeSettings.hpp"
-#include "task/ConfigSender.hpp"
 #include "task/DisplayClear.hpp"
 #include "task/DisplayImageLoop.hpp"
-#include "task/Heartbeat.hpp"
 #include "task/ImageCheck.hpp"
 #include "task/ImageUpdate.hpp"
 #include <spdlog/spdlog.h>
@@ -57,10 +55,6 @@ int main(int argc, char* argv[])
     wsClient.start();
 
     // setup periodic tasks
-    Heartbeat heartbeat(eventBus, cfg);
-    heartbeat.start();
-    ConfigSender configSender(eventBus, cfg);
-    configSender.start();
     ImageCheck imageCheck(eventBus, cfg, imageRepo);
     imageCheck.start();
     DisplayClear displayClear(eventBus, cfg, displayManager);
@@ -73,8 +67,6 @@ int main(int argc, char* argv[])
     spdlog::info("Received signal {}, shutting down", sig);
     displayClear.stop();
     imageCheck.stop();
-    configSender.stop();
-    heartbeat.stop();
     ipcServer.stop();
     wsClient.stop();
     displayImageLoop.stop();

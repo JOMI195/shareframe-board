@@ -68,14 +68,16 @@ struct DashboardApplicationConfig
     std::string httpVerifyOtpUrl = "/api/frames/verify-frame-otp/";
 };
 
+struct HeartbeatApplicationConfig
+{
+    std::string serviceName = "shareframe-heartbeat.service";
+    std::string logFile = "shareframe-heartbeat.log";
+};
+
 struct HeartbeatConfig
 {
     int intervalSecs;
-};
-
-struct ConfigSenderConfig
-{
-    int intervalSecs;
+    std::string httpUrl;
 };
 
 struct ImageCheckConfig
@@ -102,8 +104,8 @@ struct AppConfig
     DisplayConfig display;
     UpdateConfig update;
     DashboardApplicationConfig dashboardApplication;
+    HeartbeatApplicationConfig heartbeatApplication;
     HeartbeatConfig heartbeat;
-    ConfigSenderConfig configSender;
     ImageCheckConfig imageCheck;
 
     [[nodiscard]] std::string httpBaseUrl() const { return (production ? "https://" : "http://") + baseUrl; }

@@ -93,20 +93,22 @@ struct glz::meta<VersionConfig>
 };
 
 template <>
-struct glz::meta<HeartbeatConfig>
+struct glz::meta<HeartbeatApplicationConfig>
 {
-    using T = HeartbeatConfig;
+    using T = HeartbeatApplicationConfig;
     static constexpr auto value = glz::object(
-        "interval_secs", &T::intervalSecs
+        "service_name", &T::serviceName,
+        "log_file", &T::logFile
     );
 };
 
 template <>
-struct glz::meta<ConfigSenderConfig>
+struct glz::meta<HeartbeatConfig>
 {
-    using T = ConfigSenderConfig;
+    using T = HeartbeatConfig;
     static constexpr auto value = glz::object(
-        "interval_secs", &T::intervalSecs
+        "interval_secs", &T::intervalSecs,
+        "http_url", &T::httpUrl
     );
 };
 
@@ -173,8 +175,8 @@ struct glz::meta<AppConfig>
         "image", &T::image,
         "display", &T::display,
         "dashboard_application", &T::dashboardApplication,
+        "heartbeat_application", &T::heartbeatApplication,
         "heartbeat", &T::heartbeat,
-        "config_sender", &T::configSender,
         "image_check", &T::imageCheck,
         "update", &T::update
     );
@@ -186,14 +188,18 @@ public:
     // Converts "dev"/"prod" to Profile; throws std::invalid_argument for unknown values.
     static Profile parseProfile(std::string_view s);
 
+    static AppConfig load(Profile profile);
+
     static AppConfig load(
         Profile profile,
-        const std::string& configFilePath = "config.toml",
-        const std::string& secretsFilePath = ".env.secrets.toml",
-        const std::string& versionFilePath = "VERSION.toml"
+        const std::string& configFilePath,
+        const std::string& secretsFilePath,
+        const std::string& versionFilePath
     );
 
 private:
     static void resolvePaths(AppConfig& cfg);
     static void resolveField(std::string& field, const std::filesystem::path& base);
+    static std::string resolveFile(const char* envVar,
+                                   std::initializer_list<std::string_view> candidates);
 };

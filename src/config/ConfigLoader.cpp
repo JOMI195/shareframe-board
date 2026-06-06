@@ -22,6 +22,30 @@ static glz::error_ctx readTomlFile(auto& val, const std::string& path) {
     return glz::read<glz::opts{.format = glz::TOML, .error_on_unknown_keys = false}>(val, buf);
 }
 
+std::string ConfigLoader::resolveFile(const char* envVar,
+                                      std::initializer_list<std::string_view> candidates)
+{
+    if (const char* override = std::getenv(envVar); override && *override)
+        return override;
+    for (auto p : candidates)
+        if (std::filesystem::exists(p))
+            return std::string(p);
+    return std::string(*candidates.begin());
+}
+
+AppConfig ConfigLoader::load(Profile profile)
+{
+    return load(profile,
+        resolveFile("SHAREFRAME_CONFIG_FILE",
+                    {"/etc/shareframe/config.toml", "config.toml"}),
+        resolveFile("SHAREFRAME_SECRETS_FILE",
+                    {"/data/shareframe/.env.secrets.toml",
+                     "/etc/shareframe/.env.secrets.toml",
+                     ".env.secrets.toml"}),
+        resolveFile("SHAREFRAME_VERSION_FILE",
+                    {"/etc/shareframe/VERSION.toml", "VERSION.toml"}));
+}
+
 AppConfig ConfigLoader::load(
     Profile profile,
     const std::string& configFilePath,

@@ -15,6 +15,7 @@ public:
     SystemHandlers(const AppConfig& cfg, HTTPClient& http,
                    AuthTokenManager& authTokenManager);
 
+    ix::HttpResponsePtr handleHealth(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleInfo(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleCheckInternet(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleRestart(const ix::HttpRequestPtr& req) const;

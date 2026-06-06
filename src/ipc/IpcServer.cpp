@@ -221,6 +221,13 @@ void IpcServer::_dispatch(const int clientFd, const std::string& line) const
             _sendResponse(clientFd, {{"active", active}});
             break;
         }
+
+    case IpcMessageType::GetHealth:
+        // Health hook: the process answering at all means it is running. Always
+        // true for now; can later fold in internal state (display/WS health).
+        logger_->debug("IPC: get_health -> running");
+        _sendResponse(clientFd, {{"running", true}});
+        break;
     }
 }
 

@@ -11,6 +11,7 @@ enum class IpcMessageType
     ClearDisplay,
     SetSlideshowActive,
     GetSlideshowActive,
+    GetHealth,
 };
 
 struct IpcMessage
@@ -29,6 +30,7 @@ inline std::string ipcMessageTypeToString(IpcMessageType t)
     case IpcMessageType::ClearDisplay:            return "clear_display";
     case IpcMessageType::SetSlideshowActive:      return "set_slideshow_active";
     case IpcMessageType::GetSlideshowActive:      return "get_slideshow_active";
+    case IpcMessageType::GetHealth:               return "get_health";
     }
     return "unknown";
 }
@@ -41,6 +43,7 @@ inline std::optional<IpcMessageType> ipcMessageTypeFromString(const std::string&
     if (s == "clear_display")           return IpcMessageType::ClearDisplay;
     if (s == "set_slideshow_active")    return IpcMessageType::SetSlideshowActive;
     if (s == "get_slideshow_active")    return IpcMessageType::GetSlideshowActive;
+    if (s == "get_health")              return IpcMessageType::GetHealth;
     return std::nullopt;
 }
 

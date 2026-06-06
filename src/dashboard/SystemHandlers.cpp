@@ -17,6 +17,13 @@ SystemHandlers::SystemHandlers(const AppConfig& cfg, HTTPClient& http,
 {
 }
 
+ix::HttpResponsePtr SystemHandlers::handleHealth(const ix::HttpRequestPtr& /*req*/) const
+{
+    // Health hook: serving this request means the dashboard is running. Always
+    // true for now; can later reflect internal state.
+    return jsonResponse(200, "OK", {{"running", true}});
+}
+
 ix::HttpResponsePtr SystemHandlers::handleInfo(const ix::HttpRequestPtr& /*req*/) const
 {
     return jsonResponse(200, "OK", {
