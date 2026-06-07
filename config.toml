@@ -15,7 +15,7 @@ database_name = "shareframe.db"
 migrations_path = "migrations"
 
 [auth_token]
-http_fetch_token_url = "/api/frames/obtain-frame-auth-token/"
+http_fetch_token_url = "/api/frames/obtain-frame-token/"
 http_verify_token_url = "/api/frames/verify-frame-auth-token/"
 
 [websocket]
@@ -41,7 +41,7 @@ log_file = "shareframe-dashboard.log"
 socket_path = "/tmp/shareframe-ipc.sock"
 port = 8080
 host = "0.0.0.0"
-http_verify_otp_url = "/api/frames/verify-frame-otp/"
+http_verify_otp_url = "/api/frames/verify-otp/"
 
 [heartbeat_application]
 service_name = "shareframe-heartbeat.service"
