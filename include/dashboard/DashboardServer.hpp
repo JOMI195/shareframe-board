@@ -53,6 +53,7 @@ private:
     AppConfig& cfg_;
     HTTPClient& http_;
     SessionManager& sessions_;
+    AuthTokenManager& authTokenManager_;
     ix::HttpServer server_;
     std::shared_ptr<spdlog::logger> logger_;
 

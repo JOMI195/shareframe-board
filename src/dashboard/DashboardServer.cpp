@@ -1,6 +1,5 @@
 #include "dashboard/DashboardServer.hpp"
-#include "auth/Ed25519Auth.hpp"
-#include "auth/ServerSignedResponse.hpp"
+#include "auth/TokenAuth.hpp"
 #include "dashboard/ResponseUtil.hpp"
 #include "util/HttpUtil.hpp"
 
@@ -11,6 +10,7 @@ DashboardServer::DashboardServer(AppConfig& cfg, IpcClient& ipc,
                                  HTTPClient& http, SessionManager& sessions,
                                  AuthTokenManager& authTokenManager, WifiManager& wifi)
     : cfg_(cfg), http_(http), sessions_(sessions),
+      authTokenManager_(authTokenManager),
       server_(cfg.dashboardApplication.port, cfg.dashboardApplication.host),
       logger_(spdlog::default_logger()->clone("DashboardServer")),
       wifiHandlers_(wifi),
@@ -126,8 +126,8 @@ ix::HttpResponsePtr DashboardServer::_handleLogin(const ix::HttpRequestPtr& req)
 
     auto otp = otpIt->get<std::string>();
 
-    // Build Ed25519 auth headers for the board→server request
-    auto authHeaders = Ed25519Auth::buildHTTPAuthHeaders(cfg_);
+    // Authenticate the board→server request with the access token
+    auto authHeaders = TokenAuth::buildTokenAuthHeaders(authTokenManager_);
 
     // POST to server's OTP verification endpoint
     nlohmann::json otpPayload = {{"otp", otp}};
@@ -145,7 +145,7 @@ ix::HttpResponsePtr DashboardServer::_handleLogin(const ix::HttpRequestPtr& req)
         return errorResponse(401, "Unauthorized", "OTP verification failed");
     }
 
-    // Parse server response and extract signed_response
+    // Parse server response and read the plain valid flag
     nlohmann::json serverResp;
     try
     {
@@ -157,38 +157,7 @@ ix::HttpResponsePtr DashboardServer::_handleLogin(const ix::HttpRequestPtr& req)
         return errorResponse(500, "Internal Server Error", "Internal error");
     }
 
-    auto srIt = serverResp.find("signed_response");
-    if (srIt == serverResp.end() || !srIt->is_string())
-    {
-        logger_->error("Server response missing signed_response field");
-        return errorResponse(500, "Internal Server Error", "Internal error");
-    }
-
-    // Verify server's Ed25519 signature
-    std::string dataJson;
-    try
-    {
-        dataJson = ServerSignedResponse::verify(srIt->get<std::string>(), cfg_);
-    }
-    catch (const std::exception& e)
-    {
-        logger_->error("Signed response verification failed: {}", e.what());
-        return errorResponse(401, "Unauthorized", "Server verification failed");
-    }
-
-    // Check that data contains valid=true
-    nlohmann::json data;
-    try
-    {
-        data = nlohmann::json::parse(dataJson);
-    }
-    catch (...)
-    {
-        logger_->error("Failed to parse verified data payload");
-        return errorResponse(500, "Internal Server Error", "Internal error");
-    }
-
-    if (!data.value("valid", false))
+    if (!serverResp.value("valid", false))
     {
         return errorResponse(401, "Unauthorized", "OTP invalid");
     }
