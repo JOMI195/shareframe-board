@@ -1,6 +1,7 @@
 #include "task/Heartbeat.hpp"
 #include "auth/AuthTokenManager.hpp"
 #include "auth/TokenAuth.hpp"
+#include "logging/LogSanitizer.hpp"
 #include "ipc/IpcClient.hpp"
 #include "net/HTTPClient.hpp"
 #include <arpa/inet.h>
@@ -44,8 +45,9 @@ void Heartbeat::execute()
     headers["Content-Type"] = "application/json";
 
     const std::string url = cfg_.httpBaseUrl() + cfg_.heartbeat.httpUrl;
-    logger_->debug("Sending heartbeat to {}: {}", url, payload.dump());
-    const auto res = http_.post(url, payload.dump(), headers);
+    const auto payloadDump = payload.dump();
+    logger_->debug("Sending heartbeat to {}: {}", url, logging::summarizePayloadForLog(payloadDump, "heartbeat"));
+    const auto res = http_.post(url, payloadDump, headers);
 
     if (res.statusCode == 401)
     {

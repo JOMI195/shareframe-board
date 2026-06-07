@@ -1,5 +1,6 @@
 #include "net/WebsocketClient.hpp"
 #include "auth/TokenAuth.hpp"
+#include "logging/LogSanitizer.hpp"
 #include "net/WsCloseCodes.hpp"
 #include "net/WsProtocol.hpp"
 #include <nlohmann/json.hpp>
@@ -58,10 +59,11 @@ void WebsocketClient::_setupWebsocket()
 
 void WebsocketClient::_processMessage(const std::string& text) const
 {
-    logger_->debug("WS recv: {}", text);
     try
     {
         const auto json = nlohmann::json::parse(text);
+        logger_->debug("WS recv: {}", logging::summarizePayloadForLog(text, "WS recv"));
+
         auto type = json.value("type", "");
         if (type.empty())
         {
@@ -91,7 +93,7 @@ void WebsocketClient::_processMessage(const std::string& text) const
     }
     catch (const nlohmann::json::parse_error&)
     {
-        logger_->warn("Received non-JSON message: {}", text);
+        logger_->warn("Received non-JSON message: {}", logging::summarizePayloadForLog(text, "non-JSON"));
     }
 }
 
@@ -136,8 +138,9 @@ void WebsocketClient::_flushSendQueue()
     std::lock_guard lk(sendMtx_);
     for (const auto& msg : sendQueue_)
     {
-        logger_->debug("WS send (queued): {}", msg.dump());
-        ws_.send(msg.dump());
+        const auto serialized = msg.dump();
+        logger_->debug("WS send (queued): {}", logging::summarizePayloadForLog(serialized, "WS send"));
+        ws_.send(serialized);
     }
     if (!sendQueue_.empty())
         logger_->info("Flushed {} queued messages", sendQueue_.size());
@@ -153,8 +156,9 @@ void WebsocketClient::start()
         std::lock_guard lk(sendMtx_);
         if (ws_.getReadyState() == ix::ReadyState::Open)
         {
-            logger_->debug("WS send: {}", msg.dump());
-            ws_.send(msg.dump());
+            const auto serialized = msg.dump();
+            logger_->debug("WS send: {}", logging::summarizePayloadForLog(serialized, "WS send"));
+            ws_.send(serialized);
         }
         else
         {
