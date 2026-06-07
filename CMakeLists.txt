@@ -176,18 +176,30 @@ endforeach ()
 
 # Install rules — used by Buildroot's cmake-package infra and by anyone who
 # runs `cmake --install`. Host devs still work straight from the build dir.
-# .env.secrets.toml and config.dev.toml are intentionally NOT installed:
-# secrets are per-device identity (provisioned on /data/shareframe/), and the
-# dev profile only makes sense on a host checkout.
+# Only the SELECTED profile overlay is installed: SHAREFRAME_PROFILE (default
+# prod) is passed via -D from the buildroot package (shareframe-board.mk), which
+# in turn gets it from automation.sh. The app merges config.${profile}.toml on
+# top of base config.toml at runtime, picking the profile from
+# /etc/shareframe-profile (written by post-build.sh, exported by the s6 run
+# scripts). .env.secrets.toml is NOT installed: per-device identity, provisioned
+# on /data/shareframe/.
 include(GNUInstallDirs)
 install(TARGETS shareframe-application shareframe-dashboard shareframe-heartbeat
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+if(NOT SHAREFRAME_PROFILE)
+    set(SHAREFRAME_PROFILE prod)
+endif()
+if(NOT EXISTS ${CMAKE_SOURCE_DIR}/config.${SHAREFRAME_PROFILE}.toml)
+    message(FATAL_ERROR "SHAREFRAME_PROFILE='${SHAREFRAME_PROFILE}' but config.${SHAREFRAME_PROFILE}.toml does not exist")
+endif()
+
 # SYSCONFDIR: use the FULL_ variant — on prefix=/usr it resolves to /etc
 # absolute, which is what we want. The non-FULL_ variant is relative ("etc"),
 # so install(DESTINATION ...) would put files in /usr/etc on Buildroot.
 install(FILES
         ${CMAKE_SOURCE_DIR}/config.toml
-        ${CMAKE_SOURCE_DIR}/config.prod.toml
+        ${CMAKE_SOURCE_DIR}/config.${SHAREFRAME_PROFILE}.toml
         ${CMAKE_SOURCE_DIR}/VERSION.toml
         DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/shareframe)
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/migrations/
