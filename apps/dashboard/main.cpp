@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
 
     // Database (for AuthTokenManager)
     Database db;
-    db.init(cfg.database);
+    db.init(cfg.database, false);
 
     // Connect to main service via IPC (will reconnect automatically on each request)
     IpcClient ipc(cfg.dashboardApplication.socketPath);

@@ -4,19 +4,31 @@
 #include <filesystem>
 #include <stdexcept>
 
-void Database::init(const DatabaseConfig& config)
+void Database::init(const DatabaseConfig& config, bool shouldRunMigrations)
+{
+    open(config);
+
+    if (shouldRunMigrations)
+        runMigrations(std::filesystem::path(config.migrationsPath));
+
+    spdlog::info("Database ready");
+}
+
+void Database::open(const DatabaseConfig& config)
 {
     std::filesystem::create_directories(config.databasePath);
 
-    const std::string fullPath = config.databasePath + "/" + config.databaseName;
+    const std::filesystem::path fullPath = std::filesystem::path(config.databasePath) / config.databaseName;
     spdlog::info("Opening database: {}", fullPath);
-    _db = std::make_unique<SQLite::Database>(fullPath, SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
+    _db = std::make_unique<SQLite::Database>(fullPath.string(), SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
     _db->exec("PRAGMA journal_mode=WAL");
+}
 
-    spdlog::info("Running migrations from: {}", config.migrationsPath);
-    MigrationRunner runner(*_db, config.migrationsPath);
+void Database::runMigrations(const std::filesystem::path& migrationsPath)
+{
+    spdlog::info("Running migrations from: {}", migrationsPath.string());
+    MigrationRunner runner(*_db, migrationsPath);
     runner.run();
-    spdlog::info("Database ready");
 }
 
 SQLite::Database& Database::get() const

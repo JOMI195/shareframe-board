@@ -16,7 +16,7 @@ int main(int argc, char* argv[])
 
     // Database (for AuthTokenManager token cache)
     Database db;
-    db.init(cfg.database);
+    db.init(cfg.database, false);
     TokenRepository tokenRepo(db.get());
 
     // HTTP client: heartbeat POST + dashboard health probe

@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
 
     // setup db
     Database database;
-    database.init(cfg.database);
+    database.init(cfg.database, true);
     TokenRepository tokenRepo(database.get());
     ImageRepository imageRepo(database.get());
     SettingsRepository settingsRepo(database.get());
