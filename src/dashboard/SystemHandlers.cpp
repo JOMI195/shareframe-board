@@ -27,7 +27,7 @@ ix::HttpResponsePtr SystemHandlers::handleHealth(const ix::HttpRequestPtr& /*req
 ix::HttpResponsePtr SystemHandlers::handleInfo(const ix::HttpRequestPtr& /*req*/) const
 {
     return jsonResponse(200, "OK", {
-        {"serial_number", cfg_.secrets.publicSerialNumber},
+        {"serial_number", cfg_.frameId},
         {"version", cfg_.version}
     });
 }

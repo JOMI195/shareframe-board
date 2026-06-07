@@ -95,6 +95,7 @@ set(COMMON_SOURCES
         src/net/HTTPClient.cpp
         src/auth/AuthTokenManager.cpp
         src/auth/Ed25519Auth.cpp
+        src/auth/FrameIdentity.cpp
         src/auth/TokenAuth.cpp
         src/auth/ServerSignedResponse.cpp
         src/util/Base64.cpp

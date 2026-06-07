@@ -60,8 +60,8 @@ std::map<std::string, std::string> Ed25519Auth::buildHTTPAuthHeaders(const AppCo
 {
     if (config.secrets.ed25519PrivateKey.empty())
         throw std::runtime_error("Ed25519Auth: ed25519PrivateKey is empty");
-    if (config.secrets.publicSerialNumber.empty())
-        throw std::runtime_error("Ed25519Auth: publicSerialNumber is empty");
+    if (config.frameId.empty())
+        throw std::runtime_error("Ed25519Auth: frameId is empty");
 
     const auto now = std::chrono::system_clock::now();
     auto timestamp = std::to_string(
@@ -70,12 +70,12 @@ std::map<std::string, std::string> Ed25519Auth::buildHTTPAuthHeaders(const AppCo
         ).count()
     );
 
-    const std::string message = config.secrets.publicSerialNumber + ":" + timestamp;
+    const std::string message = config.frameId + ":" + timestamp;
     const std::string signature = sign(message, config.secrets.ed25519PrivateKey);
 
     return {
         {"Authorization", "Ed25519-Sig " + signature},
-        {"X-Frame-ID", config.secrets.publicSerialNumber},
+        {"X-Frame-ID", config.frameId},
         {"X-Timestamp", timestamp},
         {"Content-Type", "application/json"}
     };

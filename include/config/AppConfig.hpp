@@ -3,10 +3,7 @@
 
 struct SecretsConfig
 {
-    std::string publicSerialNumber;
     std::string ed25519PrivateKey;
-    std::string updateHashSecretKey;
-    std::string serverEd25519PublicKey;
 };
 
 struct LogConfig
@@ -93,6 +90,10 @@ struct AppConfig
     bool production;
     std::string version;
     std::string baseUrl;
+
+    // Runtime-derived (not from TOML): readable frame id = fingerprint of the
+    // public key derived from secrets.ed25519PrivateKey. Set in ConfigLoader::load.
+    std::string frameId;
 
     SecretsConfig secrets;
     LogConfig log;

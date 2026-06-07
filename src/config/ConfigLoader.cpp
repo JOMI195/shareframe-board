@@ -1,4 +1,5 @@
 #include "config/ConfigLoader.hpp"
+#include "auth/FrameIdentity.hpp"
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -85,6 +86,10 @@ AppConfig ConfigLoader::load(
             std::string("Failed to load secrets '") + secretsFilePath
             + "': " + glz::format_error(serr, ""));
     cfg.secrets = secrets;
+
+    // Derive the readable frame id from the private seed (single source of truth)
+    if (!cfg.secrets.ed25519PrivateKey.empty())
+        cfg.frameId = FrameIdentity::fingerprint(cfg.secrets.ed25519PrivateKey);
 
     // Version
     VersionConfig ver;
