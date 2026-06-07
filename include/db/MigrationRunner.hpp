@@ -14,6 +14,6 @@ private:
     std::filesystem::path _migrationsDir;
 
     void ensureMigrationsTable() const;
-    bool isApplied(const std::string& id) const;
+    [[nodiscard]] bool isApplied(const std::string& id) const;
     void apply(const std::string& id, const std::string& sql) const;
 };

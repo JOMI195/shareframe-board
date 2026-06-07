@@ -8,11 +8,11 @@ class Database
 {
 public:
     void init(const DatabaseConfig& config, bool runMigrations = true);
-    SQLite::Database& get() const;
+    [[nodiscard]] SQLite::Database& get() const;
 
 private:
     void open(const DatabaseConfig& config);
-    void runMigrations(const std::filesystem::path& migrationsPath);
+    void runMigrations(const std::filesystem::path& migrationsPath) const;
 
     std::unique_ptr<SQLite::Database> _db;
 };
