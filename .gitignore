@@ -47,3 +47,8 @@ build/
 config.dev.toml
 config.prod.toml
 config.prod.local.toml
+
+
+#dashboard
+node_modules/
+.env.dev

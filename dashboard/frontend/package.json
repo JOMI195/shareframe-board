@@ -1,0 +1,43 @@
+{
+  "name": "shareframe-dashboard-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --mode dev",
+    "build": "tsc -b && vite build --mode prod",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@fontsource/inter": "^5.2.8",
+    "@mui/icons-material": "^6.5.0",
+    "@mui/material": "^6.5.0",
+    "@reduxjs/toolkit": "^2.12.0",
+    "import": "^0.0.6",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-redux": "^9.3.0",
+    "react-router": "^7.17.0",
+    "react-uuid": "^2.0.0",
+    "redux": "^5.0.1",
+    "redux-persist": "^6.0.0",
+    "vite-plugin-compression2": "^1.4.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/node": "^22.19.20",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.7.0",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^15.15.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.60.1",
+    "vite": "^6.4.3"
+  }
+}
