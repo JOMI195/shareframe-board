@@ -55,8 +55,16 @@ void DEV_Digital_Write(UWORD Pin, UBYTE Value)
 	bcm2835_gpio_write(Pin, Value);
 #elif USE_WIRINGPI_LIB
 	digitalWrite(Pin, Value);
-#elif  USE_LGPIO_LIB  
-    lgGpioWrite(GPIO_Handle, Pin, Value);
+#elif  USE_LGPIO_LIB
+    {
+        int rc = lgGpioWrite(GPIO_Handle, Pin, Value);
+        if (rc < 0 && Pin != EPD_CS_PIN) {   /* CS/GPIO8 is owned by the kernel spi driver -> expected, don't spam */
+            static int logged = 0;
+            if (!logged++)
+                printf("lgGpioWrite pin %d FAILED: %d (%s) [further GPIO write errors suppressed]\n",
+                       Pin, rc, lguErrorText(rc));
+        }
+    }
 #elif USE_DEV_LIB
 	GPIOD_Write(Pin, Value);
 #endif
@@ -106,8 +114,16 @@ void DEV_SPI_WriteByte(uint8_t Value)
 	bcm2835_spi_transfer(Value);
 #elif USE_WIRINGPI_LIB
 	wiringPiSPIDataRW(0,&Value,1);
-#elif  USE_LGPIO_LIB 
-    lgSpiWrite(SPI_Handle,(char*)&Value, 1);
+#elif  USE_LGPIO_LIB
+    {
+        int rc = lgSpiWrite(SPI_Handle, (char*)&Value, 1);
+        if (rc < 0) {
+            static int logged = 0;
+            if (!logged++)
+                printf("lgSpiWrite(1) FAILED: %d (%s) [further SPI write errors suppressed]\n",
+                       rc, lguErrorText(rc));
+        }
+    }
 #elif USE_DEV_LIB
 	DEV_HARDWARE_SPI_TransferByte(Value);
 #endif
@@ -130,8 +146,16 @@ void DEV_SPI_Write_nByte(uint8_t *pData, uint32_t Len)
 	bcm2835_spi_transfernb((char *)pData,rData,Len);
 #elif USE_WIRINGPI_LIB
 	wiringPiSPIDataRW(0, pData, Len);
-#elif  USE_LGPIO_LIB 
-    lgSpiWrite(SPI_Handle,(char*)pData, Len);
+#elif  USE_LGPIO_LIB
+    {
+        int rc = lgSpiWrite(SPI_Handle, (char*)pData, Len);
+        if (rc < 0) {
+            static int logged = 0;
+            if (!logged++)
+                printf("lgSpiWrite(%u) FAILED: %d (%s) [further SPI write errors suppressed]\n",
+                       (unsigned)Len, rc, lguErrorText(rc));
+        }
+    }
 #elif USE_DEV_LIB
 	DEV_HARDWARE_SPI_Transfer(pData, Len);
 #endif

@@ -71,10 +71,16 @@ void DisplayManager::clear()
     if (!_hwInit())
         return;
 
-    EPD_7IN5_V2_Clear();
-    _logger->info("Display cleared");
+    const auto t0 = std::chrono::steady_clock::now();
+    const UBYTE rc = EPD_7IN5_V2_Clear();
+    const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - t0).count();
     _lastDisplayTime = std::chrono::steady_clock::now();
     _hwSleep();
+    if (rc != 0)
+        _logger->error("Display clear FAILED (BUSY timeout, {} ms)", ms);
+    else
+        _logger->info("Display cleared (panel refresh {} ms)", ms);
 #else
     _logger->warn("EPD hardware not available (built without ENABLE_EPD_HARDWARE)");
 #endif
@@ -99,10 +105,19 @@ bool DisplayManager::displayImage(const std::filesystem::path& imagePath)
     if (!_hwInit())
         return false;
 
-    EPD_7IN5_V2_Display(buffer.data());
-    _logger->info("Displayed image: {}", imagePath.string());
+    _logger->debug("Sending image to panel ({} bytes) and refreshing", buffer.size());
+    const auto t0 = std::chrono::steady_clock::now();
+    const UBYTE rc = EPD_7IN5_V2_Display(buffer.data());
+    const auto refreshMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - t0).count();
     _lastDisplayTime = std::chrono::steady_clock::now();
     _hwSleep();
+    if (rc != 0)
+    {
+        _logger->error("Panel refresh FAILED (BUSY timeout, {} ms): {}", refreshMs, imagePath.string());
+        return false;
+    }
+    _logger->info("Displayed image: {} (panel refresh {} ms)", imagePath.string(), refreshMs);
     return true;
 #else
     _logger->warn("EPD hardware not available (built without ENABLE_EPD_HARDWARE)");
@@ -133,8 +148,15 @@ bool DisplayManager::_hwInit()
         }
         _initialized = true;
     }
-    EPD_7IN5_V2_Init();
-    _logger->debug("EPD initialized");
+    const auto t0 = std::chrono::steady_clock::now();
+    if (EPD_7IN5_V2_Init() != 0)
+    {
+        _logger->error("Panel init failed (power-on BUSY timeout)");
+        return false;
+    }
+    const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - t0).count();
+    _logger->debug("Panel init done (reset + power-on, {} ms)", ms);
     return true;
 #else
     _logger->warn("EPD hardware not available (built without ENABLE_EPD_HARDWARE)");
@@ -146,7 +168,7 @@ void DisplayManager::_hwSleep()
 {
 #ifdef EPD_HARDWARE_ENABLED
     EPD_7IN5_V2_Sleep();
-    _logger->debug("Display entered sleep mode");
+    _logger->debug("Panel powered down (deep sleep)");
 #endif
 }
 

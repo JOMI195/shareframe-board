@@ -31,6 +31,11 @@
 #include "EPD_7in5_V2.h"
 #include "Debug.h"
 
+/* Safety bound for EPD_WaitUntilIdle. A 7.5" V2 full refresh takes a few
+ * seconds; 60s is generous headroom. Without this the BUSY poll loops
+ * forever if the panel never releases BUSY (dead SPI, bad wiring). */
+#define EPD_BUSY_TIMEOUT_MS 60000
+
 /******************************************************************************
 function :	Software reset
 parameter:
@@ -83,24 +88,33 @@ static void EPD_SendData2(UBYTE *pData, UDOUBLE len)
 function :	Wait until the busy_pin goes LOW
 parameter:
 ******************************************************************************/
-static void EPD_WaitUntilIdle(void)
+static int EPD_WaitUntilIdle(void)
 {
+    int waited_ms = 0;
     Debug("e-Paper busy\r\n");
 	do{
-		DEV_Delay_ms(5);  
-	}while(!(DEV_Digital_Read(EPD_BUSY_PIN)));   
-	DEV_Delay_ms(5);      
+		DEV_Delay_ms(5);
+		waited_ms += 5;
+		if (waited_ms >= EPD_BUSY_TIMEOUT_MS) {
+			printf("EPD_WaitUntilIdle: TIMEOUT after %d ms, BUSY still asserted (pin %d) -- check SPI/wiring\n",
+			       waited_ms, EPD_BUSY_PIN);
+			return -1;
+		}
+	}while(!(DEV_Digital_Read(EPD_BUSY_PIN)));
+	DEV_Delay_ms(5);
+	printf("EPD busy released after %d ms\n", waited_ms);
     Debug("e-Paper busy release\r\n");
+    return 0;
 }
 /******************************************************************************
 function :	Turn On Display
 parameter:
 ******************************************************************************/
-static void EPD_7IN5_V2_TurnOnDisplay(void)
-{	
+static int EPD_7IN5_V2_TurnOnDisplay(void)
+{
     EPD_SendCommand(0x12);			//DISPLAY REFRESH
     DEV_Delay_ms(100);	        //!!!The delay here is necessary, 200uS at least!!!
-    EPD_WaitUntilIdle();
+    return EPD_WaitUntilIdle();
 }
 
 /******************************************************************************
@@ -124,8 +138,9 @@ UBYTE EPD_7IN5_V2_Init(void)
 	EPD_SendData(0x17);	
 
 	EPD_SendCommand(0x04); //POWER ON
-	DEV_Delay_ms(100); 
-	EPD_WaitUntilIdle();        //waiting for the electronic paper IC to release the idle signal
+	DEV_Delay_ms(100);
+	if (EPD_WaitUntilIdle() < 0)        //waiting for the electronic paper IC to release the idle signal
+		return 1;                       //power-on never completed (BUSY timeout)
 
 	EPD_SendCommand(0X00);			//PANNEL SETTING
 	EPD_SendData(0x1F);   //KW-3f   KWR-2F	BWROTP 0f	BWOTP 1f
@@ -249,7 +264,7 @@ UBYTE EPD_7IN5_V2_Init_4Gray(void)
 function :	Clear screen
 parameter:
 ******************************************************************************/
-void EPD_7IN5_V2_Clear(void)
+UBYTE EPD_7IN5_V2_Clear(void)
 {
     UWORD Width, Height;
     Width =(EPD_7IN5_V2_WIDTH % 8 == 0)?(EPD_7IN5_V2_WIDTH / 8 ):(EPD_7IN5_V2_WIDTH / 8 + 1);
@@ -274,8 +289,8 @@ void EPD_7IN5_V2_Clear(void)
     {
         EPD_SendData2(image, Width);
     }
-    
-    EPD_7IN5_V2_TurnOnDisplay();
+
+    return EPD_7IN5_V2_TurnOnDisplay();
 }
 
 void EPD_7IN5_V2_ClearBlack(void)
@@ -311,7 +326,7 @@ void EPD_7IN5_V2_ClearBlack(void)
 function :	Sends the image buffer in RAM to e-Paper and displays
 parameter:
 ******************************************************************************/
-void EPD_7IN5_V2_Display(UBYTE *blackimage)
+UBYTE EPD_7IN5_V2_Display(UBYTE *blackimage)
 {
     UDOUBLE Width, Height;
     Width =(EPD_7IN5_V2_WIDTH % 8 == 0)?(EPD_7IN5_V2_WIDTH / 8 ):(EPD_7IN5_V2_WIDTH / 8 + 1);
@@ -331,7 +346,7 @@ void EPD_7IN5_V2_Display(UBYTE *blackimage)
     for (UDOUBLE j = 0; j < Height; j++) {
         EPD_SendData2((UBYTE *)(blackimage+j*Width), Width);
     }
-    EPD_7IN5_V2_TurnOnDisplay();
+    return EPD_7IN5_V2_TurnOnDisplay();
 }
 
 void EPD_7IN5_V2_Display_Part(UBYTE *blackimage,UDOUBLE x_start, UDOUBLE y_start, UDOUBLE x_end, UDOUBLE y_end)
