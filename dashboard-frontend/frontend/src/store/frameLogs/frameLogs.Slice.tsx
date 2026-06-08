@@ -69,20 +69,19 @@ export const fetchFrameLogs = createAsyncThunk(
             });
 
             const payload: IServerResponse & {
-                service: string;
-                period: string;
-                timestamp: string;
-                log_count: number;
-                logs: string[];
+                data: { service_name: string; lines: number; logs: string };
             } = await response.json();
 
             if (payload.success) {
+                // Backend returns one `logs` string (tail output); split to lines
+                // to keep the existing LogsData shape the UI renders.
+                const logLines = (payload.data?.logs ?? '').split('\n').filter(Boolean);
                 return {
-                    service: payload.service,
-                    period: payload.period,
-                    timestamp: payload.timestamp,
-                    log_count: payload.log_count,
-                    logs: payload.logs,
+                    service: payload.data?.service_name ?? '',
+                    period: '',
+                    timestamp: new Date(currentTime).toISOString(),
+                    log_count: logLines.length,
+                    logs: logLines,
                     lastFetched: currentTime
                 };
             } else {

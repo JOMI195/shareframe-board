@@ -10,14 +10,11 @@ import { useAppDispatch, useAppSelector } from '@/store';
 import {
     closeNetworkAddNetworkDialog,
     closeNetworkForgetNetworkDialog,
-    closeNetworkRenameNetworkDialog,
-    getDialogs,
-    updateNetworkRenameNetworkName
+    getDialogs
 } from '@/store/dialogs/dialogs.Slice';
 import {
     addNetwork,
     forgetNetwork,
-    renameNetwork,
     NetworkCredentials,
     selectNetworkState
 } from '@/store/network/network.Slice';
@@ -52,21 +49,6 @@ const Dialogs: React.FC = () => {
         try {
             await dispatch(forgetNetwork(dialogs.forgetNetwork.ssid)).unwrap();
             dispatch(closeNetworkForgetNetworkDialog());
-        } catch (error) {
-            // Error handling is done in the thunk
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    const handleRenameNetwork = async (): Promise<void> => {
-        setSubmitting(true);
-        try {
-            await dispatch(renameNetwork({
-                oldName: dialogs.renameNetwork.ssid,
-                newName: dialogs.renameNetwork.newName
-            })).unwrap();
-            dispatch(closeNetworkRenameNetworkDialog());
         } catch (error) {
             // Error handling is done in the thunk
         } finally {
@@ -155,37 +137,6 @@ const Dialogs: React.FC = () => {
                 </Typography>
                 <Typography variant="body1" color="text.secondary">
                     Du kannst das Netzwerk jederzeit erneut hinzufügen.
-                </Typography>
-            </ShareframeDialog>
-
-            {/* Rename Network Dialog */}
-            <ShareframeDialog
-                open={dialogs.renameNetwork.open}
-                title="Netzwerk umbenennen"
-                onClose={() => dispatch(closeNetworkRenameNetworkDialog())}
-                onConfirm={handleRenameNetwork}
-                confirmText="Umbenennen"
-                cancelText="Abbrechen"
-                confirmDisabled={isActionsDisabled || !dialogs.renameNetwork.newName.trim()}
-                fullWidth={true}
-                showActions={true}
-            >
-                <Typography variant="body2" gutterBottom>
-                    Aktueller Name: <Typography color='primary' component="span">{dialogs.renameNetwork.ssid}</Typography>
-                </Typography>
-                <TextField
-                    autoFocus
-                    margin="dense"
-                    id="newName"
-                    label="Neuer Netzwerkname"
-                    type="text"
-                    fullWidth
-                    variant="outlined"
-                    value={dialogs.renameNetwork.newName}
-                    onChange={(e) => dispatch(updateNetworkRenameNetworkName(e.target.value))}
-                />
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                    Voreingestellte Netzwerke können nicht umbenannt werden.
                 </Typography>
             </ShareframeDialog>
         </>

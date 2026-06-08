@@ -21,6 +21,7 @@ void Database::open(const DatabaseConfig& config)
     const std::filesystem::path fullPath = std::filesystem::path(config.databasePath) / config.databaseName;
     spdlog::info("Opening database: {}", fullPath.string());
     _db = std::make_unique<SQLite::Database>(fullPath.string(), SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
+    _db->setBusyTimeout(5000); // wait up to 5s on a locked DB instead of throwing immediately
     _db->exec("PRAGMA journal_mode=WAL");
 }
 

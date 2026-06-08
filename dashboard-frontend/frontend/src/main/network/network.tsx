@@ -6,7 +6,6 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import WifiIcon from '@mui/icons-material/Wifi';
-import EditIcon from '@mui/icons-material/Edit';
 import { usePiConnection } from '@/context/piConnection/piConnectionContext';
 import { useAppDispatch, useAppSelector } from '@/store';
 import {
@@ -14,8 +13,7 @@ import {
     selectNetworkState
 } from '@/store/network/network.Slice';
 import {
-    openNetworkForgetNetworkDialog,
-    openNetworkRenameNetworkDialog
+    openNetworkForgetNetworkDialog
 } from '@/store/dialogs/dialogs.Slice';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import { Actions } from './actions/actions';
@@ -30,10 +28,6 @@ const Network = () => {
 
     const initiateForgetNetwork = (ssid: string): void => {
         dispatch(openNetworkForgetNetworkDialog(ssid));
-    };
-
-    const initiateRenameNetwork = (ssid: string): void => {
-        dispatch(openNetworkRenameNetworkDialog(ssid));
     };
 
     useEffect(() => {
@@ -88,25 +82,14 @@ const Network = () => {
                                                                 }
                                                             }}
                                                             secondaryAction={
-                                                                <Box sx={{ display: 'flex' }}>
-                                                                    <IconButton
-                                                                        edge="end"
-                                                                        aria-label="edit"
-                                                                        onClick={() => initiateRenameNetwork(network)}
-                                                                        disabled={isButtonsDisabled}
-                                                                        sx={{ mr: 1 }}
-                                                                    >
-                                                                        <EditIcon />
-                                                                    </IconButton>
-                                                                    <IconButton
-                                                                        edge="end"
-                                                                        aria-label="delete"
-                                                                        onClick={() => initiateForgetNetwork(network)}
-                                                                        disabled={isButtonsDisabled}
-                                                                    >
-                                                                        <DeleteIcon />
-                                                                    </IconButton>
-                                                                </Box>
+                                                                <IconButton
+                                                                    edge="end"
+                                                                    aria-label="delete"
+                                                                    onClick={() => initiateForgetNetwork(network)}
+                                                                    disabled={isButtonsDisabled}
+                                                                >
+                                                                    <DeleteIcon />
+                                                                </IconButton>
                                                             }
                                                         >
                                                             <ListItemText primary={<Typography variant="body2" noWrap>{network}</Typography>} />

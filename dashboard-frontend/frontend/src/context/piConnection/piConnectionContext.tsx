@@ -20,15 +20,15 @@ export const PiConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const checkPiConnection = useCallback(async () => {
         try {
             setIsCheckingConnection(true);
-            const response = await fetchWithTimeout('/api/pi/check-connection');
-            const data = await response.json();
+            // The dashboard *is* the board, so "reachable" == the server answered.
+            const response = await fetchWithTimeout('/api/system/health');
+            const payload = await response.json();
 
-            setIsConnected(data.connected);
-            return data.connected;
+            const connected = !!payload?.data?.running;
+            setIsConnected(connected);
         } catch (error) {
             console.error('Error checking Pi connection:', error);
             setIsConnected(false);
-            return false;
         } finally {
             setIsCheckingConnection(false);
         }

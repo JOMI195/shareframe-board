@@ -9,6 +9,9 @@ struct SecretsConfig
 struct LogConfig
 {
     std::string logPath;
+    // General system log (busybox syslogd + klogd) — not a shareframe spdlog
+    // file, so it lives outside logPath. Overridable per board/deployment.
+    std::string systemLogPath = "/var/log/messages";
 };
 
 struct ShareframeApplicationConfig

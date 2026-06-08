@@ -14,6 +14,8 @@ extern "C" {
 DisplayManager::DisplayManager(const AppConfig& cfg)
     : _cfg(cfg), _logger(spdlog::default_logger()->clone("Display"))
 {
+    _lastDisplayTime = std::chrono::steady_clock::now()
+        - std::chrono::seconds(_cfg.display.minRefreshSecs);
     _logger->info("DisplayManager created (mock={})", _cfg.display.mockDisplay);
 }
 
@@ -50,7 +52,7 @@ void DisplayManager::init()
     }
 
     if (!displayImage(std::filesystem::path(_cfg.display.loadingImagePath) /
-                      "logo-frame-loading-shareframe.jpg"))
+        "logo-frame-loading-shareframe.jpg"))
         _logger->error("Failed to display loading image");
 }
 

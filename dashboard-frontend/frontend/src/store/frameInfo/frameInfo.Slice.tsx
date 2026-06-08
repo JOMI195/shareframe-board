@@ -5,10 +5,31 @@ import { addAlertSnackbar } from '@/store/snackbars/snackbars.Slice';
 import { IServerResponse } from '@/types';
 import { fetchWithTimeout } from '@/common/utils/fetch';
 
-// Interfaces
+// Interfaces — mirrors GET /api/system/info `data`. Metric fields are optional:
+// the board script omits a key when its source is absent.
 export interface FrameInfo {
-    public_serial_number: string;
+    serial_number: string;
     version: string;
+    hostname?: string;
+    kernel?: string;
+    ip_wlan0?: string;
+    ip_usb0?: string;
+    time_iso?: string;
+    uptime_seconds?: number;
+    ram_total_bytes?: number;
+    ram_available_bytes?: number;
+    storage_data_total_bytes?: number;
+    storage_data_free_bytes?: number;
+    storage_root_total_bytes?: number;
+    storage_root_free_bytes?: number;
+    cpu_temp_celsius?: number;
+    load_1?: number;
+    load_5?: number;
+    load_15?: number;
+    cpu_usage_percent?: number;
+    wlan_ssid?: string;
+    wlan_signal_dbm?: number;
+    wlan_connected?: boolean;
 }
 
 export interface FrameInfoState {
@@ -27,7 +48,7 @@ export const fetchFrameInfos = createAsyncThunk(
     'frameInfo/fetchFrameInfos',
     async (_, { dispatch, rejectWithValue }) => {
         try {
-            const response = await fetchWithTimeout('/api/frame/infos');
+            const response = await fetchWithTimeout('/api/system/info');
             const payload: IServerResponse & { data: FrameInfo } = await response.json();
 
             if (payload.success && payload.data) {

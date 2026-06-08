@@ -1,5 +1,6 @@
 #pragma once
 #include "config/AppConfig.hpp"
+#include "dashboard/WifiManager.hpp"
 #include "net/HTTPClient.hpp"
 #include <ixwebsocket/IXHttpServer.h>
 #include <spdlog/spdlog.h>
@@ -13,7 +14,7 @@ class SystemHandlers
 {
 public:
     SystemHandlers(const AppConfig& cfg, HTTPClient& http,
-                   AuthTokenManager& authTokenManager);
+                   AuthTokenManager& authTokenManager, WifiManager& wifi);
 
     ix::HttpResponsePtr handleHealth(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleInfo(const ix::HttpRequestPtr& req) const;
@@ -28,6 +29,7 @@ private:
     const AppConfig& cfg_;
     HTTPClient& http_;
     AuthTokenManager& authTokenManager_;
+    WifiManager& wifi_;
     std::shared_ptr<spdlog::logger> logger_;
     std::vector<std::string> allowedServiceNames_;
 };

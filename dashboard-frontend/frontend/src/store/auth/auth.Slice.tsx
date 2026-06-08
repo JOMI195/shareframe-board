@@ -23,9 +23,9 @@ const initialState: AuthState = {
 export const checkAuthStatusThunk = createAsyncThunk(
   'auth/checkStatus',
   async () => {
-    const response = await fetchWithTimeout('/api/auth/check-auth');
-    const data = await response.json();
-    return data.authenticated;
+    const response = await fetchWithTimeout('/api/auth/status');
+    const payload = await response.json();
+    return payload?.data?.authenticated ?? false;
   }
 );
 

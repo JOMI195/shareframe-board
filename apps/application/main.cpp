@@ -31,13 +31,6 @@ int main(int argc, char* argv[])
     SettingsRepository settingsRepo(database.get());
 
     RuntimeSettings runtimeSettings(settingsRepo, cfg);
-    ImageManager imageManager(cfg, imageRepo);
-    DisplayManager displayManager(cfg);
-    displayManager.init();
-
-    // setup auth
-    HTTPClient http(60, 600);
-    AuthTokenManager authTokenManager(cfg, tokenRepo, http);
 
     // setup event bus
     EventBus eventBus;
@@ -45,6 +38,14 @@ int main(int argc, char* argv[])
     // setup IPC server for dashboard communication
     IpcServer ipcServer(eventBus, cfg, runtimeSettings);
     ipcServer.start();
+
+    ImageManager imageManager(cfg, imageRepo);
+    DisplayManager displayManager(cfg);
+    displayManager.init();
+
+    // setup auth
+    HTTPClient http(60, 600);
+    AuthTokenManager authTokenManager(cfg, tokenRepo, http);
 
     // setup tasks
     ImageUpdate imageUpdate(eventBus, imageManager, imageRepo);

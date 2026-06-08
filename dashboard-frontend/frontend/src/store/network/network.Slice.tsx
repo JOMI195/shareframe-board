@@ -4,7 +4,6 @@ import uuid from 'react-uuid';
 import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '@/store/snackbars/snackbars.Slice';
 import { IServerResponse } from '@/types';
 import { fetchWithTimeout } from '@/common/utils/fetch';
-import { getConnectionRenameUrl } from '@/assets/endpoints/api/frame';
 
 // Interfaces
 export interface NetworkCredentials {
@@ -32,18 +31,18 @@ export const fetchNetworkData = createAsyncThunk(
     'network/fetchNetworkData',
     async (_, { dispatch, rejectWithValue }) => {
         try {
-            // Fetch current connection
-            const connResponse = await fetchWithTimeout('/api/connection/current-connection');
-            const connData = await connResponse.json();
+            // Current connection
+            const connResponse = await fetchWithTimeout('/api/connection/status');
+            const connPayload = await connResponse.json();
 
-            // Fetch saved networks
+            // Saved networks
             const networksResponse = await fetchWithTimeout('/api/connection/saved-networks');
-            const networksData = await networksResponse.json();
+            const networksPayload = await networksResponse.json();
 
-            if (connData.success && networksData.success) {
+            if (connPayload.success && networksPayload.success) {
                 return {
-                    currentConnection: connData.connection,
-                    savedNetworks: networksData.networks
+                    currentConnection: connPayload.data.connection_name,
+                    savedNetworks: networksPayload.data.networks
                 };
             } else {
                 return rejectWithValue('Failed to fetch network data');
@@ -138,50 +137,6 @@ export const forgetNetwork = createAsyncThunk(
     }
 );
 
-export const renameNetwork = createAsyncThunk(
-    'network/renameNetwork',
-    async (
-        { oldName, newName }: { oldName: string; newName: string },
-        { dispatch, rejectWithValue }
-    ) => {
-        const loadingSnackbarId = uuid();
-
-        try {
-            dispatch(
-                addLoadingSnackbar(
-                    loadingSnackbarId,
-                    'Netzwerk umbenennen'
-                )
-            );
-
-            const response = await fetchWithTimeout(getConnectionRenameUrl(), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ oldName, newName }),
-            });
-
-            const data: IServerResponse = await response.json();
-
-            if (data.success) {
-                dispatch(addAlertSnackbar(uuid(), "Netzwerk erfolgreich umbenannt", "success"));
-                dispatch(fetchNetworkData());
-                return { oldName, newName };
-            } else {
-                dispatch(addAlertSnackbar(uuid(), "Umbenennen des Netzwerks fehlgeschlagen", "error"));
-                return rejectWithValue(data.message || 'Failed to rename network');
-            }
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            dispatch(addAlertSnackbar(uuid(), "Umbenennen des Netzwerks fehlgeschlagen", "error"));
-            return rejectWithValue(errorMessage);
-        } finally {
-            dispatch(removeLoadingSnackbar(loadingSnackbarId));
-        }
-    }
-);
-
 // Slice
 export const networkSlice = createSlice({
     name: 'network',
@@ -225,19 +180,6 @@ export const networkSlice = createSlice({
             state.loading = false;
         });
         builder.addCase(forgetNetwork.rejected, (state, action) => {
-            state.loading = false;
-            state.error = action.payload as string;
-        });
-
-        // Rename Network
-        builder.addCase(renameNetwork.pending, (state) => {
-            state.loading = true;
-            state.error = null;
-        });
-        builder.addCase(renameNetwork.fulfilled, (state) => {
-            state.loading = false;
-        });
-        builder.addCase(renameNetwork.rejected, (state, action) => {
             state.loading = false;
             state.error = action.payload as string;
         });

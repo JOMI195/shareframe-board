@@ -13,7 +13,6 @@ public:
     [[nodiscard]] nlohmann::json getSavedNetworks() const;
     nlohmann::json connect(const std::string& ssid, const std::string& password) const;
     nlohmann::json forget(const std::string& ssid) const;
-    nlohmann::json rename(const std::string& oldName, const std::string& newName) const;
 
 private:
     [[nodiscard]] bool _isProtected(const std::string& name) const;

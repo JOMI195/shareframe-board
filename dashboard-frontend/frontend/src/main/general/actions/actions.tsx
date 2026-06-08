@@ -16,25 +16,26 @@ export const Actions: React.FC = () => {
     dispatch(openShutdownDialog());
   };
 
-  const secondaryActions: DialogAction[] = [
-    {
-      icon: <PowerSettingsNewIcon />,
-      onClick: handleShutdownDialogOpen,
-      label: 'Herunterfahren',
-      color: 'error',
-    },
-    {
-      icon: <RestartAltIcon />,
-      onClick: handleRestartDialogOpen,
-      label: 'Neustarten',
-      color: 'primary',
-    }
-  ];
+  // Surface shutdown as a labeled extended Fab so the power button reads
+  // "Herunterfahren" (was an icon-only SpeedDial). Restart sits beside it.
+  const shutdownAction: DialogAction = {
+    icon: <PowerSettingsNewIcon />,
+    onClick: handleShutdownDialogOpen,
+    label: 'Herunterfahren',
+    color: 'error',
+  };
+
+  const restartAction: DialogAction = {
+    icon: <RestartAltIcon />,
+    onClick: handleRestartDialogOpen,
+    label: 'Neustarten',
+    color: 'primary',
+  };
 
   return (
     <BottomFloatingActions
-      actionsAdditional={secondaryActions}
-      speedDialIcon={<PowerSettingsNewIcon />}
+      actionPrimary={shutdownAction}
+      actionSecondary={restartAction}
     />
   );
 };

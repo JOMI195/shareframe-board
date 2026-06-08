@@ -3,7 +3,8 @@ import FilterFramesIcon from '@mui/icons-material/FilterFrames';
 import WifiIcon from '@mui/icons-material/Wifi';
 import InfoIcon from '@mui/icons-material/Info';
 import UpdateIcon from '@mui/icons-material/Update';
-import { getHomeUrl, getGeneralSettingsUrl, getNetworkUrl, getUpdatesyUrl } from "../endpoints/app/appEndpoints";
+import ArticleIcon from '@mui/icons-material/Article';
+import { getHomeUrl, getGeneralSettingsUrl, getLogsUrl, getNetworkUrl, getUpdatesyUrl } from "../endpoints/app/appEndpoints";
 
 export const sidebarMenuItems: IAppBarMenuItem[] = [
     {
@@ -22,8 +23,13 @@ export const sidebarMenuItems: IAppBarMenuItem[] = [
         icon: UpdateIcon
     },
     {
-        name: "Gerät",
+        name: "System",
         url: getGeneralSettingsUrl(),
         icon: InfoIcon
+    },
+    {
+        name: "Protokolle",
+        url: getLogsUrl(),
+        icon: ArticleIcon
     },
 ];

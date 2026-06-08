@@ -22,7 +22,8 @@ struct glz::meta<LogConfig>
 {
     using T = LogConfig;
     static constexpr auto value = glz::object(
-        "log_path", &T::logPath
+        "log_path", &T::logPath,
+        "system_log_path", &T::systemLogPath
     );
 };
 

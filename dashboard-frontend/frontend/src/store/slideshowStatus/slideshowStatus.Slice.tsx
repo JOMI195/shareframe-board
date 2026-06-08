@@ -24,14 +24,14 @@ export const checkSlideshowStatusThunk = createAsyncThunk(
     'slideshowStatus/checkStatus',
     async (_, { rejectWithValue }) => {
         try {
-            const response = await fetchWithTimeout('/api/frame/slideshow/is-active');
-            const data = await response.json();
+            const response = await fetchWithTimeout('/api/frame/slideshow/status');
+            const payload = await response.json();
 
-            if (!data.success) {
+            if (!payload.success) {
                 return rejectWithValue('Failed to fetch slideshow status');
             }
 
-            return data.isActive;
+            return payload.data.active;
         } catch (error) {
             return rejectWithValue(
                 error instanceof Error ? error.message : 'Unknown error occurred'

@@ -12,7 +12,6 @@ public:
     ix::HttpResponsePtr handleSavedNetworks(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleConnect(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleForget(const ix::HttpRequestPtr& req) const;
-    ix::HttpResponsePtr handleRename(const ix::HttpRequestPtr& req) const;
 
 private:
     WifiManager& wifi_;

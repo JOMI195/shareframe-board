@@ -156,7 +156,7 @@ const FrameLogs = () => {
                                     value={linesParam}
                                     onChange={handleLinesChange}
                                     InputProps={{ inputProps: { min: 1, max: 5000 } }}
-                                    helperText="Maximum number of log lines to display"
+                                    helperText="Maximale Anzahl anzuzeigender Protokollzeilen"
                                 />
                             </Grid>
                             {timeRange === 'custom' && (
@@ -182,7 +182,7 @@ const FrameLogs = () => {
                         onChange={handleAccordionChange(ServiceType.APPLICATION)}
                     >
                         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Typography>Application Protokolle</Typography>
+                            <Typography>Anwendungsprotokolle</Typography>
                         </AccordionSummary>
                         <AccordionDetails>
                             <LogsContent
@@ -200,7 +200,7 @@ const FrameLogs = () => {
                         onChange={handleAccordionChange(ServiceType.DASHBOARD)}
                     >
                         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Typography>Dashboard Protokolle</Typography>
+                            <Typography>Dashboard-Protokolle</Typography>
                         </AccordionSummary>
                         <AccordionDetails>
                             <LogsContent
@@ -214,29 +214,11 @@ const FrameLogs = () => {
                     </Accordion>
 
                     <Accordion
-                        expanded={expanded === ServiceType.UPDATE}
-                        onChange={handleAccordionChange(ServiceType.UPDATE)}
-                    >
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Typography>Update Protokolle</Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <LogsContent
-                                serviceType={ServiceType.UPDATE}
-                                loading={loading}
-                                error={error}
-                                logs={expanded === ServiceType.UPDATE ? logsData : null}
-                                onRefresh={refreshCurrentLogs}
-                            />
-                        </AccordionDetails>
-                    </Accordion>
-
-                    <Accordion
                         expanded={expanded === ServiceType.HEARTBEAT}
                         onChange={handleAccordionChange(ServiceType.HEARTBEAT)}
                     >
                         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Typography>Heartbeat Protokolle</Typography>
+                            <Typography>Heartbeat-Protokolle</Typography>
                         </AccordionSummary>
                         <AccordionDetails>
                             <LogsContent
@@ -244,6 +226,24 @@ const FrameLogs = () => {
                                 loading={loading}
                                 error={error}
                                 logs={expanded === ServiceType.HEARTBEAT ? logsData : null}
+                                onRefresh={refreshCurrentLogs}
+                            />
+                        </AccordionDetails>
+                    </Accordion>
+
+                    <Accordion
+                        expanded={expanded === ServiceType.SYSTEM}
+                        onChange={handleAccordionChange(ServiceType.SYSTEM)}
+                    >
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Typography>Systemprotokolle</Typography>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                            <LogsContent
+                                serviceType={ServiceType.SYSTEM}
+                                loading={loading}
+                                error={error}
+                                logs={expanded === ServiceType.SYSTEM ? logsData : null}
                                 onRefresh={refreshCurrentLogs}
                             />
                         </AccordionDetails>

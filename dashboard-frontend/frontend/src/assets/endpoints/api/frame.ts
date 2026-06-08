@@ -1,37 +1,28 @@
 const apiBaseUrl = () => "/api";
 const frameBaseUrl = () => `${apiBaseUrl()}/frame`;
-//const connectionBaseUrl = () => `${apiBaseUrl()}/connection`;
+const systemBaseUrl = () => `${apiBaseUrl()}/system`;
 
-
-// Auth
-
-
-// Connection
+// Connection (WiFi)
 export const getConnectionBaseUrl = () => `${apiBaseUrl()}/connection`;
-
+export const getConnectionStatusUrl = () => `${getConnectionBaseUrl()}/status`;
+export const getConnectionSavedNetworksUrl = () => `${getConnectionBaseUrl()}/saved-networks`;
+export const getConnectionConnectUrl = () => `${getConnectionBaseUrl()}/connect`;
 export const getConnectionForgetUrl = () => `${getConnectionBaseUrl()}/forget`;
-export const getConnectionRenameUrl = () => `${getConnectionBaseUrl()}/rename`;
 
-// Slideshow
+// Frame / slideshow
 export const getSlideshowUrl = () => `${frameBaseUrl()}/slideshow`;
-
+export const getSlideshowStatusUrl = () => `${frameBaseUrl()}/slideshow/status`;
+export const getSlideshowIntervalUrl = () => `${frameBaseUrl()}/slideshow/interval`;
+export const getSkipSlideshowImageUrl = () => `${frameBaseUrl()}/slideshow/skip`;
 export const getClearDisplayUrl = () => `${frameBaseUrl()}/clear`;
 
-export const getSlideshowIsActiveUrl = () => `${frameBaseUrl()}/slideshow/is-active`;
-
-export const getSkipSlideshowImageUrl = () => `${frameBaseUrl()}/slideshow/skip-slideshow-image`;
-
-export const getDisplayImagesLoopIntervalUrl = () => `${frameBaseUrl()}/slideshow/display-images-loop-interval`;
-
-// Updates
-export const getLatestReleaseUrl = () => `${frameBaseUrl()}/updates/latest`;
-
-export const getPerformUpdateUrl = () => `${frameBaseUrl()}/updates/perform-update`;
-
-// PiPower
-export const getRestartPiUrl = () => `${apiBaseUrl()}/pi/restart`;
-
-export const getShutdownPiUrl = () => `${apiBaseUrl()}/pi/shutdown`;
-
-// Logs
-export const getFrameLogsUrl = () => `${apiBaseUrl()}/logs`;
+// System
+export const getSystemInfoUrl = () => `${systemBaseUrl()}/info`;
+export const getSystemHealthUrl = () => `${systemBaseUrl()}/health`;
+export const getRestartPiUrl = () => `${systemBaseUrl()}/restart`;
+export const getShutdownPiUrl = () => `${systemBaseUrl()}/shutdown`;
+export const getFrameLogsUrl = () => `${systemBaseUrl()}/logs`;
+export const getLatestReleaseUrl = () => `${systemBaseUrl()}/updates/latest`;
+// NOTE: no backend route yet (RAUC install flow is out of scope). The
+// "perform update" button is disabled, so this is never actually called.
+export const getPerformUpdateUrl = () => `${systemBaseUrl()}/updates/perform-update`;

@@ -56,18 +56,3 @@ ix::HttpResponsePtr WifiHandlers::handleForget(const ix::HttpRequestPtr& req) co
 
     return wifiResult(wifi_.forget(ssid));
 }
-
-ix::HttpResponsePtr WifiHandlers::handleRename(const ix::HttpRequestPtr& req) const
-{
-    nlohmann::json body;
-    try { body = nlohmann::json::parse(req->body); }
-    catch (...) { return errorResponse(400, "Bad Request", "Invalid JSON"); }
-
-    auto oldName = body.value("old_name", "");
-    auto newName = body.value("new_name", "");
-
-    if (!Validation::isValidNetworkName(oldName) || !Validation::isValidNetworkName(newName))
-        return errorResponse(400, "Bad Request", "Invalid network name");
-
-    return wifiResult(wifi_.rename(oldName, newName));
-}

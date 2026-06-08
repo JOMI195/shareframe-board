@@ -1,5 +1,4 @@
 import ShareframeDialog from "@/common/components/shareframeDialog";
-import { usePiConnection } from "@/context/piConnection/piConnectionContext";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { closeUpdatesConfirmUpdateDialog, getDialogs } from "@/store/dialogs/dialogs.Slice";
 import { performUpdate } from "@/store/updates/updates.Slice";
@@ -9,7 +8,6 @@ import { useNavigate } from "react-router";
 const Dialogs = () => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
-    const { isConnected } = usePiConnection();
 
     const isUpdateConfirmDialogOpen = useAppSelector(getDialogs).updates.confirmUpdate.open;
 
@@ -27,9 +25,14 @@ const Dialogs = () => {
                 onConfirm={handleConfirmUpdate}
                 confirmText="Installieren"
                 cancelText="Abbrechen"
-                confirmDisabled={!isConnected}
+                // Perform-update has no backend route yet (RAUC install flow is
+                // handled out-of-band), so installation is disabled here.
+                confirmDisabled={true}
             >
                 <Stack spacing={2}>
+                    <Typography variant="body1" color="text.secondary">
+                        Die Installation von Updates über das Dashboard ist derzeit nicht verfügbar.
+                    </Typography>
                     <Typography variant="body1" gutterBottom>
                         Möchtest du das neue Update wirklich installieren?
                     </Typography>

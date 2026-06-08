@@ -15,7 +15,7 @@ DashboardServer::DashboardServer(AppConfig& cfg, IpcClient& ipc,
       logger_(spdlog::default_logger()->clone("DashboardServer")),
       wifiHandlers_(wifi),
       frameHandlers_(ipc, cfg),
-      systemHandlers_(cfg, http, authTokenManager)
+      systemHandlers_(cfg, http, authTokenManager, wifi)
 {
     _initRoutes();
 }
@@ -69,7 +69,6 @@ void DashboardServer::_initRoutes()
         {"GET",  "/api/connection/saved-networks", [this](auto& req, auto&) { return wifiHandlers_.handleSavedNetworks(req); }},
         {"POST", "/api/connection/connect",        [this](auto& req, auto&) { return wifiHandlers_.handleConnect(req); }},
         {"POST", "/api/connection/forget",         [this](auto& req, auto&) { return wifiHandlers_.handleForget(req); }},
-        {"POST", "/api/connection/rename",         [this](auto& req, auto&) { return wifiHandlers_.handleRename(req); }},
 
         // System
         {"GET",  "/api/system/info",             [this](auto& req, auto&) { return systemHandlers_.handleInfo(req); }},
@@ -171,7 +170,13 @@ ix::HttpResponsePtr DashboardServer::_handleLogin(const ix::HttpRequestPtr& req)
     respHeaders["Set-Cookie"] = "session=" + sessionId
         + "; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800";
 
-    nlohmann::json respBody = {{"message", "Login erfolgreich"}};
+    // Same {success,message,data} envelope as jsonResponse, but built by hand
+    // because we also need to attach the Set-Cookie header.
+    nlohmann::json respBody = {
+        {"success", true},
+        {"message", "Login erfolgreich"},
+        {"data", nullptr},
+    };
     return std::make_shared<ix::HttpResponse>(
         200, "OK", ix::HttpErrorCode::Ok, respHeaders, respBody.dump());
 }

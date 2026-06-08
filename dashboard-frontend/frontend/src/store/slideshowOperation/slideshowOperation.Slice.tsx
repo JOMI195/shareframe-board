@@ -5,7 +5,7 @@ import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '../
 import { fetchWithTimeout } from '@/common/utils/fetch';
 import { IServerResponse } from '@/types';
 import { addTimer, resetTimer, startTimer } from '../timers/timers.Slice';
-import { getClearDisplayUrl, getDisplayImagesLoopIntervalUrl, getSkipSlideshowImageUrl, getSlideshowIsActiveUrl, getSlideshowUrl } from '@/assets/endpoints/api/frame';
+import { getClearDisplayUrl, getSlideshowIntervalUrl, getSkipSlideshowImageUrl, getSlideshowStatusUrl, getSlideshowUrl } from '@/assets/endpoints/api/frame';
 
 
 const MAX_OPERATION_WAIT_TIME = 10 * 60 * 1000; // 10 minutes
@@ -102,12 +102,13 @@ export const fetchDisplayImagesLoopInterval = () => async (
             isFetchingInterval: true,
         }));
 
-        const response = await fetchWithTimeout(getDisplayImagesLoopIntervalUrl());
-        const payload: IServerResponse & { interval_seconds: number } = await response.json();
+        // The interval is part of the slideshow status payload on this backend.
+        const response = await fetchWithTimeout(getSlideshowStatusUrl());
+        const payload: IServerResponse & { data: { interval_seconds: number } } = await response.json();
 
-        if (payload.success && payload.interval_seconds !== undefined) {
+        if (payload.success && payload.data?.interval_seconds !== undefined) {
             // Convert seconds to minutes for consistency
-            const intervalMins = Math.round(payload.interval_seconds / 60);
+            const intervalMins = Math.round(payload.data.interval_seconds / 60);
             dispatch(slideshowOperationSlice.actions.setDisplayRefreshInterval(intervalMins));
         } else {
             throw new Error('Failed to fetch display interval');
@@ -161,7 +162,7 @@ export const updateDisplayImagesLoopInterval = (intervalMins: number) => async (
         // Convert minutes to seconds for the API
         const intervalSeconds = intervalMins * 60;
 
-        const response = await fetchWithTimeout(getDisplayImagesLoopIntervalUrl(), {
+        const response = await fetchWithTimeout(getSlideshowIntervalUrl(), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -388,14 +389,15 @@ export const toggleSlideshowThunk = () => async (
         ));
 
         // Fetch current slideshow status
-        const statusResponse = await fetchWithTimeout(getSlideshowIsActiveUrl());
+        const statusResponse = await fetchWithTimeout(getSlideshowStatusUrl());
         const statusData = await statusResponse.json();
 
         if (!statusData.success) {
             throw new Error('Aktueller Status konnte nicht abgerufen werden');
         }
 
-        const action = statusData.isActive ? 'stop' : 'start';
+        const wasActive = statusData.data.active;
+        const action = wasActive ? 'stop' : 'start';
 
         const toggleResponse = await fetchWithTimeout(getSlideshowUrl(), {
             method: 'POST',
@@ -414,11 +416,11 @@ export const toggleSlideshowThunk = () => async (
 
             while (Date.now() - startTime < MAX_OPERATION_WAIT_TIME) {
                 try {
-                    const statusCheck = await fetchWithTimeout(getSlideshowIsActiveUrl());
+                    const statusCheck = await fetchWithTimeout(getSlideshowStatusUrl());
                     const statusCheckData = await statusCheck.json();
 
                     if (statusCheckData.success &&
-                        statusCheckData.isActive !== statusData.isActive) {
+                        statusCheckData.data.active !== wasActive) {
 
                         // Reset toggle status
                         dispatch(slideshowOperationSlice.actions.setToggleStatus({

@@ -2,6 +2,14 @@ import { ServiceType } from "@/types";
 import { Box, Card, CardContent, CircularProgress, Divider, IconButton, Tooltip, Typography } from "@mui/material";
 import RefreshIcon from '@mui/icons-material/Refresh';
 
+// German display names for the backend's short service ids.
+const SERVICE_LABELS: Record<string, string> = {
+    application: 'Anwendung',
+    dashboard: 'Dashboard',
+    heartbeat: 'Heartbeat',
+    system: 'System',
+};
+
 export interface LogsContentProps {
     serviceType: ServiceType;
     loading: boolean;
@@ -34,7 +42,7 @@ const LogsContent: React.FC<LogsContentProps> = ({ loading, error, logs, onRefre
             <Box mb={2} display="flex" justifyContent="space-between" alignItems="center">
                 <Box>
                     <Typography variant="body2">
-                        Service: <strong>{logs.service}</strong>
+                        Dienst: <strong>{SERVICE_LABELS[logs.service] ?? logs.service}</strong>
                     </Typography>
                     <Typography variant="body2">
                         Zeitraum: <strong>{logs.period}</strong>

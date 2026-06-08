@@ -29,62 +29,64 @@ std::string WifiManager::_aliasIfProtected(const std::string& name) const
 
 nlohmann::json WifiManager::getCurrentConnection() const
 {
-    auto result = Subprocess::run(
-        {"nmcli", "-t", "-f", "NAME,DEVICE", "connection", "show", "--active"}, 10);
+    // `shareframe-wifi status` wraps `wpa_cli status`: parse ssid= + wpa_state=.
+    auto result = Subprocess::run({"shareframe-wifi", "status"}, 10);
 
     if (result.exitCode != 0)
     {
-        logger_->error("nmcli failed: {}", result.stdErr);
-        return {{"error", "Failed to query connections"}};
+        logger_->error("shareframe-wifi status failed: {}", result.stdErr);
+        return {{"error", "Failed to query connection"}};
     }
 
-    // Parse terse output: "NAME:DEVICE\n"
+    std::string ssid;
+    bool completed = false;
     std::istringstream stream(result.stdOut);
     std::string line;
     while (std::getline(stream, line))
     {
-        auto sep = line.find(':');
-        if (sep == std::string::npos) continue;
-
-        std::string name = line.substr(0, sep);
-        std::string device = line.substr(sep + 1);
-
-        if (device == "wlan0")
-        {
-            return {
-                {"connection_name", _aliasIfProtected(name)},
-                {"is_protected", _isProtected(name)}
-            };
-        }
+        if (line.rfind("ssid=", 0) == 0)
+            ssid = line.substr(5);
+        else if (line.rfind("wpa_state=", 0) == 0)
+            completed = (line.substr(10) == "COMPLETED");
     }
 
-    return {{"connection_name", ""}, {"is_protected", false}};
+    if (!completed || ssid.empty())
+        return {{"connection_name", ""}, {"is_protected", false}};
+
+    return {
+        {"connection_name", _aliasIfProtected(ssid)},
+        {"is_protected", _isProtected(ssid)}
+    };
 }
 
 nlohmann::json WifiManager::getSavedNetworks() const
 {
-    auto result = Subprocess::run(
-        {"nmcli", "-t", "-f", "TYPE,NAME", "connection", "show"}, 10);
+    // `shareframe-wifi list` wraps `wpa_cli list_networks`: a header row then
+    // tab-separated "id<TAB>ssid<TAB>bssid<TAB>flags" rows.
+    auto result = Subprocess::run({"shareframe-wifi", "list"}, 10);
 
     if (result.exitCode != 0)
     {
-        logger_->error("nmcli failed: {}", result.stdErr);
+        logger_->error("shareframe-wifi list failed: {}", result.stdErr);
         return {{"error", "Failed to query saved networks"}};
     }
 
     std::vector<std::string> networks;
     std::istringstream stream(result.stdOut);
     std::string line;
+    bool header = true;
     while (std::getline(stream, line))
     {
-        auto sep = line.find(':');
-        if (sep == std::string::npos) continue;
+        if (header) { header = false; continue; }  // drop "network id / ssid / ..."
 
-        std::string type = line.substr(0, sep);
-        std::string name = line.substr(sep + 1);
+        auto t1 = line.find('\t');
+        if (t1 == std::string::npos) continue;
+        auto t2 = line.find('\t', t1 + 1);
+        std::string ssid = line.substr(
+            t1 + 1, (t2 == std::string::npos ? line.size() : t2) - (t1 + 1));
 
-        if (type == "802-11-wireless" && !_isProtected(name))
-            networks.push_back(name);
+        if (ssid.empty() || _isProtected(ssid)) continue;
+        networks.push_back(ssid);
     }
 
     return {{"networks", networks}};
@@ -95,32 +97,17 @@ nlohmann::json WifiManager::connect(const std::string& ssid, const std::string& 
     if (_isProtected(ssid))
         return {{"error", "Cannot modify protected network"}};
 
-    auto result = Subprocess::run(
-        {"sudo", "nmcli", "connection", "add",
-         "type", "wifi",
-         "con-name", ssid,
-         "ifname", "wlan0",
-         "ssid", ssid,
-         "wifi-sec.key-mgmt", "wpa-psk",
-         "wifi-sec.psk", password}, 15);
+    // `add` hashes the PSK, enables the network and saves the config; wpa
+    // associates on its own afterwards.
+    auto result = Subprocess::run({"shareframe-wifi", "add", ssid, password}, 20);
 
     if (result.exitCode != 0)
     {
-        logger_->error("nmcli connect failed: {}", result.stdErr);
-        return {{"error", "Failed to add WiFi connection"}};
+        logger_->error("shareframe-wifi add failed: {}", result.stdErr);
+        return {{"error", "Failed to add WiFi network"}};
     }
 
-    // Activate the new connection
-    auto activate = Subprocess::run(
-        {"sudo", "nmcli", "connection", "up", ssid}, 30);
-
-    if (activate.exitCode != 0)
-    {
-        logger_->error("nmcli activate failed: {}", activate.stdErr);
-        return {{"error", "Connection added but activation failed"}};
-    }
-
-    logger_->info("Connected to WiFi: {}", ssid);
+    logger_->info("Added WiFi network: {}", ssid);
     return {{"message", "Connected to " + ssid}};
 }
 
@@ -129,38 +116,19 @@ nlohmann::json WifiManager::forget(const std::string& ssid) const
     if (_isProtected(ssid))
         return {{"error", "Cannot delete protected network"}};
 
-    // Check if this is the active connection
+    // Refuse to drop the network we're currently associated with.
     auto current = getCurrentConnection();
     if (current.value("connection_name", "") == ssid)
         return {{"error", "Cannot delete active connection"}};
 
-    auto result = Subprocess::run(
-        {"sudo", "nmcli", "connection", "delete", ssid}, 10);
+    auto result = Subprocess::run({"shareframe-wifi", "del", ssid}, 10);
 
     if (result.exitCode != 0)
     {
-        logger_->error("nmcli delete failed: {}", result.stdErr);
-        return {{"error", "Failed to delete connection"}};
+        logger_->error("shareframe-wifi del failed: {}", result.stdErr);
+        return {{"error", "Failed to delete network"}};
     }
 
     logger_->info("Forgot WiFi: {}", ssid);
     return {{"message", "Connection deleted"}};
-}
-
-nlohmann::json WifiManager::rename(const std::string& oldName, const std::string& newName) const
-{
-    if (_isProtected(oldName) || _isProtected(newName))
-        return {{"error", "Cannot rename protected network"}};
-
-    auto result = Subprocess::run(
-        {"sudo", "nmcli", "connection", "modify", oldName, "connection.id", newName}, 10);
-
-    if (result.exitCode != 0)
-    {
-        logger_->error("nmcli rename failed: {}", result.stdErr);
-        return {{"error", "Failed to rename connection"}};
-    }
-
-    logger_->info("Renamed WiFi: {} -> {}", oldName, newName);
-    return {{"message", "Connection renamed"}};
 }
