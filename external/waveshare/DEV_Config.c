@@ -170,14 +170,13 @@ void DEV_GPIO_Mode(UWORD Pin, UWORD Mode)
 		pinMode(Pin, OUTPUT);
 		// Debug (" %d OUT \r\n",Pin);
 	}
-#elif  USE_LGPIO_LIB  
-    if(Mode == 0 || Mode == LG_SET_INPUT){
-        lgGpioClaimInput(GPIO_Handle,LFLAGS,Pin);
-        // printf("IN Pin = %d\r\n",Pin);
-    }else{
-        lgGpioClaimOutput(GPIO_Handle, LFLAGS, Pin, LG_LOW);
-        // printf("OUT Pin = %d\r\n",Pin);
-    }
+#elif  USE_LGPIO_LIB
+    int rc = (Mode == 0 || Mode == LG_SET_INPUT)
+        ? lgGpioClaimInput(GPIO_Handle, LFLAGS, Pin)
+        : lgGpioClaimOutput(GPIO_Handle, LFLAGS, Pin, LG_LOW);
+    if (rc < 0)
+        printf("lgGpioClaim pin %d (%s) FAILED: %d (%s)\n",
+               Pin, (Mode ? "out" : "in"), rc, lguErrorText(rc));
 #elif USE_DEV_LIB
     if(Mode == 0 || Mode == GPIOD_IN) {
         GPIOD_Direction(Pin, GPIOD_IN);
@@ -230,8 +229,30 @@ void DEV_Delay_ms(UDOUBLE xms)
 static int DEV_Equipment_Testing(void)
 {
 	FILE *fp;
-	char issue_str[64];
 
+	printf("Current environment: ");
+#ifdef RPI
+	char model[64];
+	fp = fopen("/proc/device-tree/model", "r");
+	if (fp != NULL && fread(model, 1, sizeof(model) - 1, fp) > 0) {
+		model[sizeof(model) - 1] = '\0';
+		fclose(fp);
+		if (strstr(model, "Raspberry Pi") != NULL) {
+			printf("%s\n", model);
+			return 0;
+		}
+		printf("%s (not a Raspberry Pi model string)\n", model);
+	} else {
+		if (fp != NULL)
+			fclose(fp);
+		printf("unknown (/proc/device-tree/model unavailable)\n");
+	}
+	/* Built for RPI: detection is advisory only — proceed and let the
+	 * GPIO/SPI backend init below report any real hardware failure. */
+	return 0;
+#endif
+#ifdef JETSON
+	char issue_str[64];
 	fp = fopen("/etc/issue", "r");
 	if (fp == NULL) {
 		Debug("Unable to open /etc/issue");
@@ -239,29 +260,12 @@ static int DEV_Equipment_Testing(void)
 	}
 	if (fread(issue_str, 1, sizeof(issue_str), fp) <= 0) {
 		Debug("Unable to read from /etc/issue");
+		fclose(fp);
 		return -1;
 	}
-	issue_str[sizeof(issue_str)-1] = '\0';
+	issue_str[sizeof(issue_str) - 1] = '\0';
 	fclose(fp);
 
-	printf("Current environment: ");
-#ifdef RPI
-	char systems[][9] = {"Raspbian", "Debian", "NixOS"};
-	int detected = 0;
-	for(int i=0; i<3; i++) {
-		if (strstr(issue_str, systems[i]) != NULL) {
-			printf("%s\n", systems[i]);
-			detected = 1;
-		}
-	}
-	if (!detected) {
-		printf("not recognized\n");
-		printf("Built for Raspberry Pi, but unable to detect environment.\n");
-		printf("Perhaps you meant to 'make JETSON' instead?\n");
-		return -1;
-	}
-#endif
-#ifdef JETSON
 	char system[] = {"Ubuntu"};
 	if (strstr(issue_str, system) != NULL) {
 		printf("%s\n", system);
@@ -425,8 +429,8 @@ UBYTE DEV_Module_Init(void)
         GPIO_Handle = lgGpiochipOpen(4);
         if (GPIO_Handle < 0)
         {
-            Debug( "gpiochip4 Export Failed\n");
-            return -1;
+            printf("lgGpiochipOpen(4) FAILED: %d (%s)\n", GPIO_Handle, lguErrorText(GPIO_Handle));
+            return 1;
         }
     }
     else
@@ -434,11 +438,20 @@ UBYTE DEV_Module_Init(void)
         GPIO_Handle = lgGpiochipOpen(0);
         if (GPIO_Handle < 0)
         {
-            Debug( "gpiochip0 Export Failed\n");
-            return -1;
+            printf("lgGpiochipOpen(0) FAILED: %d (%s)\n", GPIO_Handle, lguErrorText(GPIO_Handle));
+            return 1;
         }
     }
+    printf("lgGpiochipOpen ok: handle=%d\n", GPIO_Handle);
+
     SPI_Handle = lgSpiOpen(0, 0, 10000000, 0);
+    if (SPI_Handle < 0)
+    {
+        printf("lgSpiOpen(/dev/spidev0.0) FAILED: %d (%s)\n", SPI_Handle, lguErrorText(SPI_Handle));
+        return 1;
+    }
+    printf("lgSpiOpen(/dev/spidev0.0) ok: handle=%d\n", SPI_Handle);
+
     DEV_GPIO_Init();
 #elif USE_DEV_LIB
 	printf("Write and read /dev/spidev0.0 \r\n");
