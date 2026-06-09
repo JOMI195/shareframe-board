@@ -116,6 +116,7 @@ set(COMMON_SOURCES
         src/repository/TokenRepository.cpp
         src/repository/ImageRepository.cpp
         src/repository/SettingsRepository.cpp
+        src/repository/DisplayMetricsRepository.cpp
         src/app/Bootstrap.cpp
         src/util/Subprocess.cpp
         src/task/Task.cpp

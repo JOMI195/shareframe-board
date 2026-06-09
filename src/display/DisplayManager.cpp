@@ -11,8 +11,17 @@ extern "C" {
 }
 #endif
 
-DisplayManager::DisplayManager(const AppConfig& cfg)
-    : _cfg(cfg), _logger(spdlog::default_logger()->clone("Display"))
+namespace
+{
+int64_t nowUnix()
+{
+    return std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+}
+} // namespace
+
+DisplayManager::DisplayManager(const AppConfig& cfg, DisplayMetricsRepository& metrics)
+    : _cfg(cfg), _metrics(metrics), _logger(spdlog::default_logger()->clone("Display"))
 {
     _lastDisplayTime = std::chrono::steady_clock::now()
         - std::chrono::seconds(_cfg.display.minRefreshSecs);
@@ -88,9 +97,22 @@ void DisplayManager::_clearHw()
     _lastDisplayTime = std::chrono::steady_clock::now();
     _hwSleep();
     if (rc != 0)
+    {
+        _metrics.increment("epd_refresh_fail_total");
+        ++_consecutiveFailures;
         _logger->error("Display clear FAILED (BUSY timeout, {} ms)", ms);
+    }
     else
+    {
+        _metrics.increment("epd_refresh_total");
+        _metrics.increment("epd_clear_total");
+        _metrics.increment("epd_busy_ms_total", ms);
+        _metrics.set("epd_last_refresh_ms", ms);
+        _metrics.set("epd_last_refresh_at", nowUnix());
+        _metrics.setIfUnset("epd_first_use_at", nowUnix());
+        _consecutiveFailures = 0;
         _logger->info("Display cleared (panel refresh {} ms)", ms);
+    }
 #else
     _logger->warn("EPD hardware not available (built without ENABLE_EPD_HARDWARE)");
 #endif
@@ -129,9 +151,18 @@ bool DisplayManager::_displayImageHw(const std::filesystem::path& imagePath)
     _hwSleep();
     if (rc != 0)
     {
+        _metrics.increment("epd_refresh_fail_total");
+        ++_consecutiveFailures;
         _logger->error("Panel refresh FAILED (BUSY timeout, {} ms): {}", refreshMs, imagePath.string());
         return false;
     }
+    _metrics.increment("epd_refresh_total");
+    _metrics.increment("epd_image_refresh_total");
+    _metrics.increment("epd_busy_ms_total", refreshMs);
+    _metrics.set("epd_last_refresh_ms", refreshMs);
+    _metrics.set("epd_last_refresh_at", nowUnix());
+    _metrics.setIfUnset("epd_first_use_at", nowUnix());
+    _consecutiveFailures = 0;
     _logger->info("Displayed image: {} (panel refresh {} ms)", imagePath.string(), refreshMs);
     return true;
 #else
@@ -160,6 +191,33 @@ void DisplayManager::_hwSleep()
 #endif
 }
 
+nlohmann::json DisplayManager::healthSnapshot() const
+{
+    // Deliberately does NOT take _hwMutex: that lock is held for the whole
+    // multi-second init->refresh->sleep cycle, and the single-threaded REP
+    // server must keep answering queries during a refresh. Metric reads are
+    // serialized by the repository's own mutex; the failure streak is atomic.
+    const auto metrics = _metrics.all();
+    const int failures = _consecutiveFailures.load(std::memory_order_relaxed);
+
+    nlohmann::json j;
+    for (const auto& [key, value] : metrics)
+        j[key] = value;
+
+    const auto it = metrics.find("epd_refresh_total");
+    const int64_t refreshes = (it != metrics.end()) ? it->second : 0;
+
+    // No panel sensor exists: health is derived purely from the in-memory
+    // consecutive-failure streak (a sustained streak means dead SPI/wiring/panel).
+    j["consecutive_failures"] = failures;
+    j["rated_refreshes"] = RATED_REFRESHES;
+    j["wear_percent"] = static_cast<double>(refreshes) / RATED_REFRESHES * 100.0;
+    j["health"] = (failures == 0)  ? "ok"
+                  : (failures < 3) ? "degraded"
+                                   : "failed";
+    return j;
+}
+
 bool DisplayManager::_hwInit()
 {
 #ifdef EPD_HARDWARE_ENABLED
@@ -167,6 +225,8 @@ bool DisplayManager::_hwInit()
     {
         if (DEV_Module_Init() != 0)
         {
+            _metrics.increment("epd_poweron_fail_total");
+            ++_consecutiveFailures;
             _logger->error("DEV_Module_Init failed");
             return false;
         }
@@ -175,11 +235,15 @@ bool DisplayManager::_hwInit()
     const auto t0 = std::chrono::steady_clock::now();
     if (EPD_7IN5_V2_Init() != 0)
     {
+        _metrics.increment("epd_poweron_fail_total");
+        ++_consecutiveFailures;
         _logger->error("Panel init failed (power-on BUSY timeout)");
         return false;
     }
     const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - t0).count();
+    _metrics.increment("epd_poweron_total");
+    _consecutiveFailures = 0;
     _logger->debug("Panel init done (reset + power-on, {} ms)", ms);
     return true;
 #else

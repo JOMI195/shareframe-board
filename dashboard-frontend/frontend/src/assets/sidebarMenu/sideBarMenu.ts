@@ -9,9 +9,11 @@ import TvIcon from '@mui/icons-material/Tv';
 import SettingsEthernetIcon from '@mui/icons-material/SettingsEthernet';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
+import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 import {
     getHomeUrl,
     getGeneralSettingsUrl,
+    getDisplayHealthUrl,
     getLogsUrl,
     getNetworkUrl,
     getUpdatesyUrl,
@@ -40,6 +42,7 @@ export const sidebarSections: ISidebarSection[] = [
             { name: "Dashboard", url: getServiceDetailUrl("dashboard"), icon: DashboardIcon },
             { name: "Heartbeat", url: getServiceDetailUrl("heartbeat"), icon: MonitorHeartIcon },
             { name: "System", url: getGeneralSettingsUrl(), icon: InfoIcon },
+            { name: "Display-Zustand", url: getDisplayHealthUrl(), icon: HealthAndSafetyIcon },
             { name: "Protokolle", url: getLogsUrl(), icon: ArticleIcon },
         ],
     },

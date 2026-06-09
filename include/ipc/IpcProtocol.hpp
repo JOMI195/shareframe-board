@@ -13,6 +13,7 @@ enum class IpcMessageType
     GetSlideshowActive,
     GetSecondsUntilNext,
     GetHealth,
+    GetDisplayStats,
 };
 
 struct IpcMessage
@@ -33,6 +34,7 @@ inline std::string ipcMessageTypeToString(IpcMessageType t)
     case IpcMessageType::GetSlideshowActive:      return "get_slideshow_active";
     case IpcMessageType::GetSecondsUntilNext:     return "get_seconds_until_next";
     case IpcMessageType::GetHealth:               return "get_health";
+    case IpcMessageType::GetDisplayStats:         return "get_display_stats";
     }
     return "unknown";
 }
@@ -47,6 +49,7 @@ inline std::optional<IpcMessageType> ipcMessageTypeFromString(const std::string&
     if (s == "get_slideshow_active")    return IpcMessageType::GetSlideshowActive;
     if (s == "get_seconds_until_next")  return IpcMessageType::GetSecondsUntilNext;
     if (s == "get_health")              return IpcMessageType::GetHealth;
+    if (s == "get_display_stats")       return IpcMessageType::GetDisplayStats;
     return std::nullopt;
 }
 

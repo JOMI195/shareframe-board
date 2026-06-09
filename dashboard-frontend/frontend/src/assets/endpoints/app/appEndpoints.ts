@@ -6,6 +6,8 @@ export const getUpdatesyUrl = () => "updates/";
 
 export const getGeneralSettingsUrl = () => "general/";
 
+export const getDisplayHealthUrl = () => "display-health/";
+
 export const getLogsUrl = () => "logs/";
 
 export const getServicesOverviewUrl = () => "services/";

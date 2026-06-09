@@ -1,11 +1,12 @@
 import MainLayout from '@/common/components/layout/layout';
 import Snackbars from '@/common/components/snackbars/snackbars';
 import ProtectedRoute from '@/common/components/protectedRoute';
-import { getHomeUrl, getGeneralSettingsUrl, getLogsUrl, getNetworkUrl, getUpdatesyUrl, getServicesOverviewUrl, getServiceDetailUrl } from '@/assets/endpoints/app/appEndpoints';
+import { getHomeUrl, getGeneralSettingsUrl, getDisplayHealthUrl, getLogsUrl, getNetworkUrl, getUpdatesyUrl, getServicesOverviewUrl, getServiceDetailUrl } from '@/assets/endpoints/app/appEndpoints';
 import FrameActions from '@/main/frame/frameActions';
 import Updates from '@/main/updates/updates';
 import Network from '@/main/network/network';
 import General from '@/main/general/general';
+import DisplayHealthPage from '@/main/displayHealth/displayHealth';
 import FrameLogs from '@/main/monitoring/frameLogs';
 import ServicesOverview from '@/main/services/servicesOverview';
 import ServiceDetail from '@/main/services/serviceDetail';
@@ -72,6 +73,10 @@ const Routing = createBrowserRouter([
                   {
                     path: getGeneralSettingsUrl(),
                     element: <General />
+                  },
+                  {
+                    path: getDisplayHealthUrl(),
+                    element: <DisplayHealthPage />
                   },
                   {
                     path: getLogsUrl(),

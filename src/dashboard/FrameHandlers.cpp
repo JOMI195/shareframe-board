@@ -91,3 +91,14 @@ ix::HttpResponsePtr FrameHandlers::handleClear(const ix::HttpRequestPtr& /*req*/
     }
     return jsonResponse(200, "OK", nlohmann::json::object());
 }
+
+ix::HttpResponsePtr FrameHandlers::handleDisplayStats(const ix::HttpRequestPtr& /*req*/) const
+{
+    auto result = ipc_.sendAndReceive(IpcMessage{IpcMessageType::GetDisplayStats, {}});
+    if (!result)
+    {
+        logger_->error("Failed to query display stats via IPC");
+        return errorResponse(500, "Internal Server Error", "Service unavailable");
+    }
+    return jsonResponse(200, "OK", *result);
+}

@@ -6,6 +6,7 @@ import timersReducer from "./timers/timers.Slice";
 import networkReducer from "./network/network.Slice";
 import authReducer from "./auth/auth.Slice";
 import frameInfoReducer from "./frameInfo/frameInfo.Slice";
+import displayStatsReducer from "./displayStats/displayStats.Slice";
 import updatesReducer from "./updates/updates.Slice";
 import loadingWallReducer from "./loadingWall/loadingWall.Slice";
 import piPowerReducer from "./piPower/piPower.Slice";
@@ -22,6 +23,7 @@ const rootReducer = combineReducers({
   network: networkReducer,
   auth: authReducer,
   frameInfo: frameInfoReducer,
+  displayStats: displayStatsReducer,
   updates: updatesReducer,
   loadingWall: loadingWallReducer,
   piPower: piPowerReducer,

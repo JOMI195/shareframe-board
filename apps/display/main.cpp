@@ -7,6 +7,7 @@
 #include "ipc/EventTopics.hpp"
 #include "ipc/IpcProtocol.hpp"
 #include "ipc/NngRepServer.hpp"
+#include "repository/DisplayMetricsRepository.hpp"
 #include "repository/ImageRepository.hpp"
 #include "repository/SettingsRepository.hpp"
 #include "settings/RuntimeSettings.hpp"
@@ -31,11 +32,14 @@ int main(int argc, char* argv[])
     database.init(cfg.database, false);
     ImageRepository imageRepo(database.get());
     SettingsRepository settingsRepo(database.get());
+    DisplayMetricsRepository displayMetrics(database.get());
     RuntimeSettings runtimeSettings(settingsRepo, cfg);
 
     EventBus eventBus;
 
-    DisplayManager displayManager(cfg);
+    DisplayManager displayManager(cfg, displayMetrics);
+    if (!cfg.display.mockDisplay)
+        displayMetrics.increment("app_boot_total");
     displayManager.init();
 
     // Display tasks subscribe to the bus — wire them before eventBus.start().
@@ -95,6 +99,9 @@ int main(int argc, char* argv[])
 
         case IpcMessageType::GetHealth:
             return {{"running", true}};
+
+        case IpcMessageType::GetDisplayStats:
+            return displayManager.healthSnapshot();
         }
         return nlohmann::json::object();
     });

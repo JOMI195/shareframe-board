@@ -30,6 +30,7 @@ export interface FrameInfo {
     wlan_ssid?: string;
     wlan_signal_dbm?: number;
     wlan_connected?: boolean;
+    boot_count?: number;
 }
 
 export interface FrameInfoState {
