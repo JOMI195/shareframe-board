@@ -4,6 +4,7 @@ import slideshowOperationReducer from "./slideshowOperation/slideshowOperation.S
 import slideshowStatusReducer from "./slideshowStatus/slideshowStatus.Slice";
 import timersReducer from "./timers/timers.Slice";
 import networkReducer from "./network/network.Slice";
+import connectionModeReducer from "./connectionMode/connectionMode.Slice";
 import authReducer from "./auth/auth.Slice";
 import frameInfoReducer from "./frameInfo/frameInfo.Slice";
 import displayStatsReducer from "./displayStats/displayStats.Slice";
@@ -21,6 +22,7 @@ const rootReducer = combineReducers({
   slideshowStatus: slideshowStatusReducer,
   timers: timersReducer,
   network: networkReducer,
+  connectionMode: connectionModeReducer,
   auth: authReducer,
   frameInfo: frameInfoReducer,
   displayStats: displayStatsReducer,

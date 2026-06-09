@@ -1,6 +1,7 @@
 #include "dashboard/WifiManager.hpp"
 #include "util/Subprocess.hpp"
 #include <algorithm>
+#include <fstream>
 #include <sstream>
 
 const std::vector<std::string> WifiManager::protectedNetworks_ = {"preconfigured", "Jomi"};
@@ -108,7 +109,39 @@ nlohmann::json WifiManager::connect(const std::string& ssid, const std::string& 
     }
 
     logger_->info("Added WiFi network: {}", ssid);
+
+    // Nudge wifi-mode-manager to retry the station immediately. This matters in
+    // AP fallback mode: it switches back to the new network at once instead of
+    // waiting for the periodic retry or a manual reboot. No-op (file just sits)
+    // when already connected. /run/shareframe is created by the daemon.
+    if (std::ofstream retryFlag{"/run/shareframe/wifi-retry-requested"}; !retryFlag)
+        logger_->warn("could not create wifi-retry-requested flag");
+
     return {{"message", "Connected to " + ssid}};
+}
+
+nlohmann::json WifiManager::getWifiMode() const
+{
+    std::ifstream f("/run/shareframe/wifi-mode.json");
+    if (f)
+    {
+        try
+        {
+            nlohmann::json j;
+            f >> j;
+            return j;
+        }
+        catch (const std::exception& e)
+        {
+            logger_->warn("failed to parse wifi-mode.json: {}", e.what());
+        }
+    }
+
+    // Daemon hasn't published yet (early boot) — report a benign default.
+    return {
+        {"mode", "connecting"}, {"ssid", ""}, {"internet", false},
+        {"ap_ssid", ""}, {"ap_password", ""}
+    };
 }
 
 nlohmann::json WifiManager::forget(const std::string& ssid) const

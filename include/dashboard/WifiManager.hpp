@@ -14,6 +14,12 @@ public:
     nlohmann::json connect(const std::string& ssid, const std::string& password) const;
     nlohmann::json forget(const std::string& ssid) const;
 
+    // Network mode published by the wifi-mode-manager daemon
+    // (/run/shareframe/wifi-mode.json): { mode: connecting|connected|ap,
+    // ssid, internet, ap_ssid, ap_password }. Drives the dashboard status
+    // banner and the offline AP-setup flow.
+    [[nodiscard]] nlohmann::json getWifiMode() const;
+
 private:
     [[nodiscard]] bool _isProtected(const std::string& name) const;
     [[nodiscard]] std::string _aliasIfProtected(const std::string& name) const;

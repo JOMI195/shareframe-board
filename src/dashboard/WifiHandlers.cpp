@@ -21,6 +21,13 @@ ix::HttpResponsePtr WifiHandlers::handleStatus(const ix::HttpRequestPtr& /*req*/
     return wifiResult(wifi_.getCurrentConnection());
 }
 
+ix::HttpResponsePtr WifiHandlers::handleMode(const ix::HttpRequestPtr& /*req*/) const
+{
+    // Public: the SPA reads this before any login to decide between the normal
+    // dashboard and the offline AP-setup view.
+    return jsonResponse(200, "OK", wifi_.getWifiMode());
+}
+
 ix::HttpResponsePtr WifiHandlers::handleSavedNetworks(const ix::HttpRequestPtr& /*req*/) const
 {
     return wifiResult(wifi_.getSavedNetworks());

@@ -250,7 +250,7 @@ void DEV_Delay_ms(UDOUBLE xms)
 #endif
 }
 
-static int DEV_Equipment_Testing(void)
+static int DEV_Detect_Platform(void)
 {
 	FILE *fp;
 
@@ -404,7 +404,7 @@ Info:
 UBYTE DEV_Module_Init(void)
 {
     printf("/***********************************/ \r\n");
-	if(DEV_Equipment_Testing() < 0) {
+	if(DEV_Detect_Platform() < 0) {
 		return 1;
 	}
 #ifdef RPI

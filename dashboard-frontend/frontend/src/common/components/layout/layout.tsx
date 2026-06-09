@@ -1,5 +1,6 @@
 import { Box, Container, useMediaQuery, useTheme } from "@mui/material";
 import TopAppbar from "./topLayout/topAppBar";
+import NetworkStatusBanner from "@/common/components/networkStatusBanner";
 import { Outlet } from "react-router";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { useTimer } from "@/hooks/useTimer";
@@ -47,6 +48,7 @@ const MainLayout = () => {
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
             <TopAppbar />
+            <NetworkStatusBanner />
             <Sidebar />
             <PowerDialogs />
             <Container

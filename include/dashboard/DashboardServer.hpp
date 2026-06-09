@@ -50,6 +50,9 @@ private:
     // Helpers
     ix::HttpResponsePtr _loginRequired(const ix::HttpRequestPtr& req) const;
     static std::string _extractSessionId(const ix::HttpRequestPtr& req);
+    // True while the board hosts its AP fallback (no internet => OTP login is
+    // impossible, so /api/connection/* is reachable without a session).
+    static bool _isApMode();
 
     AppConfig& cfg_;
     HTTPClient& http_;

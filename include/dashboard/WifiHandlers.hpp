@@ -9,6 +9,7 @@ public:
     explicit WifiHandlers(WifiManager& wifi);
 
     ix::HttpResponsePtr handleStatus(const ix::HttpRequestPtr& req) const;
+    ix::HttpResponsePtr handleMode(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleSavedNetworks(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleConnect(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleForget(const ix::HttpRequestPtr& req) const;

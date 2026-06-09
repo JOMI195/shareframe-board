@@ -1,7 +1,7 @@
 import MainLayout from '@/common/components/layout/layout';
 import Snackbars from '@/common/components/snackbars/snackbars';
 import ProtectedRoute from '@/common/components/protectedRoute';
-import { getHomeUrl, getGeneralSettingsUrl, getDisplayHealthUrl, getLogsUrl, getNetworkUrl, getUpdatesyUrl, getServicesOverviewUrl, getServiceDetailUrl } from '@/assets/endpoints/app/appEndpoints';
+import { getHomeUrl, getGeneralSettingsUrl, getDisplayHealthUrl, getLogsUrl, getNetworkUrl, getUpdatesyUrl, getServicesOverviewUrl, getServiceDetailUrl, getSetupUrl } from '@/assets/endpoints/app/appEndpoints';
 import FrameActions from '@/main/frame/frameActions';
 import Updates from '@/main/updates/updates';
 import Network from '@/main/network/network';
@@ -18,6 +18,7 @@ import AuthenticationLayout from '@/main/authentication/layout';
 import SignIn from '@/main/authentication/signIn/signIn';
 import SignOut from '@/main/authentication/signOut/signOut';
 import RouterContext from '@/common/components/routerContext';
+import WifiSetup from '@/main/setup/wifiSetup';
 
 const Routing = createBrowserRouter([
   {
@@ -29,6 +30,11 @@ const Routing = createBrowserRouter([
           {
             path: "*",
             element: <NotFound />,
+          },
+          {
+            // Unauthenticated offline WiFi-setup page (board hosting its AP).
+            path: getSetupUrl(),
+            element: <WifiSetup />,
           },
           {
             path: getAuthenticationUrl(),

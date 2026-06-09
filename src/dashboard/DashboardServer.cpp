@@ -2,6 +2,7 @@
 #include "auth/TokenAuth.hpp"
 #include "dashboard/ResponseUtil.hpp"
 #include "util/HttpUtil.hpp"
+#include <fstream>
 
 using dashboard::errorResponse;
 using dashboard::jsonResponse;
@@ -55,6 +56,9 @@ void DashboardServer::_initRoutes()
         {"GET",  "/api/auth/status",      [this](auto& req, auto&) { return _handleCheckAuth(req); }},
         {"POST", "/api/auth/logout",      [this](auto& req, auto&) { return _handleLogout(req); }},
         {"GET",  "/api/system/health",   [this](auto& req, auto&) { return systemHandlers_.handleHealth(req); }},
+        // Public so the SPA can read the network mode before any login and
+        // route to the offline AP-setup view when the board is hosting its AP.
+        {"GET",  "/api/connection/mode", [this](auto& req, auto&) { return wifiHandlers_.handleMode(req); }},
     };
 
     protectedRoutes_ = {
@@ -99,9 +103,16 @@ ix::HttpResponsePtr DashboardServer::_handleRequest(
         if (req->method == method && path == routePath)
             return handler(req, queryParams);
 
+    // AP fallback: with no internet the user cannot complete the upstream OTP
+    // login, so the connection endpoints (status/saved-networks/connect/forget)
+    // are reachable without a session *only* while hosting the AP. Everything
+    // else still requires auth.
+    const bool apBypass = _isApMode() && path.rfind("/api/connection/", 0) == 0;
+
     // All remaining routes require auth
-    if (auto denied = _loginRequired(req))
-        return denied;
+    if (!apBypass)
+        if (auto denied = _loginRequired(req))
+            return denied;
 
     // Protected routes
     for (const auto& [method, routePath, handler] : protectedRoutes_)
@@ -202,6 +213,16 @@ ix::HttpResponsePtr DashboardServer::_handleLogout(const ix::HttpRequestPtr& req
 }
 
 // --- Helpers ---
+
+bool DashboardServer::_isApMode()
+{
+    // Single word written by the wifi-mode-manager daemon: connecting|connected|ap.
+    std::ifstream f("/run/shareframe/wifi-mode");
+    std::string mode;
+    if (f)
+        std::getline(f, mode);
+    return mode == "ap";
+}
 
 ix::HttpResponsePtr DashboardServer::_loginRequired(const ix::HttpRequestPtr& req) const
 {
