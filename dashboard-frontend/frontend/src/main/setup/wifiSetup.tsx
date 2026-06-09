@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-    Box, Button, Card, CardContent, Container, IconButton, InputAdornment,
+    Alert, Box, Button, Card, CardContent, Container, IconButton, InputAdornment,
     Stack, TextField, Typography, useMediaQuery, useTheme
 } from '@mui/material';
 import Visibility from '@mui/icons-material/Visibility';
@@ -10,6 +10,11 @@ import Logo from '@/common/components/logo';
 import NetworkStatusBanner from '@/common/components/networkStatusBanner';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { addNetwork, selectNetworkState } from '@/store/network/network.Slice';
+import { selectConnectionMode } from '@/store/connectionMode/connectionMode.Slice';
+
+// AP gateway IP — must match overlay/usr/bin/shareframe-ap (AP_IP) and
+// overlay/etc/dnsmasq.d/shareframe-ap.conf on the board.
+const AP_GATEWAY_IP = '192.168.4.1';
 
 // Unauthenticated WiFi-setup page shown while the board hosts its AP fallback.
 // In AP mode the board has no internet, so the normal OTP login cannot complete
@@ -20,6 +25,7 @@ const WifiSetup = () => {
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
     const { loading } = useAppSelector(selectNetworkState);
+    const { mode, ap_ssid, ap_password } = useAppSelector(selectConnectionMode);
 
     const [ssid, setSsid] = useState('');
     const [password, setPassword] = useState('');
@@ -127,6 +133,15 @@ const WifiSetup = () => {
                         )}
                     </CardContent>
                 </Card>
+
+                {mode === 'ap' && (
+                    <Alert severity="info" sx={{ mt: 2 }}>
+                        Falls sich diese Seite schließt: verbinde dich erneut mit dem WLAN
+                        {' '}<b>„{ap_ssid || 'shareframe-board'}“</b>
+                        {ap_password ? <> (Passwort: <b>{ap_password}</b>)</> : null} und öffne
+                        {' '}<b>http://{AP_GATEWAY_IP}</b> im Browser.
+                    </Alert>
+                )}
             </Container>
         </>
     );
