@@ -27,7 +27,7 @@ image_save_path = "images"
 [display]
 mock_display = false
 interval_secs = 900
-min_refresh_secs = 120
+min_refresh_secs = 180
 loading_image_path = "assets/image/loading"
 default_images_path = "assets/image/default"
 clear_target_hour = 2
@@ -38,14 +38,30 @@ http_latest_url = "/api/frame-updates/latest/"
 [dashboard_application]
 service_name = "shareframe-dashboard.service"
 log_file = "shareframe-dashboard.log"
-socket_path = "/tmp/shareframe-ipc.sock"
 port = 8080
 host = "0.0.0.0"
 http_verify_otp_url = "/api/frames/verify-otp/"
 
+[websocket_application]
+service_name = "shareframe-websocket.service"
+log_file = "shareframe-websocket.log"
+
+[display_application]
+service_name = "shareframe-display.service"
+log_file = "shareframe-display.log"
+
 [heartbeat_application]
 service_name = "shareframe-heartbeat.service"
 log_file = "shareframe-heartbeat.log"
+
+# nng endpoints for cross-process IPC (REQ/REP + PUB/SUB).
+# Every service exposes a *_rep health endpoint.
+[ipc]
+ws_rep = "ipc:///tmp/shareframe-ws.rep.sock"
+ws_pub = "ipc:///tmp/shareframe-ws.pub.sock"
+display_rep = "ipc:///tmp/shareframe-display.rep.sock"
+dashboard_rep = "ipc:///tmp/shareframe-dashboard.rep.sock"
+heartbeat_rep = "ipc:///tmp/shareframe-heartbeat.rep.sock"
 
 [heartbeat]
 interval_secs = 60

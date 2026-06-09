@@ -5,6 +5,8 @@ import {
     ListItem,
     ListItemIcon,
     ListItemText,
+    ListSubheader,
+    Switch,
     Box,
     ClickAwayListener,
     useTheme,
@@ -12,9 +14,10 @@ import {
     Tooltip,
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
+import TuneIcon from '@mui/icons-material/Tune';
 import { useAppDispatch, useAppSelector } from '@/store';
-import { closeSidebar, getSidebar, openSidedbar } from '@/store/navigation/navigation.Slice';
-import { sidebarMenuItems } from '@/assets/sidebarMenu/sideBarMenu';
+import { closeSidebar, getSidebar, openSidedbar, getAdvancedMode, toggleAdvancedMode } from '@/store/navigation/navigation.Slice';
+import { sidebarSections } from '@/assets/sidebarMenu/sideBarMenu';
 import { getHomeUrl } from '@/assets/endpoints/app/appEndpoints';
 import { Link as RouterLink, useLocation } from 'react-router';
 import { getAuthenticationUrl, getSignOutUrl } from '@/assets/endpoints/app/authEndpoints';
@@ -22,6 +25,7 @@ import { getAuthenticationUrl, getSignOutUrl } from '@/assets/endpoints/app/auth
 const Sidebar: React.FC = () => {
     const dispatch = useAppDispatch();
     const open = useAppSelector(getSidebar).open;
+    const advancedMode = useAppSelector(getAdvancedMode);
     const theme = useTheme();
     const location = useLocation();
 
@@ -104,6 +108,41 @@ const Sidebar: React.FC = () => {
         return listItemContent;
     };
 
+    const renderAdvancedToggle = () => {
+        const content = (
+            <ListItem
+                onClick={() => dispatch(toggleAdvancedMode())}
+                sx={{
+                    backgroundColor: advancedMode ? 'action.selected' : 'inherit',
+                    borderRadius: 0.5,
+                    minHeight: 48,
+                    cursor: 'pointer',
+                    '&:hover': { backgroundColor: 'action.hover' },
+                }}
+            >
+                <ListItemIcon
+                    sx={{
+                        width: shouldShowIconsOnly ? '100%' : 'auto',
+                        minWidth: shouldShowIconsOnly ? 'auto' : 50,
+                        justifyContent: 'flex-start',
+                    }}
+                >
+                    <TuneIcon color={advancedMode ? 'primary' : 'inherit'} />
+                </ListItemIcon>
+                {!shouldShowIconsOnly && <ListItemText primary="Erweitert" />}
+                {!shouldShowIconsOnly && (
+                    <Switch edge="end" size="small" checked={advancedMode} tabIndex={-1} />
+                )}
+            </ListItem>
+        );
+
+        return shouldShowIconsOnly ? (
+            <Tooltip title="Erweiterter Modus" placement="right">
+                {content}
+            </Tooltip>
+        ) : content;
+    };
+
     return (
         <ClickAwayListener
             mouseEvent="onMouseUp"
@@ -168,9 +207,24 @@ const Sidebar: React.FC = () => {
                                     flex: 1
                                 }}
                             >
-                                {sidebarMenuItems.map((item) => renderListItem(item))}
+                                {sidebarSections
+                                    .filter((sec) => !sec.advanced || advancedMode)
+                                    .map((sec) => (
+                                        <React.Fragment key={sec.section ?? 'section'}>
+                                            {sec.section && !shouldShowIconsOnly && (
+                                                <ListSubheader
+                                                    disableSticky
+                                                    sx={{ bgcolor: 'transparent', lineHeight: '2.5em' }}
+                                                >
+                                                    {sec.section}
+                                                </ListSubheader>
+                                            )}
+                                            {sec.items.map((item) => renderListItem(item))}
+                                        </React.Fragment>
+                                    ))}
                             </List>
                             <List>
+                                {renderAdvancedToggle()}
                                 {sidebarBottomItems.map((item) => renderListItem(item, true))}
                             </List>
                         </Box>

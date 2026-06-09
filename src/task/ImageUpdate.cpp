@@ -94,7 +94,10 @@ void ImageUpdate::_onPicture(const nlohmann::json& msg) const
         }
 
         if (auto saved = imgMgr_.saveImage(sentImageId, sender, base64Data, expiresAt))
+        {
             logger_->info("Saved image {} from {}", sentImageId, sender);
+            bus_.publish<Topic::IMAGE_NEW>(static_cast<int64_t>(sentImageId));
+        }
         else
             logger_->error("Failed to save image {} from {}", sentImageId, sender);
     }

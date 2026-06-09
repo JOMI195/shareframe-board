@@ -4,11 +4,13 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 type SliceState = {
   sidebar: { open: boolean };
   currentPath: string;
+  advancedMode: boolean;
 };
 
 const initialState: SliceState = {
   sidebar: { open: false },
   currentPath: '',
+  advancedMode: false,
 };
 
 const navigationSlice = createSlice({
@@ -23,6 +25,9 @@ const navigationSlice = createSlice({
     },
     currentPathSet: (state, action: PayloadAction<string>) => {
       state.currentPath = action.payload;
+    },
+    advancedModeToggled: (state) => {
+      state.advancedMode = !state.advancedMode;
     },
   },
 });
@@ -40,10 +45,15 @@ export const setCurrentPath = (path: string) => ({
   payload: path,
 });
 
+export const toggleAdvancedMode = () => ({
+  type: advancedModeToggled.type,
+});
+
 export const {
   sidebarOpened,
   sidebarClosed,
-  currentPathSet
+  currentPathSet,
+  advancedModeToggled
 } = navigationSlice.actions;
 
 export default navigationSlice.reducer;
@@ -53,3 +63,6 @@ export const getSidebar = (state: RootState) =>
 
 export const getCurrentPath = (state: RootState) =>
   state.navigation.currentPath;
+
+export const getAdvancedMode = (state: RootState) =>
+  state.navigation.advancedMode;

@@ -12,6 +12,7 @@ import piPowerReducer from "./piPower/piPower.Slice";
 import frameLogsReducer from "./frameLogs/frameLogs.Slice";
 import navigationReducer from "./navigation/navigation.Slice";
 import dialogsReducer from "./dialogs/dialogs.Slice";
+import servicesReducer from "./services/services.Slice";
 
 const rootReducer = combineReducers({
   snackbars: snackbarsReducer,
@@ -27,6 +28,7 @@ const rootReducer = combineReducers({
   frameLogs: frameLogsReducer,
   navigation: navigationReducer,
   dialogs: dialogsReducer,
+  services: servicesReducer,
 });
 
 export default rootReducer;

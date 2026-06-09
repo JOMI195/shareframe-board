@@ -4,7 +4,9 @@
 #include "dashboard/SessionManager.hpp"
 #include "dashboard/WifiManager.hpp"
 #include "db/Database.hpp"
+#include "ipc/HealthCheck.hpp"
 #include "ipc/IpcClient.hpp"
+#include "ipc/NngRepServer.hpp"
 #include "net/HTTPClient.hpp"
 #include "repository/TokenRepository.hpp"
 #include <spdlog/spdlog.h>
@@ -19,10 +21,10 @@ int main(int argc, char* argv[])
     Database db;
     db.init(cfg.database, false);
 
-    // Connect to main service via IPC (will reconnect automatically on each request)
-    IpcClient ipc(cfg.dashboardApplication.socketPath);
+    // Connect to the display service via IPC (will reconnect automatically)
+    IpcClient ipc(cfg.ipc.displayRep);
     if (!ipc.connect())
-        spdlog::warn("Service IPC socket not available yet, will retry on first request");
+        spdlog::warn("Display IPC endpoint not available yet, will retry on first request");
 
     // Setup HTTP client (for OTP verification and update check requests)
     HTTPClient http(60, 600);
@@ -38,8 +40,13 @@ int main(int argc, char* argv[])
     DashboardServer server(cfg, ipc, http, sessions, authTokenManager, wifi);
     server.start();
 
+    // Health endpoint so other services can probe the dashboard over nng.
+    NngRepServer healthRep(cfg.ipc.dashboardRep, health::respond);
+    healthRep.start();
+
     int sig = waitForSignal();
     spdlog::info("Received signal {}, shutting down", sig);
+    healthRep.stop();
     server.stop();
     ipc.disconnect();
 

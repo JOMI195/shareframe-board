@@ -149,10 +149,42 @@ struct glz::meta<DashboardApplicationConfig>
     static constexpr auto value = glz::object(
         "service_name", &T::serviceName,
         "log_file", &T::logFile,
-        "socket_path", &T::socketPath,
         "port", &T::port,
         "host", &T::host,
         "http_verify_otp_url", &T::httpVerifyOtpUrl
+    );
+};
+
+template <>
+struct glz::meta<WebsocketApplicationConfig>
+{
+    using T = WebsocketApplicationConfig;
+    static constexpr auto value = glz::object(
+        "service_name", &T::serviceName,
+        "log_file", &T::logFile
+    );
+};
+
+template <>
+struct glz::meta<DisplayApplicationConfig>
+{
+    using T = DisplayApplicationConfig;
+    static constexpr auto value = glz::object(
+        "service_name", &T::serviceName,
+        "log_file", &T::logFile
+    );
+};
+
+template <>
+struct glz::meta<IpcConfig>
+{
+    using T = IpcConfig;
+    static constexpr auto value = glz::object(
+        "ws_rep", &T::wsRep,
+        "ws_pub", &T::wsPub,
+        "display_rep", &T::displayRep,
+        "dashboard_rep", &T::dashboardRep,
+        "heartbeat_rep", &T::heartbeatRep
     );
 };
 
@@ -173,10 +205,13 @@ struct glz::meta<AppConfig>
         "image", &T::image,
         "display", &T::display,
         "dashboard_application", &T::dashboardApplication,
+        "websocket_application", &T::websocketApplication,
+        "display_application", &T::displayApplication,
         "heartbeat_application", &T::heartbeatApplication,
         "heartbeat", &T::heartbeat,
         "image_check", &T::imageCheck,
-        "update", &T::update
+        "update", &T::update,
+        "ipc", &T::ipc
     );
 };
 
@@ -196,6 +231,9 @@ public:
     );
 
 private:
+    // Fail-fast check for required-no-default fields and out-of-range values.
+    // Throws std::runtime_error listing every problem found. Called after merge.
+    static void validate(const AppConfig& cfg);
     static void resolvePaths(AppConfig& cfg);
     static void resolveField(std::string& field, const std::filesystem::path& base);
     static std::string resolveFile(const char* envVar,

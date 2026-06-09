@@ -1,6 +1,7 @@
 #pragma once
 #include "config/AppConfig.hpp"
 #include "dashboard/FrameHandlers.hpp"
+#include "dashboard/ServiceHandlers.hpp"
 #include "dashboard/SessionManager.hpp"
 #include "dashboard/SystemHandlers.hpp"
 #include "dashboard/WifiHandlers.hpp"
@@ -61,6 +62,7 @@ private:
     WifiHandlers wifiHandlers_;
     FrameHandlers frameHandlers_;
     SystemHandlers systemHandlers_;
+    ServiceHandlers serviceHandlers_;
 
     // Routing tables
     std::vector<Route> publicRoutes_;

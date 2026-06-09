@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include <vector>
 
 Profile ConfigLoader::parseProfile(std::string_view s)
 {
@@ -101,7 +102,48 @@ AppConfig ConfigLoader::load(
     cfg.version = ver.version;
 
     resolvePaths(cfg);
+    validate(cfg);
     return cfg;
+}
+
+void ConfigLoader::validate(const AppConfig& cfg)
+{
+    std::vector<std::string> errs;
+    const auto req = [&](bool ok, const std::string& msg) { if (!ok) errs.push_back(msg); };
+
+    // Deployment-specific, no safe default — must be set by a profile/secrets.
+    req(!cfg.baseUrl.empty(), "base_url is empty (set it in the profile config)");
+
+    // Have code defaults; a profile could still blank/zero them — guard anyway.
+    req(!cfg.database.databasePath.empty(), "database.database_path is empty");
+    req(!cfg.database.databaseName.empty(), "database.database_name is empty");
+    req(!cfg.log.logPath.empty(), "log.log_path is empty");
+    req(!cfg.image.imageSavePath.empty(), "image.image_save_path is empty");
+    req(!cfg.websocket.wsPath.empty(), "websocket.ws_path is empty");
+
+    req(cfg.heartbeat.intervalSecs > 0, "heartbeat.interval_secs must be > 0");
+    req(cfg.imageCheck.intervalSecs > 0, "image_check.interval_secs must be > 0");
+    req(cfg.display.intervalSecs > 0, "display.interval_secs must be > 0");
+    req(cfg.display.minRefreshSecs > 0, "display.min_refresh_secs must be > 0");
+    req(cfg.display.clearTargetHour >= 0 && cfg.display.clearTargetHour <= 23,
+        "display.clear_target_hour must be in 0..23");
+    req(cfg.dashboardApplication.port > 0 && cfg.dashboardApplication.port <= 65535,
+        "dashboard_application.port must be in 1..65535");
+
+    // IPC endpoints — every service depends on these resolving to a real address.
+    req(!cfg.ipc.wsRep.empty(), "ipc.ws_rep is empty");
+    req(!cfg.ipc.wsPub.empty(), "ipc.ws_pub is empty");
+    req(!cfg.ipc.displayRep.empty(), "ipc.display_rep is empty");
+    req(!cfg.ipc.dashboardRep.empty(), "ipc.dashboard_rep is empty");
+    req(!cfg.ipc.heartbeatRep.empty(), "ipc.heartbeat_rep is empty");
+
+    if (!errs.empty())
+    {
+        std::string joined = "Invalid configuration:";
+        for (const auto& e : errs)
+            joined += "\n  - " + e;
+        throw std::runtime_error(joined);
+    }
 }
 
 void ConfigLoader::resolveField(std::string& field, const std::filesystem::path& base) {

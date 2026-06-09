@@ -2,6 +2,7 @@
 #include "auth/AuthTokenManager.hpp"
 #include "auth/TokenAuth.hpp"
 #include "logging/LogSanitizer.hpp"
+#include "ipc/HealthCheck.hpp"
 #include "ipc/IpcClient.hpp"
 #include "net/HTTPClient.hpp"
 #include <arpa/inet.h>
@@ -10,8 +11,10 @@
 #include <unistd.h>
 
 Heartbeat::Heartbeat(EventBus& bus, const AppConfig& cfg, const HTTPClient& http,
-                     AuthTokenManager& auth, IpcClient& ipc)
-    : PeriodicTask(bus, cfg, "Heartbeat"), http_(http), auth_(auth), ipc_(ipc)
+                     AuthTokenManager& auth, IpcClient& wsIpc, IpcClient& displayIpc,
+                     IpcClient& dashboardIpc)
+    : PeriodicTask(bus, cfg, "Heartbeat"), http_(http), auth_(auth),
+      wsIpc_(wsIpc), displayIpc_(displayIpc), dashboardIpc_(dashboardIpc)
 {
 }
 
@@ -29,11 +32,18 @@ void Heartbeat::execute()
         return;
     }
 
+    const bool wsRunning = health::isRunning(wsIpc_);
+    const bool displayRunning = health::isRunning(displayIpc_);
+    const bool dashboardRunning = health::isRunning(dashboardIpc_);
     const nlohmann::json payload = {
         {"local_ip_address", localIp},
         {"version", cfg_.version},
-        {"application_running", _checkApplication()},
-        {"dashboard_running", _checkDashboard()}
+        // application_running kept for backend compatibility: the former monolith
+        // is healthy iff both successor services answer.
+        {"application_running", wsRunning && displayRunning},
+        {"websocket_running", wsRunning},
+        {"display_running", displayRunning},
+        {"dashboard_running", dashboardRunning}
     };
 
     auto headers = TokenAuth::buildTokenAuthHeaders(auth_);
@@ -61,30 +71,6 @@ void Heartbeat::execute()
         return;
     }
     logger_->debug("Heartbeat acknowledged ({})", res.statusCode);
-}
-
-bool Heartbeat::_checkApplication() const
-{
-    const auto resp = ipc_.sendAndReceive(
-        {IpcMessageType::GetHealth, {}}, std::chrono::milliseconds{500});
-    return resp.has_value() && resp->value("running", false);
-}
-
-bool Heartbeat::_checkDashboard() const
-{
-    const std::string url = "http://127.0.0.1:"
-        + std::to_string(cfg_.dashboardApplication.port) + "/api/system/health";
-    const auto res = http_.get(url);
-    if (!res.ok())
-        return false;
-    try
-    {
-        return nlohmann::json::parse(res.body).value("running", false);
-    }
-    catch (...)
-    {
-        return false;
-    }
 }
 
 std::string Heartbeat::_getLocalIp()

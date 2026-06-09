@@ -16,6 +16,11 @@ export const getSlideshowIntervalUrl = () => `${frameBaseUrl()}/slideshow/interv
 export const getSkipSlideshowImageUrl = () => `${frameBaseUrl()}/slideshow/skip`;
 export const getClearDisplayUrl = () => `${frameBaseUrl()}/clear`;
 
+// Service management
+const servicesBaseUrl = () => `${apiBaseUrl()}/services`;
+export const getServicesUrl = () => servicesBaseUrl();
+export const getServiceRestartUrl = () => `${servicesBaseUrl()}/restart`;
+
 // System
 export const getSystemInfoUrl = () => `${systemBaseUrl()}/info`;
 export const getSystemHealthUrl = () => `${systemBaseUrl()}/health`;

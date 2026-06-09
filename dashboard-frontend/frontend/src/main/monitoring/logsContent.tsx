@@ -1,14 +1,6 @@
-import { ServiceType } from "@/types";
+import { ServiceType, SERVICE_LABELS } from "@/types";
 import { Box, Card, CardContent, CircularProgress, Divider, IconButton, Tooltip, Typography } from "@mui/material";
 import RefreshIcon from '@mui/icons-material/Refresh';
-
-// German display names for the backend's short service ids.
-const SERVICE_LABELS: Record<string, string> = {
-    application: 'Anwendung',
-    dashboard: 'Dashboard',
-    heartbeat: 'Heartbeat',
-    system: 'System',
-};
 
 export interface LogsContentProps {
     serviceType: ServiceType;

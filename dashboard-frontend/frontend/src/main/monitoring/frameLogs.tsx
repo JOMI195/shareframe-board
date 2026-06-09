@@ -1,24 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Typography,
     Stack,
     Card,
     CardContent,
-    Accordion,
-    AccordionSummary,
-    AccordionDetails,
     TextField,
     Grid,
     MenuItem,
+    Alert,
 } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useAppDispatch, useAppSelector } from '@/store';
 import {
     selectLogsData,
     selectLogsLoading,
     selectLogsError,
-    clearLogs,
-    fetchFrameLogs
+    fetchFrameLogs,
 } from '@/store/frameLogs/frameLogs.Slice';
 import { ServiceType } from '@/types';
 import LogsContent from './logsContent';
@@ -32,225 +28,112 @@ const timeRangeOptions = [
     { value: '48h', label: 'Letzte 2 Tage' },
     { value: '72h', label: 'Letzte 3 Tage' },
     { value: '168h', label: 'Letzte Woche' },
-    { value: 'custom', label: 'Benutzerdefiniert' }
+    { value: 'custom', label: 'Benutzerdefiniert' },
 ];
 
+// Protokolle page: the system log (busybox syslog). Per-service application logs
+// live on each service's page under "Verwaltung".
 const FrameLogs = () => {
     const dispatch = useAppDispatch();
     const logsData = useAppSelector(selectLogsData);
     const loading = useAppSelector(selectLogsLoading);
     const error = useAppSelector(selectLogsError);
 
-    const [expanded, setExpanded] = useState<ServiceType | null>(null);
     const [timeRange, setTimeRange] = useState<string>('3h');
     const [customDate, setCustomDate] = useState<string>(
         new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
     );
     const [linesParam, setLinesParam] = useState<number>(1000);
 
-    // Calculate timestamp based on selected time range
+    // Backend expects "YYYY-MM-DD HH:MM:SS".
     const getTimestamp = (): string => {
-        let date: Date;
-
-        if (timeRange === 'custom') {
-            date = new Date(customDate);
-        } else {
-            const hours = parseInt(timeRange.replace('h', ''));
-            date = new Date(Date.now() - hours * 60 * 60 * 1000);
-        }
-
-        // Format: YYYY-MM-DD HH:MM:SS (journalctl-konformes Format)
+        const date = timeRange === 'custom'
+            ? new Date(customDate)
+            : new Date(Date.now() - parseInt(timeRange.replace('h', '')) * 60 * 60 * 1000);
         const pad = (num: number) => String(num).padStart(2, '0');
-
-        const year = date.getFullYear();
-        const month = pad(date.getMonth() + 1);  // Monate sind 0-basiert
-        const day = pad(date.getDate());
-        const hours = pad(date.getHours());
-        const minutes = pad(date.getMinutes());
-        const seconds = pad(date.getSeconds());
-
-        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} `
+            + `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
     };
 
-    const handleAccordionChange = (serviceType: ServiceType) => (_event: React.SyntheticEvent, isExpanded: boolean) => {
-        const newExpanded = isExpanded ? serviceType : null;
-        setExpanded(newExpanded);
-
-        if (isExpanded) {
-            dispatch(fetchFrameLogs({
-                service_name: serviceType,
-                since_timestamp: getTimestamp(),
-                lines: linesParam
-            }));
-        } else {
-            dispatch(clearLogs());
-        }
+    const loadLogs = () => {
+        dispatch(fetchFrameLogs({
+            service_name: ServiceType.SYSTEM,
+            since_timestamp: getTimestamp(),
+            lines: linesParam,
+        }));
     };
 
-    const handleTimeRangeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setTimeRange(event.target.value);
-    };
-
-    const handleCustomDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setCustomDate(event.target.value);
-    };
-
-    const handleLinesChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const value = parseInt(event.target.value);
-        if (!isNaN(value) && value > 0) {
-            setLinesParam(value);
-        }
-    };
-
-    const refreshCurrentLogs = () => {
-        if (expanded) {
-            dispatch(fetchFrameLogs({
-                service_name: expanded,
-                since_timestamp: getTimestamp(),
-                lines: linesParam
-            }));
-        }
-    };
-
-    useEffect(() => {
-        refreshCurrentLogs();
-    }, [timeRange, linesParam]);
-
-    // Only refresh logs when custom date changes and custom is selected
-    useEffect(() => {
-        if (timeRange === 'custom') {
-            refreshCurrentLogs();
-        }
-    }, [customDate]);
+    useEffect(() => { loadLogs(); }, [timeRange, linesParam]);
+    useEffect(() => { if (timeRange === 'custom') loadLogs(); }, [customDate]);
 
     return (
-        <>
-            <Stack spacing={3} sx={{ width: '100%' }}>
-                <Card sx={{ mb: 3 }}>
-                    <CardContent>
-                        <Typography variant="h6" color="text.secondary" gutterBottom>
-                            Filter
-                        </Typography>
-                        <Grid container spacing={2}>
-                            <Grid item xs={12} sm={6}>
+        <Stack spacing={3} sx={{ width: '100%' }}>
+            <Alert severity="info">
+                Dies ist das System-Protokoll. Dienst-spezifische Protokolle (Display, WebSocket,
+                Dashboard, Heartbeat) findest du auf der jeweiligen Dienst-Seite unter „Verwaltung".
+            </Alert>
+
+            <Card>
+                <CardContent>
+                    <Typography variant="h6" color="text.secondary" gutterBottom>
+                        Filter
+                    </Typography>
+                    <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                select
+                                label="Zeitraum"
+                                fullWidth
+                                value={timeRange}
+                                onChange={(e) => setTimeRange(e.target.value)}
+                                helperText="Zeitraum der abzurufenden Protokolle"
+                            >
+                                {timeRangeOptions.map((option) => (
+                                    <MenuItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                label="Anzahl Zeilen"
+                                type="number"
+                                fullWidth
+                                value={linesParam}
+                                onChange={(e) => {
+                                    const value = parseInt(e.target.value);
+                                    if (!isNaN(value) && value > 0) setLinesParam(value);
+                                }}
+                                InputProps={{ inputProps: { min: 1, max: 5000 } }}
+                                helperText="Maximale Anzahl anzuzeigender Protokollzeilen"
+                            />
+                        </Grid>
+                        {timeRange === 'custom' && (
+                            <Grid item xs={12}>
                                 <TextField
-                                    select
-                                    label="Zeitraum"
+                                    label="Datum und Uhrzeit"
+                                    type="datetime-local"
                                     fullWidth
-                                    value={timeRange}
-                                    onChange={handleTimeRangeChange}
-                                    helperText="Zeitraum der abzurufenden Protokolle"
-                                >
-                                    {timeRangeOptions.map((option) => (
-                                        <MenuItem key={option.value} value={option.value}>
-                                            {option.label}
-                                        </MenuItem>
-                                    ))}
-                                </TextField>
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                                <TextField
-                                    label="Anzahl Zeilen"
-                                    type="number"
-                                    fullWidth
-                                    value={linesParam}
-                                    onChange={handleLinesChange}
-                                    InputProps={{ inputProps: { min: 1, max: 5000 } }}
-                                    helperText="Maximale Anzahl anzuzeigender Protokollzeilen"
+                                    value={customDate}
+                                    onChange={(e) => setCustomDate(e.target.value)}
+                                    InputLabelProps={{ shrink: true }}
+                                    helperText="Benutzerdefinierter Startzeitpunkt für Protokolle"
                                 />
                             </Grid>
-                            {timeRange === 'custom' && (
-                                <Grid item xs={12}>
-                                    <TextField
-                                        label="Datum und Uhrzeit"
-                                        type="datetime-local"
-                                        fullWidth
-                                        value={customDate}
-                                        onChange={handleCustomDateChange}
-                                        InputLabelProps={{ shrink: true }}
-                                        helperText="Benutzerdefinierter Startzeitpunkt für Protokolle"
-                                    />
-                                </Grid>
-                            )}
-                        </Grid>
-                    </CardContent>
-                </Card>
+                        )}
+                    </Grid>
+                </CardContent>
+            </Card>
 
-                <Stack spacing={1}>
-                    <Accordion
-                        expanded={expanded === ServiceType.APPLICATION}
-                        onChange={handleAccordionChange(ServiceType.APPLICATION)}
-                    >
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Typography>Anwendungsprotokolle</Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <LogsContent
-                                serviceType={ServiceType.APPLICATION}
-                                loading={loading}
-                                error={error}
-                                logs={expanded === ServiceType.APPLICATION ? logsData : null}
-                                onRefresh={refreshCurrentLogs}
-                            />
-                        </AccordionDetails>
-                    </Accordion>
-
-                    <Accordion
-                        expanded={expanded === ServiceType.DASHBOARD}
-                        onChange={handleAccordionChange(ServiceType.DASHBOARD)}
-                    >
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Typography>Dashboard-Protokolle</Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <LogsContent
-                                serviceType={ServiceType.DASHBOARD}
-                                loading={loading}
-                                error={error}
-                                logs={expanded === ServiceType.DASHBOARD ? logsData : null}
-                                onRefresh={refreshCurrentLogs}
-                            />
-                        </AccordionDetails>
-                    </Accordion>
-
-                    <Accordion
-                        expanded={expanded === ServiceType.HEARTBEAT}
-                        onChange={handleAccordionChange(ServiceType.HEARTBEAT)}
-                    >
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Typography>Heartbeat-Protokolle</Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <LogsContent
-                                serviceType={ServiceType.HEARTBEAT}
-                                loading={loading}
-                                error={error}
-                                logs={expanded === ServiceType.HEARTBEAT ? logsData : null}
-                                onRefresh={refreshCurrentLogs}
-                            />
-                        </AccordionDetails>
-                    </Accordion>
-
-                    <Accordion
-                        expanded={expanded === ServiceType.SYSTEM}
-                        onChange={handleAccordionChange(ServiceType.SYSTEM)}
-                    >
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Typography>Systemprotokolle</Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <LogsContent
-                                serviceType={ServiceType.SYSTEM}
-                                loading={loading}
-                                error={error}
-                                logs={expanded === ServiceType.SYSTEM ? logsData : null}
-                                onRefresh={refreshCurrentLogs}
-                            />
-                        </AccordionDetails>
-                    </Accordion>
-                </Stack>
-            </Stack>
-        </>
+            <LogsContent
+                serviceType={ServiceType.SYSTEM}
+                loading={loading}
+                error={error}
+                logs={logsData && logsData.service === 'system' ? logsData : null}
+                onRefresh={loadLogs}
+            />
+        </Stack>
     );
 };
 

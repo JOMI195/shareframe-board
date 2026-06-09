@@ -28,7 +28,7 @@ SystemHandlers::SystemHandlers(const AppConfig& cfg, HTTPClient& http,
       // Stable short ids form the public log contract (the frontend's
       // ServiceType enum); each maps to its spdlog file below in handleLogs.
       // Decoupled from internal *.service names / log filenames on purpose.
-      allowedServiceNames_({"application", "dashboard", "heartbeat", "system"})
+      allowedServiceNames_({"websocket", "display", "dashboard", "heartbeat", "system"})
 {
 }
 
@@ -142,8 +142,10 @@ ix::HttpResponsePtr SystemHandlers::handleLogs(
     std::string path;
     if (serviceName == "dashboard")
         path = cfg_.log.logPath + "/" + cfg_.dashboardApplication.logFile;
-    else if (serviceName == "application")
-        path = cfg_.log.logPath + "/" + cfg_.shareframeApplication.logFile;
+    else if (serviceName == "websocket")
+        path = cfg_.log.logPath + "/" + cfg_.websocketApplication.logFile;
+    else if (serviceName == "display")
+        path = cfg_.log.logPath + "/" + cfg_.displayApplication.logFile;
     else if (serviceName == "heartbeat")
         path = cfg_.log.logPath + "/" + cfg_.heartbeatApplication.logFile;
     else if (serviceName == "system")

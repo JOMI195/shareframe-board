@@ -8,7 +8,7 @@ struct SecretsConfig
 
 struct LogConfig
 {
-    std::string logPath;
+    std::string logPath = "logs";
     // General system log (busybox syslogd + klogd) — not a shareframe spdlog
     // file, so it lives outside logPath. Overridable per board/deployment.
     std::string systemLogPath = "/var/log/messages";
@@ -16,31 +16,31 @@ struct LogConfig
 
 struct ShareframeApplicationConfig
 {
-    std::string serviceName;
-    std::string logFile;
+    std::string serviceName = "shareframe.service";
+    std::string logFile = "shareframe-application.log";
 };
 
 struct DatabaseConfig
 {
-    std::string databasePath;
-    std::string databaseName;
-    std::string migrationsPath;
+    std::string databasePath = "db";
+    std::string databaseName = "shareframe.db";
+    std::string migrationsPath = "migrations";
 };
 
 struct AuthTokenConfig
 {
-    std::string httpFetchTokenUrl;
-    std::string httpVerifyTokenUrl;
+    std::string httpFetchTokenUrl = "/api/frames/obtain-frame-token/";
+    std::string httpVerifyTokenUrl = "/api/frames/verify-frame-auth-token/";
 };
 
 struct WebsocketConfig
 {
-    std::string wsPath;
+    std::string wsPath = "ws/frames/";
 };
 
 struct ImageConfig
 {
-    std::string imageSavePath;
+    std::string imageSavePath = "images";
 };
 
 struct DisplayConfig
@@ -62,10 +62,33 @@ struct DashboardApplicationConfig
 {
     std::string serviceName = "shareframe-dashboard.service";
     std::string logFile = "shareframe-dashboard.log";
-    std::string socketPath = "/tmp/shareframe-ipc.sock";
     int port = 8080;
     std::string host = "0.0.0.0";
     std::string httpVerifyOtpUrl = "/api/frames/verify-frame-otp/";
+};
+
+struct WebsocketApplicationConfig
+{
+    std::string serviceName = "shareframe-websocket.service";
+    std::string logFile = "shareframe-websocket.log";
+};
+
+struct DisplayApplicationConfig
+{
+    std::string serviceName = "shareframe-display.service";
+    std::string logFile = "shareframe-display.log";
+};
+
+// nng endpoints for cross-process IPC. One source of truth read by every
+// service. Defaults live under /tmp (no perms/mkdir needed); the board overlay
+// may override to /run/shareframe.
+struct IpcConfig
+{
+    std::string wsRep        = "ipc:///tmp/shareframe-ws.rep.sock";
+    std::string wsPub        = "ipc:///tmp/shareframe-ws.pub.sock";
+    std::string displayRep   = "ipc:///tmp/shareframe-display.rep.sock";
+    std::string dashboardRep = "ipc:///tmp/shareframe-dashboard.rep.sock";
+    std::string heartbeatRep = "ipc:///tmp/shareframe-heartbeat.rep.sock";
 };
 
 struct HeartbeatApplicationConfig
@@ -76,21 +99,21 @@ struct HeartbeatApplicationConfig
 
 struct HeartbeatConfig
 {
-    int intervalSecs;
-    std::string httpUrl;
+    int intervalSecs = 60;
+    std::string httpUrl = "/api/frames/frame-hearbeat/";
 };
 
 struct ImageCheckConfig
 {
-    int intervalSecs;
+    int intervalSecs = 900;
 };
 
 
 struct AppConfig
 {
     std::string baseDir;
-    bool debug;
-    bool production;
+    bool debug = false;
+    bool production = false;
     std::string version;
     std::string baseUrl;
 
@@ -108,9 +131,12 @@ struct AppConfig
     DisplayConfig display;
     UpdateConfig update;
     DashboardApplicationConfig dashboardApplication;
+    WebsocketApplicationConfig websocketApplication;
+    DisplayApplicationConfig displayApplication;
     HeartbeatApplicationConfig heartbeatApplication;
     HeartbeatConfig heartbeat;
     ImageCheckConfig imageCheck;
+    IpcConfig ipc;
 
     [[nodiscard]] std::string httpBaseUrl() const { return (production ? "https://" : "http://") + baseUrl; }
     [[nodiscard]] std::string wsBaseUrl() const { return (production ? "wss://" : "ws://") + baseUrl; }

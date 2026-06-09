@@ -12,6 +12,12 @@ export interface IAppBarMenuItem {
     icon: SvgIconComponent;
 }
 
+export interface ISidebarSection {
+    section?: string;   // group header; undefined = ungrouped
+    advanced?: boolean; // section only shown when advanced mode is enabled
+    items: IAppBarMenuItem[];
+}
+
 export interface DialogAction {
     icon: React.ReactNode;
     onClick: () => void;

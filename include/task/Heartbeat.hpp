@@ -7,13 +7,15 @@ class AuthTokenManager;
 class IpcClient;
 
 /// Periodically POSTs a heartbeat to the server (frame-hearbeat endpoint) with the
-/// frame's local IP, version, and the running state of the application + dashboard
-/// processes. Runs as its own process (shareframe-heartbeat).
+/// frame's local IP, version, and the running state of the websocket + display +
+/// dashboard processes (each probed over its nng health endpoint). Runs as its
+/// own process (shareframe-heartbeat).
 class Heartbeat : public PeriodicTask
 {
 public:
     Heartbeat(EventBus& bus, const AppConfig& cfg, const HTTPClient& http,
-              AuthTokenManager& auth, IpcClient& ipc);
+              AuthTokenManager& auth, IpcClient& wsIpc, IpcClient& displayIpc,
+              IpcClient& dashboardIpc);
 
 protected:
     [[nodiscard]] int intervalSecs() const override;
@@ -21,10 +23,10 @@ protected:
 
 private:
     static std::string _getLocalIp();
-    bool _checkApplication() const;
-    bool _checkDashboard() const;
 
     const HTTPClient& http_;
     AuthTokenManager& auth_;
-    IpcClient& ipc_;
+    IpcClient& wsIpc_;
+    IpcClient& displayIpc_;
+    IpcClient& dashboardIpc_;
 };

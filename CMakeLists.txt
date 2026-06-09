@@ -81,6 +81,21 @@ if (NOT SQLiteCpp_FOUND)
 endif ()
 target_link_libraries(external INTERFACE SQLiteCpp)
 
+# nng (nanomsg-next-gen) — cross-process messaging (REQ/REP + PUB/SUB).
+# Static, no tests/tools, no TLS (ipc:// unix sockets only).
+set(NNG_TESTS OFF CACHE BOOL "" FORCE)
+set(NNG_TOOLS OFF CACHE BOOL "" FORCE)
+set(NNG_ENABLE_TLS OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+        nng
+        GIT_REPOSITORY https://github.com/nanomsg/nng.git
+        GIT_TAG v1.8.0
+        GIT_SHALLOW TRUE
+        EXCLUDE_FROM_ALL
+)
+FetchContent_MakeAvailable(nng)
+target_link_libraries(external INTERFACE nng)
+
 
 add_subdirectory(external/waveshare)
 add_subdirectory(external/stb)
@@ -105,28 +120,38 @@ set(COMMON_SOURCES
         src/util/Subprocess.cpp
         src/task/Task.cpp
         src/task/PeriodicTask.cpp
-        src/dashboard/IpcClient.cpp
+        src/ipc/IpcClient.cpp
+        src/ipc/NngRepServer.cpp
+        src/ipc/EventPublisher.cpp
+        src/ipc/EventSubscriber.cpp
 )
 add_library(shareframe-common STATIC ${COMMON_SOURCES})
 target_include_directories(shareframe-common PUBLIC ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(shareframe-common PUBLIC external)
 
-# --- shareframe-application: main process ---
-set(SERVICE_SOURCES
-        apps/application/main.cpp
-        src/display/DisplayManager.cpp
-        src/display/stb_impl.cpp
-        src/image/ImageManager.cpp
+# --- shareframe-websocket: network + image ingest ---
+set(WEBSOCKET_SOURCES
+        apps/websocket/main.cpp
         src/net/WebsocketClient.cpp
-        src/task/DisplayImageLoop.cpp
-        src/task/DisplayClear.cpp
+        src/image/ImageManager.cpp
         src/task/ImageUpdate.cpp
         src/task/ImageCheck.cpp
-        src/ipc/IpcServer.cpp
+        src/ipc/EventBridge.cpp
+)
+add_executable(shareframe-websocket ${WEBSOCKET_SOURCES})
+target_link_libraries(shareframe-websocket PRIVATE shareframe-common)
+
+# --- shareframe-display: e-paper rendering + slideshow ---
+set(DISPLAY_SOURCES
+        apps/display/main.cpp
+        src/display/DisplayManager.cpp
+        src/display/stb_impl.cpp
+        src/task/DisplayImageLoop.cpp
+        src/task/DisplayClear.cpp
         src/settings/RuntimeSettings.cpp
 )
-add_executable(shareframe-application ${SERVICE_SOURCES})
-target_link_libraries(shareframe-application PRIVATE shareframe-common waveshare_epd stb)
+add_executable(shareframe-display ${DISPLAY_SOURCES})
+target_link_libraries(shareframe-display PRIVATE shareframe-common waveshare_epd stb)
 
 # --- shareframe-dashboard: dashboard process ---
 set(DASHBOARD_SOURCES
@@ -137,6 +162,7 @@ set(DASHBOARD_SOURCES
         src/dashboard/WifiHandlers.cpp
         src/dashboard/FrameHandlers.cpp
         src/dashboard/SystemHandlers.cpp
+        src/dashboard/ServiceHandlers.cpp
 )
 add_executable(shareframe-dashboard ${DASHBOARD_SOURCES})
 target_link_libraries(shareframe-dashboard PRIVATE shareframe-common)
@@ -148,6 +174,13 @@ set(HEARTBEAT_SOURCES
 )
 add_executable(shareframe-heartbeat ${HEARTBEAT_SOURCES})
 target_link_libraries(shareframe-heartbeat PRIVATE shareframe-common)
+
+# --- shareframe-migrate: standalone DB migration oneshot entrypoint ---
+# Thin wrapper over Database::init(cfg, true) (logic lives in shareframe-common).
+# Run by the shareframe-db-migrate s6 oneshot before services start; also the
+# dev DB setup tool. Links common only (no display/network/nng deps).
+add_executable(shareframe-migrate apps/migrate/main.cpp)
+target_link_libraries(shareframe-migrate PRIVATE shareframe-common)
 
 set(CONFIG_FILES config.toml .env.secrets.toml config.dev.toml config.prod.toml VERSION.toml)
 foreach (f ${CONFIG_FILES})
@@ -184,15 +217,15 @@ endforeach ()
 # scripts). .env.secrets.toml is NOT installed: per-device identity, provisioned
 # on /data/shareframe/.
 include(GNUInstallDirs)
-install(TARGETS shareframe-application shareframe-dashboard shareframe-heartbeat
+install(TARGETS shareframe-websocket shareframe-display shareframe-dashboard shareframe-heartbeat shareframe-migrate
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-if(NOT SHAREFRAME_PROFILE)
+if (NOT SHAREFRAME_PROFILE)
     set(SHAREFRAME_PROFILE prod)
-endif()
-if(NOT EXISTS ${CMAKE_SOURCE_DIR}/config.${SHAREFRAME_PROFILE}.toml)
+endif ()
+if (NOT EXISTS ${CMAKE_SOURCE_DIR}/config.${SHAREFRAME_PROFILE}.toml)
     message(FATAL_ERROR "SHAREFRAME_PROFILE='${SHAREFRAME_PROFILE}' but config.${SHAREFRAME_PROFILE}.toml does not exist")
-endif()
+endif ()
 
 # SYSCONFDIR: use the FULL_ variant — on prefix=/usr it resolves to /etc
 # absolute, which is what we want. The non-FULL_ variant is relative ("etc"),

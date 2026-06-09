@@ -15,7 +15,8 @@ DashboardServer::DashboardServer(AppConfig& cfg, IpcClient& ipc,
       logger_(spdlog::default_logger()->clone("DashboardServer")),
       wifiHandlers_(wifi),
       frameHandlers_(ipc, cfg),
-      systemHandlers_(cfg, http, authTokenManager, wifi)
+      systemHandlers_(cfg, http, authTokenManager, wifi),
+      serviceHandlers_(cfg)
 {
     _initRoutes();
 }
@@ -77,6 +78,10 @@ void DashboardServer::_initRoutes()
         {"POST", "/api/system/shutdown",         [this](auto& req, auto&) { return systemHandlers_.handleShutdown(req); }},
         {"GET",  "/api/system/logs",             [this](auto& req, auto& qp) { return systemHandlers_.handleLogs(req, qp); }},
         {"GET",  "/api/system/updates/latest",   [this](auto& req, auto&) { return systemHandlers_.handleLatestUpdate(req); }},
+
+        // Service management
+        {"GET",  "/api/services",                [this](auto& req, auto&) { return serviceHandlers_.handleList(req); }},
+        {"POST", "/api/services/restart",        [this](auto& req, auto&) { return serviceHandlers_.handleRestart(req); }},
     };
 }
 
