@@ -2,7 +2,17 @@
 #include "events/Messages.hpp"
 #include "settings/RuntimeSettings.hpp"
 #include <algorithm>
+#include <chrono>
 #include <filesystem>
+
+namespace
+{
+int64_t steadyNowMs()
+{
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+} // namespace
 
 DisplayImageLoop::DisplayImageLoop(EventBus& bus, const AppConfig& cfg,
                                    ImageRepository& repo, DisplayManager& display,
@@ -27,6 +37,29 @@ void DisplayImageLoop::start()
                   settings_.getDisplayInterval(), cfg_.display.minRefreshSecs,
                   settings_.isSlideshowActive());
     Task::start();
+}
+
+void DisplayImageLoop::_armNextChange()
+{
+    nextChangeAtMs_.store(steadyNowMs()
+        + static_cast<int64_t>(settings_.getDisplayInterval()) * 1000);
+}
+
+int DisplayImageLoop::secondsUntilNext() const
+{
+    if (!settings_.isSlideshowActive())
+        return -1;
+    const int64_t at = nextChangeAtMs_.load();
+    if (at == 0)
+        return -1;
+    const int64_t remMs = at - steadyNowMs();
+    if (remMs <= 0)
+        return 0;
+    int secs = static_cast<int>(remMs / 1000);
+    // Guard against a stale arm reporting more than a full interval.
+    if (const int interval = settings_.getDisplayInterval(); secs > interval)
+        secs = interval;
+    return secs;
 }
 
 void DisplayImageLoop::_onImageRemoved(const std::vector<int64_t>& removedIds)
@@ -69,6 +102,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
         if (!settings_.isSlideshowActive())
         {
             logger_->debug("Slideshow inactive, waiting");
+            nextChangeAtMs_.store(0);
             std::unique_lock lk(mtx_);
             cv_.wait_for(lk, std::chrono::seconds(settings_.getDisplayInterval()),
                          [&st, this] { return st.stop_requested() || settings_.isSlideshowActive(); });
@@ -86,6 +120,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
                 if (defaultImages.empty())
                 {
                     logger_->debug("No images available, waiting");
+                    _armNextChange();
                     std::unique_lock lk(mtx_);
                     cv_.wait_for(lk, std::chrono::seconds(settings_.getDisplayInterval()),
                                  [&st, this] { return st.stop_requested() || skipCurrent_ || !settings_.isSlideshowActive(); });
@@ -112,6 +147,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
 
                     ++defaultImageIdx_;
 
+                    _armNextChange();
                     std::unique_lock lk(mtx_);
                     skipCurrent_ = false;
                     cv_.wait_for(lk, std::chrono::seconds(settings_.getDisplayInterval()),
@@ -152,6 +188,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
 
             // Wait for interval or skip signal
             {
+                _armNextChange();
                 std::unique_lock lk(mtx_);
                 skipCurrent_ = false;
                 cv_.wait_for(lk, std::chrono::seconds(settings_.getDisplayInterval()),

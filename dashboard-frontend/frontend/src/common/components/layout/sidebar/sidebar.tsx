@@ -15,6 +15,8 @@ import {
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
 import TuneIcon from '@mui/icons-material/Tune';
+import PowerSettingsNewIcon from '@mui/icons-material/PowerSettingsNew';
+import PowerMenu from '@/common/components/powerMenu';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { closeSidebar, getSidebar, openSidedbar, getAdvancedMode, toggleAdvancedMode } from '@/store/navigation/navigation.Slice';
 import { sidebarSections } from '@/assets/sidebarMenu/sideBarMenu';
@@ -225,6 +227,39 @@ const Sidebar: React.FC = () => {
                             </List>
                             <List>
                                 {renderAdvancedToggle()}
+                                <PowerMenu
+                                    anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                                    transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                                    renderTrigger={(open) => {
+                                        const content = (
+                                            <ListItem
+                                                onClick={open}
+                                                sx={{
+                                                    borderRadius: 0.5,
+                                                    minHeight: 48,
+                                                    cursor: 'pointer',
+                                                    '&:hover': { backgroundColor: 'action.hover' },
+                                                }}
+                                            >
+                                                <ListItemIcon
+                                                    sx={{
+                                                        width: shouldShowIconsOnly ? '100%' : 'auto',
+                                                        minWidth: shouldShowIconsOnly ? 'auto' : 50,
+                                                        justifyContent: 'flex-start',
+                                                    }}
+                                                >
+                                                    <PowerSettingsNewIcon />
+                                                </ListItemIcon>
+                                                {!shouldShowIconsOnly && <ListItemText primary="Energie" />}
+                                            </ListItem>
+                                        );
+                                        return shouldShowIconsOnly ? (
+                                            <Tooltip title="Energieoptionen" placement="right">
+                                                {content}
+                                            </Tooltip>
+                                        ) : content;
+                                    }}
+                                />
                                 {sidebarBottomItems.map((item) => renderListItem(item, true))}
                             </List>
                         </Box>

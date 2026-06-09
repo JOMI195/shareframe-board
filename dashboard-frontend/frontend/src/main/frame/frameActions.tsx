@@ -47,11 +47,30 @@ const FrameActions: React.FC = () => {
 
     const { isConnected } = usePiConnection();
     const { isToggling, isClearingDisplay, isSkippingImage, isFetchingInterval, isUpdatingInterval } = useAppSelector(selectSlideshowOperation);
-    const { isActive, lastCheckedAt } = useAppSelector(selectSlideshowStatus);
+    const { isActive, lastCheckedAt, secondsUntilNext } = useAppSelector(selectSlideshowStatus);
 
     // Interval form state
     const [intervalValue, setIntervalValue] = useState<number>(useAppSelector(selectDisplayRefreshInterval));
     const [intervalUnit, setIntervalUnit] = useState<'minutes' | 'hours'>('minutes');
+
+    // Live countdown to the next image change: seeded from the polled status
+    // (every 5s) and ticked locally each second in between.
+    const [remaining, setRemaining] = useState<number | null>(secondsUntilNext);
+    useEffect(() => {
+        setRemaining(secondsUntilNext);
+    }, [secondsUntilNext, lastCheckedAt]);
+    useEffect(() => {
+        const id = setInterval(() => {
+            setRemaining((prev) => (prev == null ? prev : Math.max(0, prev - 1)));
+        }, 1000);
+        return () => clearInterval(id);
+    }, []);
+
+    const formatCountdown = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    const countdownText =
+        !(isConnected && lastCheckedAt !== null) ? 'Unbekannt'
+            : !isActive ? 'Pausiert'
+                : remaining != null ? formatCountdown(remaining) : '—';
 
     const {
         isActive: isAppIntialLoadTimerActive,
@@ -104,9 +123,9 @@ const FrameActions: React.FC = () => {
 
     const getMinMaxValues = () => {
         if (intervalUnit === 'minutes') {
-            return { min: 3, max: 1440 }; // 3 minutes to 24 hours in minutes
+            return { min: 5, max: 1440 }; // 5 minutes to 24 hours in minutes
         } else {
-            return { min: 0.05, max: 24, step: 0.1 }; // 3 minutes (0.05 hours) to 24 hours
+            return { min: 5 / 60, max: 24, step: 0.1 }; // 5 minutes to 24 hours
         }
     };
 
@@ -118,6 +137,28 @@ const FrameActions: React.FC = () => {
     return (
         <>
             <Grid container spacing={3} sx={{ pb: isSmallScreen ? 7 : 0 }}>
+                <Grid item xs={12}>
+                    <ShareframeInfoCard
+                        title="Nächster Bildwechsel"
+                        minHeight="100px"
+                        sections={[
+                            {
+                                content: {
+                                    type: 'reactNode',
+                                    value: (
+                                        <Box display="flex" alignItems="center" gap={1.5}>
+                                            <TimerOutlined color="action" />
+                                            <Typography variant="h4" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                                                {countdownText}
+                                            </Typography>
+                                        </Box>
+                                    )
+                                }
+                            }
+                        ]}
+                    />
+                </Grid>
+
                 {!isSlideshowActionsTimerActive && isAppIntialLoadTimerActive && (
                     <Grid item xs={12}>
                         <Alert severity="info" sx={{ display: 'flex', alignItems: 'center' }}>
@@ -212,7 +253,7 @@ const FrameActions: React.FC = () => {
                                             </Box>
                                             <Box>
                                                 <Typography variant="body2">
-                                                    Minimum: 3 Minuten
+                                                    Minimum: 5 Minuten
                                                 </Typography>
                                                 <Typography variant="body2">
                                                     Maximum: 24 Stunden

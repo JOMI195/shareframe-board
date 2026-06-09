@@ -34,11 +34,25 @@ BootstrapResult bootstrap(const int argc, char* argv[])
     }
 }
 
+// Derives a short process tag from the per-app log file name, e.g.
+// "shareframe-websocket.log" -> "websocket". Used to tag every log line with the
+// emitting process so interleaved console/journal output is distinguishable.
+static std::string deriveProcessName(std::string logFile)
+{
+    if (logFile.size() >= 4 && logFile.compare(logFile.size() - 4, 4, ".log") == 0)
+        logFile.erase(logFile.size() - 4);
+    const std::string prefix = "shareframe-";
+    if (logFile.rfind(prefix, 0) == 0)
+        logFile.erase(0, prefix.size());
+    return logFile.empty() ? "main" : logFile;
+}
+
 void initLogging(const AppConfig& cfg, const std::string& logFile)
 {
     Logger::init({
         .logDir = cfg.log.logPath,
         .logFullPath = cfg.log.logPath + "/" + logFile,
+        .processName = deriveProcessName(logFile),
         .debug = cfg.debug,
     });
 }

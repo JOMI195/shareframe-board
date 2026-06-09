@@ -2,8 +2,6 @@ import { useEffect } from 'react';
 import { Stack } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { selectFrameInfoState, fetchFrameInfos } from '@/store/frameInfo/frameInfo.Slice';
-import Dialogs from './dialogs/dialogs';
-import { Actions } from './actions/actions';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 
 const RESOLUTION = "800mm x 480mm";
@@ -105,8 +103,6 @@ const General = () => {
                     ]}
                 />
             </Stack>
-            <Actions />
-            <Dialogs />
         </>
     );
 };

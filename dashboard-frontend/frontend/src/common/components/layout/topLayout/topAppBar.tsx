@@ -9,6 +9,8 @@ import MenuItem from '@mui/material/MenuItem';
 import MenuIcon from '@mui/icons-material/Menu';
 import MenuOpenIcon from '@mui/icons-material/MenuOpen';
 import LogoutIcon from '@mui/icons-material/Logout';
+import PowerSettingsNewIcon from '@mui/icons-material/PowerSettingsNew';
+import PowerMenu from '@/common/components/powerMenu';
 import { useColorThemeContext } from '@/context/colorTheme/colorThemeContext';
 import { Badge, Typography, useMediaQuery, useTheme } from '@mui/material';
 import Logo from '../../logo';
@@ -116,6 +118,17 @@ const TopAppBar = () => {
                             <IconComponent fontSize={isSmallScreen ? "medium" : "medium"} />
                         </IconButton>
                     </Tooltip>
+                    {isAuthenticated && (
+                        <PowerMenu
+                            renderTrigger={(open) => (
+                                <Tooltip title={"Energieoptionen"}>
+                                    <IconButton onClick={open}>
+                                        <PowerSettingsNewIcon fontSize="medium" />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+                        />
+                    )}
                     {isAuthenticated && (
                         <Tooltip title={"Abmelden"}>
                             <IconButton onClick={handleLogoutButtonClick}>

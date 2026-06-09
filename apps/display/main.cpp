@@ -90,6 +90,9 @@ int main(int argc, char* argv[])
         case IpcMessageType::GetSlideshowActive:
             return {{"active", runtimeSettings.isSlideshowActive()}};
 
+        case IpcMessageType::GetSecondsUntilNext:
+            return {{"seconds_until_next", displayImageLoop.secondsUntilNext()}};
+
         case IpcMessageType::GetHealth:
             return {{"running", true}};
         }

@@ -6,7 +6,9 @@ import { restartPi, shutdownPi } from "@/store/piPower/piPower.Slice";
 import { Stack, Typography } from "@mui/material";
 import { useNavigate } from "react-router";
 
-const Dialogs = () => {
+// Restart/shutdown confirm dialogs. Rendered once globally (in MainLayout) so the
+// power menu in the top bar / sidebar can trigger them from any page.
+const PowerDialogs = () => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const { isConnected } = usePiConnection();
@@ -15,12 +17,12 @@ const Dialogs = () => {
     const isShutdownDialogOpen = useAppSelector(getDialogs).general.shutdown.open;
 
     const handleConfirmRestart = async () => {
-        dispatch(closeRestartDialog())
+        dispatch(closeRestartDialog());
         await dispatch(restartPi(navigate));
     };
 
     const handleConfirmShutdown = async () => {
-        dispatch(closeShutdownDialog())
+        dispatch(closeShutdownDialog());
         await dispatch(shutdownPi(navigate));
     };
 
@@ -62,13 +64,12 @@ const Dialogs = () => {
                         Nach dem Herunterfahren ist das Dashboard nicht mehr verfügbar und die Bildwiedergabe deaktiviert.
                     </Typography>
                     <Typography variant="body1">
-                        Um ihn anschließend neu zu starten musst du die Stromzufuhr unterbrechen und wieder herstellen.
+                        Zum Einschalten musst du die Stromzufuhr kurz trennen und wieder herstellen – er startet dann automatisch.
                     </Typography>
                 </Stack>
             </ShareframeDialog>
-
         </>
     );
-}
+};
 
-export default Dialogs;
+export default PowerDialogs;

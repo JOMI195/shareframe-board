@@ -22,9 +22,14 @@ ix::HttpResponsePtr FrameHandlers::handleStatus(const ix::HttpRequestPtr& /*req*
         return errorResponse(500, "Internal Server Error", "Service unavailable");
     }
 
+    // Remaining time until the next image change (-1 when paused/unknown).
+    // Best-effort: don't fail the whole status if this single call misses.
+    auto secondsResult = ipc_.sendAndReceive(IpcMessage{IpcMessageType::GetSecondsUntilNext, {}});
+
     return jsonResponse(200, "OK", {
         {"active", activeResult->value("active", true)},
-        {"interval_seconds", intervalResult->value("interval_secs", cfg_.display.intervalSecs)}
+        {"interval_seconds", intervalResult->value("interval_secs", cfg_.display.intervalSecs)},
+        {"seconds_until_next", secondsResult ? secondsResult->value("seconds_until_next", -1) : -1}
     });
 }
 

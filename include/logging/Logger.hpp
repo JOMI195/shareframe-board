@@ -5,6 +5,7 @@
 struct LoggerParameters {
     std::string logDir;
     std::string logFullPath;
+    std::string processName = "main";
     bool debug = false;
 };
 

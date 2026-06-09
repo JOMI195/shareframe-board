@@ -9,6 +9,7 @@ import { fetchDisplayImagesLoopInterval } from "@/store/slideshowOperation/slide
 import { fetchFrameInfos } from "@/store/frameInfo/frameInfo.Slice";
 import { fetchLatestRelease } from "@/store/updates/updates.Slice";
 import Sidebar from "./sidebar/sidebar";
+import PowerDialogs from "@/common/components/powerDialogs";
 import { getAuthenticationUrl, getSignOutUrl } from "@/assets/endpoints/app/authEndpoints";
 import { getCurrentPath } from "@/store/navigation/navigation.Slice";
 
@@ -47,6 +48,7 @@ const MainLayout = () => {
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
             <TopAppbar />
             <Sidebar />
+            <PowerDialogs />
             <Container
                 maxWidth="md"
                 disableGutters

@@ -38,7 +38,7 @@ void Logger::init(const LoggerParameters& params)
 
     const auto logger = std::make_shared<spdlog::logger>("Main", sinks.begin(), sinks.end());
     logger->set_level(params.debug ? spdlog::level::debug : spdlog::level::info);
-    logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] [%l] %v");
+    logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [" + params.processName + "] [%n] [%l] %v");
     // Flush info+ so logs are visible quickly in long-running services.
     logger->flush_on(spdlog::level::info);
 

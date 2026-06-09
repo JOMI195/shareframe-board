@@ -6,6 +6,7 @@ import { fetchWithTimeout } from '@/common/utils/fetch';
 // Types for Slideshow Status State
 interface SlideshowStatusState {
     isActive: boolean;
+    secondsUntilNext: number | null; // remaining until next image; null = unknown/paused
     isLoading: boolean;
     error: string | null;
     lastCheckedAt: number | null;
@@ -14,6 +15,7 @@ interface SlideshowStatusState {
 // Initial State
 const initialState: SlideshowStatusState = {
     isActive: false,
+    secondsUntilNext: null,
     isLoading: false,
     error: null,
     lastCheckedAt: null,
@@ -31,7 +33,11 @@ export const checkSlideshowStatusThunk = createAsyncThunk(
                 return rejectWithValue('Failed to fetch slideshow status');
             }
 
-            return payload.data.active;
+            const raw = payload.data.seconds_until_next;
+            return {
+                active: payload.data.active as boolean,
+                secondsUntilNext: (typeof raw === 'number' && raw >= 0) ? raw : null,
+            };
         } catch (error) {
             return rejectWithValue(
                 error instanceof Error ? error.message : 'Unknown error occurred'
@@ -69,6 +75,7 @@ export const slideshowStatusSlice = createSlice({
     reducers: {
         resetStatus: (state) => {
             state.isActive = false;
+            state.secondsUntilNext = null;
             state.isLoading = false;
             state.error = null;
             state.lastCheckedAt = null;
@@ -80,7 +87,8 @@ export const slideshowStatusSlice = createSlice({
                 state.isLoading = true;
             })
             .addCase(checkSlideshowStatusThunk.fulfilled, (state, action) => {
-                state.isActive = action.payload;
+                state.isActive = action.payload.active;
+                state.secondsUntilNext = action.payload.secondsUntilNext;
                 state.isLoading = false;
                 state.error = null;
                 state.lastCheckedAt = Date.now();
@@ -89,6 +97,7 @@ export const slideshowStatusSlice = createSlice({
                 state.isLoading = false;
                 state.error = action.payload as string;
                 state.isActive = false;
+                state.secondsUntilNext = null;
             });
     }
 });

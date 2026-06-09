@@ -20,7 +20,7 @@ export const loadingWallSlice = createSlice({
         loadingWallVisible: (state, action: PayloadAction<string>) => {
             state.isLoadingWallVisible = true;
             state.message = action.payload;
-            state.hideAfter = Date.now() + 3 * 60 * 1000; // 5 minutes in the future
+            state.hideAfter = Date.now() + 3 * 60 * 1000; // 3 minutes in the future
         },
         loadingWallHidden: (state) => {
             if (state.hideAfter && Date.now() >= state.hideAfter) {
