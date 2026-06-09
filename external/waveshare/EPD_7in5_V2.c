@@ -32,9 +32,11 @@
 #include "Debug.h"
 
 /* Safety bound for EPD_WaitUntilIdle. A 7.5" V2 full refresh takes a few
- * seconds; 60s is generous headroom. Without this the BUSY poll loops
- * forever if the panel never releases BUSY (dead SPI, bad wiring). */
-#define EPD_BUSY_TIMEOUT_MS 60000
+ * seconds, so 10s is ample headroom while failing fast when the panel never
+ * releases BUSY (dead SPI, bad wiring). Keep this short: it bounds not just
+ * startup but the shutdown Sleep() in ~DisplayManager — too long and a wedged
+ * panel stalls the whole reboot. */
+#define EPD_BUSY_TIMEOUT_MS 10000
 
 /******************************************************************************
 function :	Software reset
