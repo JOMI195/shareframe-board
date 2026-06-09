@@ -33,6 +33,8 @@ DisplayManager::~DisplayManager()
 
 void DisplayManager::init()
 {
+    std::lock_guard lock(_hwMutex);
+
     if (!_cfg.display.mockDisplay)
     {
 #ifdef EPD_HARDWARE_ENABLED
@@ -51,15 +53,23 @@ void DisplayManager::init()
         _logger->info("[mock] Display init");
     }
 
-    if (!displayImage(std::filesystem::path(_cfg.display.loadingImagePath) /
+    _clearHw();
+    if (!_cfg.display.mockDisplay)
+        std::this_thread::sleep_for(std::chrono::seconds(FIRST_START_SETTLE_SECS));
+    if (!_displayImageHw(std::filesystem::path(_cfg.display.loadingImagePath) /
         "logo-frame-loading-shareframe.jpg"))
         _logger->error("Failed to display loading image");
 }
 
 void DisplayManager::clear()
 {
+    std::lock_guard lock(_hwMutex);
     _waitMinRefresh();
+    _clearHw();
+}
 
+void DisplayManager::_clearHw()
+{
     if (_cfg.display.mockDisplay)
     {
         _logger->info("[mock] Display clear");
@@ -88,8 +98,13 @@ void DisplayManager::clear()
 
 bool DisplayManager::displayImage(const std::filesystem::path& imagePath)
 {
+    std::lock_guard lock(_hwMutex);
     _waitMinRefresh();
+    return _displayImageHw(imagePath);
+}
 
+bool DisplayManager::_displayImageHw(const std::filesystem::path& imagePath)
+{
     if (_cfg.display.mockDisplay)
     {
         _logger->info("[mock] Display image: {}", imagePath.string());
@@ -127,6 +142,7 @@ bool DisplayManager::displayImage(const std::filesystem::path& imagePath)
 
 void DisplayManager::sleep()
 {
+    std::lock_guard lock(_hwMutex);
     if (_cfg.display.mockDisplay)
     {
         _logger->info("[mock] Display sleep");
@@ -134,6 +150,14 @@ void DisplayManager::sleep()
     }
 
     _hwSleep();
+}
+
+void DisplayManager::_hwSleep()
+{
+#ifdef EPD_HARDWARE_ENABLED
+    EPD_7IN5_V2_Sleep();
+    _logger->debug("Panel powered down (deep sleep)");
+#endif
 }
 
 bool DisplayManager::_hwInit()
@@ -161,14 +185,6 @@ bool DisplayManager::_hwInit()
 #else
     _logger->warn("EPD hardware not available (built without ENABLE_EPD_HARDWARE)");
     return false;
-#endif
-}
-
-void DisplayManager::_hwSleep()
-{
-#ifdef EPD_HARDWARE_ENABLED
-    EPD_7IN5_V2_Sleep();
-    _logger->debug("Panel powered down (deep sleep)");
 #endif
 }
 

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <memory>
+#include <mutex>
 #include <spdlog/spdlog.h>
 #include <vector>
 
@@ -29,11 +30,14 @@ public:
     static constexpr int WIDTH = 800;
     static constexpr int HEIGHT = 480;
     static constexpr int BUFFER_SIZE = WIDTH * HEIGHT / 8;
+    static constexpr int FIRST_START_SETTLE_SECS = 5;
 
 private:
     [[nodiscard]] bool _hwInit();
     void _hwSleep();
     void _waitMinRefresh() const;
+    void _clearHw();
+    [[nodiscard]] bool _displayImageHw(const std::filesystem::path& imagePath);
     [[nodiscard]] std::vector<uint8_t> _prepareImageBuffer(
         const std::filesystem::path& imagePath) const;
 
@@ -41,4 +45,5 @@ private:
     std::shared_ptr<spdlog::logger> _logger;
     bool _initialized = false;
     std::chrono::steady_clock::time_point _lastDisplayTime{};
+    std::mutex _hwMutex; ///< serializes all EPD hardware access (init/clear/display/sleep)
 };
