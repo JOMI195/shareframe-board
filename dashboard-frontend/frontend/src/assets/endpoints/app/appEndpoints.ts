@@ -6,6 +6,7 @@ export const getSetupUrl = () => "/setup";
 export const getNetworkUrl = () => "network/";
 
 export const getUpdatesyUrl = () => "updates/";
+export const getUpdateHistoryPageUrl = () => "update-history/";
 
 export const getGeneralSettingsUrl = () => "general/";
 

@@ -14,6 +14,10 @@ enum class IpcMessageType
     GetSecondsUntilNext,
     GetHealth,
     GetDisplayStats,
+    UpdateCheckLatest,
+    UpdatePerform,
+    UpdateStatus,
+    UpdateHistory,
 };
 
 struct IpcMessage
@@ -35,6 +39,10 @@ inline std::string ipcMessageTypeToString(IpcMessageType t)
     case IpcMessageType::GetSecondsUntilNext:     return "get_seconds_until_next";
     case IpcMessageType::GetHealth:               return "get_health";
     case IpcMessageType::GetDisplayStats:         return "get_display_stats";
+    case IpcMessageType::UpdateCheckLatest:       return "update_check_latest";
+    case IpcMessageType::UpdatePerform:           return "update_perform";
+    case IpcMessageType::UpdateStatus:            return "update_status";
+    case IpcMessageType::UpdateHistory:           return "update_history";
     }
     return "unknown";
 }
@@ -50,6 +58,10 @@ inline std::optional<IpcMessageType> ipcMessageTypeFromString(const std::string&
     if (s == "get_seconds_until_next")  return IpcMessageType::GetSecondsUntilNext;
     if (s == "get_health")              return IpcMessageType::GetHealth;
     if (s == "get_display_stats")       return IpcMessageType::GetDisplayStats;
+    if (s == "update_check_latest")     return IpcMessageType::UpdateCheckLatest;
+    if (s == "update_perform")          return IpcMessageType::UpdatePerform;
+    if (s == "update_status")           return IpcMessageType::UpdateStatus;
+    if (s == "update_history")          return IpcMessageType::UpdateHistory;
     return std::nullopt;
 }
 

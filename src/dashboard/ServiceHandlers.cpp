@@ -14,13 +14,14 @@ namespace
 {
 struct ServiceDesc { const char* id; const char* label; };
 
-// The four split services. ids double as the s6 service suffix
+// The split services. ids double as the s6 service suffix
 // ("shareframe-<id>") and the /api/system/logs service_name.
-constexpr std::array<ServiceDesc, 4> kServices = {{
+constexpr std::array<ServiceDesc, 5> kServices = {{
     {"display",   "Display"},
     {"websocket", "WebSocket"},
     {"dashboard", "Dashboard"},
     {"heartbeat", "Heartbeat"},
+    {"update",    "Updates"},
 }};
 
 bool isAllowedId(const std::string& id)
@@ -65,6 +66,7 @@ ServiceHandlers::ServiceHandlers(const AppConfig& cfg)
       displayIpc_(cfg.ipc.displayRep),
       wsIpc_(cfg.ipc.wsRep),
       heartbeatIpc_(cfg.ipc.heartbeatRep),
+      updateIpc_(cfg.ipc.updateRep),
       logger_(spdlog::default_logger()->clone("ServiceHandlers"))
 {
 }
@@ -80,6 +82,7 @@ ix::HttpResponsePtr ServiceHandlers::handleList(const ix::HttpRequestPtr& /*req*
         if (id == "dashboard")        running = true; // serving this request
         else if (id == "display")     running = health::isRunning(displayIpc_);
         else if (id == "websocket")   running = health::isRunning(wsIpc_);
+        else if (id == "update")      running = health::isRunning(updateIpc_);
         else                          running = health::isRunning(heartbeatIpc_);
 
         const auto svstat = parseSvstat(

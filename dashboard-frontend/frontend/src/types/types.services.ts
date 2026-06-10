@@ -10,12 +10,13 @@ export interface ServiceStatus {
     pid: number | null;
 }
 
-// The four services that have a management page (subset of ServiceType: no system).
+// The services that have a management page (subset of ServiceType: no system).
 export const MANAGED_SERVICES: ServiceType[] = [
     ServiceType.DISPLAY,
     ServiceType.WEBSOCKET,
     ServiceType.DASHBOARD,
     ServiceType.HEARTBEAT,
+    ServiceType.UPDATE,
 ];
 
 // German display labels for service ids (shared by sidebar, pages, logs).
@@ -24,5 +25,6 @@ export const SERVICE_LABELS: Record<string, string> = {
     display: 'Display',
     dashboard: 'Dashboard',
     heartbeat: 'Heartbeat',
+    update: 'Updates',
     system: 'System',
 };

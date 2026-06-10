@@ -164,6 +164,7 @@ set(DASHBOARD_SOURCES
         src/dashboard/FrameHandlers.cpp
         src/dashboard/SystemHandlers.cpp
         src/dashboard/ServiceHandlers.cpp
+        src/dashboard/UpdateHandlers.cpp
 )
 add_executable(shareframe-dashboard ${DASHBOARD_SOURCES})
 target_link_libraries(shareframe-dashboard PRIVATE shareframe-common)
@@ -175,6 +176,14 @@ set(HEARTBEAT_SOURCES
 )
 add_executable(shareframe-heartbeat ${HEARTBEAT_SOURCES})
 target_link_libraries(shareframe-heartbeat PRIVATE shareframe-common)
+
+# --- shareframe-update: A/B image update service (RAUC + tryboot) ---
+set(UPDATE_SOURCES
+        apps/update/main.cpp
+        src/update/UpdateManager.cpp
+)
+add_executable(shareframe-update ${UPDATE_SOURCES})
+target_link_libraries(shareframe-update PRIVATE shareframe-common)
 
 # --- shareframe-migrate: standalone DB migration oneshot entrypoint ---
 # Thin wrapper over Database::init(cfg, true) (logic lives in shareframe-common).
@@ -218,7 +227,7 @@ endforeach ()
 # scripts). .env.secrets.toml is NOT installed: per-device identity, provisioned
 # on /data/shareframe/.
 include(GNUInstallDirs)
-install(TARGETS shareframe-websocket shareframe-display shareframe-dashboard shareframe-heartbeat shareframe-migrate
+install(TARGETS shareframe-websocket shareframe-display shareframe-dashboard shareframe-heartbeat shareframe-update shareframe-migrate
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 if (NOT SHAREFRAME_PROFILE)

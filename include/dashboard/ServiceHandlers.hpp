@@ -21,5 +21,6 @@ private:
     mutable IpcClient displayIpc_;
     mutable IpcClient wsIpc_;
     mutable IpcClient heartbeatIpc_;
+    mutable IpcClient updateIpc_;
     std::shared_ptr<spdlog::logger> logger_;
 };

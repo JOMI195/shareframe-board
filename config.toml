@@ -62,6 +62,7 @@ ws_pub = "ipc:///tmp/shareframe-ws.pub.sock"
 display_rep = "ipc:///tmp/shareframe-display.rep.sock"
 dashboard_rep = "ipc:///tmp/shareframe-dashboard.rep.sock"
 heartbeat_rep = "ipc:///tmp/shareframe-heartbeat.rep.sock"
+update_rep = "ipc:///tmp/shareframe-update.rep.sock"
 
 [heartbeat]
 interval_secs = 60

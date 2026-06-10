@@ -1,5 +1,4 @@
 #include "dashboard/SystemHandlers.hpp"
-#include "auth/TokenAuth.hpp"
 #include "dashboard/ResponseUtil.hpp"
 #include "dashboard/Validation.hpp"
 #include "util/Subprocess.hpp"
@@ -21,14 +20,13 @@ nlohmann::json coerceScalar(const std::string& v)
 }
 } // namespace
 
-SystemHandlers::SystemHandlers(const AppConfig& cfg, HTTPClient& http,
-                               AuthTokenManager& authTokenManager, WifiManager& wifi)
-    : cfg_(cfg), http_(http), authTokenManager_(authTokenManager), wifi_(wifi),
+SystemHandlers::SystemHandlers(const AppConfig& cfg, WifiManager& wifi)
+    : cfg_(cfg), wifi_(wifi),
       logger_(spdlog::default_logger()->clone("SystemHandlers")),
       // Stable short ids form the public log contract (the frontend's
       // ServiceType enum); each maps to its spdlog file below in handleLogs.
       // Decoupled from internal *.service names / log filenames on purpose.
-      allowedServiceNames_({"websocket", "display", "dashboard", "heartbeat", "system"})
+      allowedServiceNames_({"websocket", "display", "dashboard", "heartbeat", "update", "system"})
 {
 }
 
@@ -148,6 +146,8 @@ ix::HttpResponsePtr SystemHandlers::handleLogs(
         path = cfg_.log.logPath + "/" + cfg_.displayApplication.logFile;
     else if (serviceName == "heartbeat")
         path = cfg_.log.logPath + "/" + cfg_.heartbeatApplication.logFile;
+    else if (serviceName == "update")
+        path = cfg_.log.logPath + "/" + cfg_.updateApplication.logFile;
     else if (serviceName == "system")
         path = cfg_.log.systemLogPath;
     auto result = Subprocess::run({"tail", "-n", std::to_string(lines), path}, 10);
@@ -165,35 +165,3 @@ ix::HttpResponsePtr SystemHandlers::handleLogs(
     });
 }
 
-ix::HttpResponsePtr SystemHandlers::handleLatestUpdate(const ix::HttpRequestPtr& /*req*/) const
-{
-    auto authHeaders = TokenAuth::buildTokenAuthHeaders(authTokenManager_);
-    if (authHeaders.empty())
-    {
-        logger_->error("Failed to build token auth headers");
-        return errorResponse(500, "Internal Server Error", "Auth token unavailable");
-    }
-
-    HTTPClient::Headers headers;
-    for (auto& [k, v] : authHeaders)
-        headers[k] = v;
-
-    std::string url = cfg_.httpBaseUrl() + cfg_.update.httpLatestUrl;
-    auto resp = http_.get(url, headers);
-
-    if (!resp.ok())
-    {
-        logger_->error("Update check failed: {} {}", resp.statusCode, resp.errorMsg);
-        return errorResponse(502, "Bad Gateway", "Failed to check for updates");
-    }
-
-    try
-    {
-        auto data = nlohmann::json::parse(resp.body);
-        return jsonResponse(200, "OK", data);
-    }
-    catch (...)
-    {
-        return errorResponse(502, "Bad Gateway", "Invalid response from update server");
-    }
-}

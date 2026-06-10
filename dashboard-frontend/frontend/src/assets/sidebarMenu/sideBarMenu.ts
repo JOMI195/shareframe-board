@@ -4,6 +4,7 @@ import WifiIcon from '@mui/icons-material/Wifi';
 import UpdateIcon from '@mui/icons-material/Update';
 import InfoIcon from '@mui/icons-material/Info';
 import ArticleIcon from '@mui/icons-material/Article';
+import HistoryIcon from '@mui/icons-material/History';
 import MiscellaneousServicesIcon from '@mui/icons-material/MiscellaneousServices';
 import TvIcon from '@mui/icons-material/Tv';
 import SettingsEthernetIcon from '@mui/icons-material/SettingsEthernet';
@@ -17,6 +18,7 @@ import {
     getLogsUrl,
     getNetworkUrl,
     getUpdatesyUrl,
+    getUpdateHistoryPageUrl,
     getServicesOverviewUrl,
     getServiceDetailUrl,
 } from "../endpoints/app/appEndpoints";
@@ -41,8 +43,10 @@ export const sidebarSections: ISidebarSection[] = [
             { name: "WebSocket", url: getServiceDetailUrl("websocket"), icon: SettingsEthernetIcon },
             { name: "Dashboard", url: getServiceDetailUrl("dashboard"), icon: DashboardIcon },
             { name: "Heartbeat", url: getServiceDetailUrl("heartbeat"), icon: MonitorHeartIcon },
+            { name: "Update-Dienst", url: getServiceDetailUrl("update"), icon: UpdateIcon },
             { name: "System", url: getGeneralSettingsUrl(), icon: InfoIcon },
             { name: "Display-Zustand", url: getDisplayHealthUrl(), icon: HealthAndSafetyIcon },
+            { name: "Update-Verlauf", url: getUpdateHistoryPageUrl(), icon: HistoryIcon },
             { name: "Protokolle", url: getLogsUrl(), icon: ArticleIcon },
         ],
     },

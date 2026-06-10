@@ -9,15 +9,17 @@ using dashboard::jsonResponse;
 
 DashboardServer::DashboardServer(AppConfig& cfg, IpcClient& ipc,
                                  HTTPClient& http, SessionManager& sessions,
-                                 AuthTokenManager& authTokenManager, WifiManager& wifi)
+                                 AuthTokenManager& authTokenManager, WifiManager& wifi,
+                                 IpcClient& updateIpc)
     : cfg_(cfg), http_(http), sessions_(sessions),
       authTokenManager_(authTokenManager),
       server_(cfg.dashboardApplication.port, cfg.dashboardApplication.host),
       logger_(spdlog::default_logger()->clone("DashboardServer")),
       wifiHandlers_(wifi),
       frameHandlers_(ipc, cfg),
-      systemHandlers_(cfg, http, authTokenManager, wifi),
-      serviceHandlers_(cfg)
+      systemHandlers_(cfg, wifi),
+      serviceHandlers_(cfg),
+      updateHandlers_(updateIpc)
 {
     _initRoutes();
 }
@@ -82,7 +84,12 @@ void DashboardServer::_initRoutes()
         {"POST", "/api/system/restart",          [this](auto& req, auto&) { return systemHandlers_.handleRestart(req); }},
         {"POST", "/api/system/shutdown",         [this](auto& req, auto&) { return systemHandlers_.handleShutdown(req); }},
         {"GET",  "/api/system/logs",             [this](auto& req, auto& qp) { return systemHandlers_.handleLogs(req, qp); }},
-        {"GET",  "/api/system/updates/latest",   [this](auto& req, auto&) { return systemHandlers_.handleLatestUpdate(req); }},
+
+        // Updates (A/B image update via RAUC + tryboot)
+        {"GET",  "/api/system/updates/latest",         [this](auto& req, auto&) { return updateHandlers_.handleLatest(req); }},
+        {"POST", "/api/system/updates/perform-update", [this](auto& req, auto&) { return updateHandlers_.handlePerformUpdate(req); }},
+        {"GET",  "/api/system/updates/status",         [this](auto& req, auto&) { return updateHandlers_.handleStatus(req); }},
+        {"GET",  "/api/system/updates/history",        [this](auto& req, auto&) { return updateHandlers_.handleHistory(req); }},
 
         // Service management
         {"GET",  "/api/services",                [this](auto& req, auto&) { return serviceHandlers_.handleList(req); }},

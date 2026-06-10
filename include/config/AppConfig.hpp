@@ -56,6 +56,8 @@ struct DisplayConfig
 struct UpdateConfig
 {
     std::string httpLatestUrl = "/api/frame-updates/latest/";
+    int checkIntervalSecs = 21600;
+    std::string autoInstallCriticality = "Critical";
 };
 
 struct DashboardApplicationConfig
@@ -89,12 +91,19 @@ struct IpcConfig
     std::string displayRep   = "ipc:///tmp/shareframe-display.rep.sock";
     std::string dashboardRep = "ipc:///tmp/shareframe-dashboard.rep.sock";
     std::string heartbeatRep = "ipc:///tmp/shareframe-heartbeat.rep.sock";
+    std::string updateRep    = "ipc:///tmp/shareframe-update.rep.sock";
 };
 
 struct HeartbeatApplicationConfig
 {
     std::string serviceName = "shareframe-heartbeat.service";
     std::string logFile = "shareframe-heartbeat.log";
+};
+
+struct UpdateApplicationConfig
+{
+    std::string serviceName = "shareframe-update.service";
+    std::string logFile = "shareframe-update.log";
 };
 
 struct HeartbeatConfig
@@ -130,6 +139,7 @@ struct AppConfig
     ImageConfig image;
     DisplayConfig display;
     UpdateConfig update;
+    UpdateApplicationConfig updateApplication;
     DashboardApplicationConfig dashboardApplication;
     WebsocketApplicationConfig websocketApplication;
     DisplayApplicationConfig displayApplication;

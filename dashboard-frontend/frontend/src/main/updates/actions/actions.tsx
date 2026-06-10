@@ -14,11 +14,15 @@ import { usePiConnection } from "@/context/piConnection/piConnectionContext";
 export const Actions: React.FC = () => {
   const dispatch = useAppDispatch();
 
-  const { latest_release, loading } = useAppSelector(selectUpdatesState);
+  const { latest_release, update_status, loading } = useAppSelector(selectUpdatesState);
   const { frameInfo } = useAppSelector(selectFrameInfoState);
   const { isConnected } = usePiConnection();
 
   const isNewVersion = (latest_release && frameInfo && isVersionNewer(latest_release.version, frameInfo.version)) ?? false;
+  const updateBusy = update_status != null && (
+    ['checking', 'downloading', 'installing', 'awaiting-reboot'].includes(update_status.phase)
+    || (update_status.pending_slot !== '' && update_status.pending_slot === update_status.booted_slot)
+  );
 
   const handleConfirmUpdateButtonClicked = () => {
     dispatch(openUpdatesConfirmUpdateDialog());
@@ -36,7 +40,7 @@ export const Actions: React.FC = () => {
     onClick: handleConfirmUpdateButtonClicked,
     label: 'Jetzt installieren',
     color: 'primary',
-    disabled: loading || !isConnected
+    disabled: loading || !isConnected || updateBusy
   };
 
   const fetchLatestReleaseAction: DialogAction = {

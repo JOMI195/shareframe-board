@@ -1,9 +1,10 @@
 import MainLayout from '@/common/components/layout/layout';
 import Snackbars from '@/common/components/snackbars/snackbars';
 import ProtectedRoute from '@/common/components/protectedRoute';
-import { getHomeUrl, getGeneralSettingsUrl, getDisplayHealthUrl, getLogsUrl, getNetworkUrl, getUpdatesyUrl, getServicesOverviewUrl, getServiceDetailUrl, getSetupUrl } from '@/assets/endpoints/app/appEndpoints';
+import { getHomeUrl, getGeneralSettingsUrl, getDisplayHealthUrl, getLogsUrl, getNetworkUrl, getUpdatesyUrl, getUpdateHistoryPageUrl, getServicesOverviewUrl, getServiceDetailUrl, getSetupUrl } from '@/assets/endpoints/app/appEndpoints';
 import FrameActions from '@/main/frame/frameActions';
 import Updates from '@/main/updates/updates';
+import UpdateHistory from '@/main/updateHistory/updateHistory';
 import Network from '@/main/network/network';
 import General from '@/main/general/general';
 import DisplayHealthPage from '@/main/displayHealth/displayHealth';
@@ -77,6 +78,10 @@ const Routing = createBrowserRouter([
                     element: <Updates />
                   },
                   {
+                    path: getUpdateHistoryPageUrl(),
+                    element: <UpdateHistory />
+                  },
+                  {
                     path: getGeneralSettingsUrl(),
                     element: <General />
                   },
@@ -107,6 +112,10 @@ const Routing = createBrowserRouter([
                   {
                     path: getServiceDetailUrl('heartbeat'),
                     element: <ServiceDetail serviceId={ServiceType.HEARTBEAT} />
+                  },
+                  {
+                    path: getServiceDetailUrl('update'),
+                    element: <ServiceDetail serviceId={ServiceType.UPDATE} />
                   },
                 ],
               },

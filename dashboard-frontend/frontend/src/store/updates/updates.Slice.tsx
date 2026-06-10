@@ -4,26 +4,49 @@ import uuid from 'react-uuid';
 import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '@/store/snackbars/snackbars.Slice';
 import { IServerResponse } from '@/types';
 import { fetchWithTimeout } from '@/common/utils/fetch';
-import { getLatestReleaseUrl, getPerformUpdateUrl } from '@/assets/endpoints/api/frame';
+import { getLatestReleaseUrl, getPerformUpdateUrl, getUpdateStatusUrl, getUpdateHistoryUrl } from '@/assets/endpoints/api/frame';
 import { showLoadingWall } from '../loadingWall/loadingWall.Slice';
 import { getHomeUrl } from '@/assets/endpoints/app/appEndpoints';
 
 interface Release {
     version: string;
-    download_url: string;
-    checksum: string;
     release_notes: string;
     release_date: string;
     criticality: string;
 }
 
+export interface UpdateHistoryEntry {
+    timestamp: string;
+    from_version: string;
+    to_version: string;
+    result: 'committed' | 'rolled-back' | 'install-failed' | string;
+    error: string;
+}
+
+export interface UpdateStatus {
+    phase: 'idle' | 'checking' | 'downloading' | 'installing' | 'awaiting-reboot' | 'failed' | string;
+    progress: number;
+    error: string;
+    current_version: string;
+    target_version: string;
+    booted_slot: string;
+    committed_slot: string;
+    pending_slot: string;
+    committed: boolean;
+    last_result?: UpdateHistoryEntry;
+}
+
 export interface UpdatesState {
     latest_release: Release | null;
+    update_status: UpdateStatus | null;
+    history: UpdateHistoryEntry[];
     loading: boolean;
 }
 
 const initialState: UpdatesState = {
     latest_release: null,
+    update_status: null,
+    history: [],
     loading: false,
 };
 
@@ -76,6 +99,40 @@ export const performUpdate = createAsyncThunk(
     }
 );
 
+export const fetchUpdateStatus = createAsyncThunk(
+    'updates/fetchUpdateStatus',
+    async (_, { rejectWithValue }) => {
+        try {
+            const response = await fetchWithTimeout(getUpdateStatusUrl());
+            const payload: IServerResponse & { data: UpdateStatus } = await response.json();
+            if (payload.success && payload.data) {
+                return payload.data;
+            }
+            return rejectWithValue('Failed to fetch update status');
+        } catch (error) {
+            return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
+        }
+    }
+);
+
+export const fetchUpdateHistory = createAsyncThunk(
+    'updates/fetchUpdateHistory',
+    async (_, { dispatch, rejectWithValue }) => {
+        try {
+            const response = await fetchWithTimeout(getUpdateHistoryUrl());
+            const payload: IServerResponse & { data: { history: UpdateHistoryEntry[] } } = await response.json();
+            if (payload.success && payload.data) {
+                return payload.data.history;
+            }
+            dispatch(addAlertSnackbar(uuid(), "Update-Verlauf konnte nicht geladen werden", "error"));
+            return rejectWithValue('Failed to fetch update history');
+        } catch (error) {
+            dispatch(addAlertSnackbar(uuid(), "Update-Verlauf konnte nicht geladen werden", "error"));
+            return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
+        }
+    }
+);
+
 export const UpdatesSlice = createSlice({
     name: 'updates',
     initialState,
@@ -91,6 +148,12 @@ export const UpdatesSlice = createSlice({
         });
         builder.addCase(fetchLatestRelease.rejected, (state) => {
             state.loading = false;
+        });
+        builder.addCase(fetchUpdateStatus.fulfilled, (state, action) => {
+            state.update_status = action.payload;
+        });
+        builder.addCase(fetchUpdateHistory.fulfilled, (state, action) => {
+            state.history = action.payload;
         });
     }
 });

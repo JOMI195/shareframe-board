@@ -37,7 +37,12 @@ int main(int argc, char* argv[])
     WifiManager wifi;
     SessionManager sessions;
 
-    DashboardServer server(cfg, ipc, http, sessions, authTokenManager, wifi);
+    // Update endpoints proxy to the shareframe-update service over nng
+    IpcClient updateIpc(cfg.ipc.updateRep);
+    if (!updateIpc.connect())
+        spdlog::warn("Update service IPC endpoint not available yet, will retry on first request");
+
+    DashboardServer server(cfg, ipc, http, sessions, authTokenManager, wifi, updateIpc);
     server.start();
 
     // Health endpoint so other services can probe the dashboard over nng.
@@ -48,6 +53,7 @@ int main(int argc, char* argv[])
     spdlog::info("Received signal {}, shutting down", sig);
     healthRep.stop();
     server.stop();
+    updateIpc.disconnect();
     ipc.disconnect();
 
     return 0;

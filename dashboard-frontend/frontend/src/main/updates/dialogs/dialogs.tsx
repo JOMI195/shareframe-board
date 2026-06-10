@@ -25,14 +25,8 @@ const Dialogs = () => {
                 onConfirm={handleConfirmUpdate}
                 confirmText="Installieren"
                 cancelText="Abbrechen"
-                // Perform-update has no backend route yet (RAUC install flow is
-                // handled out-of-band), so installation is disabled here.
-                confirmDisabled={true}
             >
                 <Stack spacing={2}>
-                    <Typography variant="body1" color="text.secondary">
-                        Die Installation von Updates über das Dashboard ist derzeit nicht verfügbar.
-                    </Typography>
                     <Typography variant="body1" gutterBottom>
                         Möchtest du das neue Update wirklich installieren?
                     </Typography>
@@ -40,7 +34,7 @@ const Dialogs = () => {
                         Zum Start der Installation wirst du zunächst ausgeloggt. Anschließend wird die Bilderwiedergabe sowie dieses Dashboard kurzzeitig beendet und nicht zur Verfügung stehen.
                     </Typography>
                     <Typography variant="body1">
-                        Nach erfolgreicher Installation startet die Bildwiedergabe erneut und diese Seite muss für den Zugang zum Dashboard neu geladen werden.
+                        Nach erfolgreicher Installation startet der Bilderrahmen neu und diese Seite muss für den Zugang zum Dashboard neu geladen werden. Schlägt das Update fehl, stellt der Bilderrahmen automatisch die vorherige Version wieder her.
                     </Typography>
                 </Stack>
 

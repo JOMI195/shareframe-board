@@ -101,6 +101,16 @@ struct glz::meta<HeartbeatApplicationConfig>
 };
 
 template <>
+struct glz::meta<UpdateApplicationConfig>
+{
+    using T = UpdateApplicationConfig;
+    static constexpr auto value = glz::object(
+        "service_name", &T::serviceName,
+        "log_file", &T::logFile
+    );
+};
+
+template <>
 struct glz::meta<HeartbeatConfig>
 {
     using T = HeartbeatConfig;
@@ -138,7 +148,9 @@ struct glz::meta<UpdateConfig>
 {
     using T = UpdateConfig;
     static constexpr auto value = glz::object(
-        "http_latest_url", &T::httpLatestUrl
+        "http_latest_url", &T::httpLatestUrl,
+        "check_interval_secs", &T::checkIntervalSecs,
+        "auto_install_criticality", &T::autoInstallCriticality
     );
 };
 
@@ -184,7 +196,8 @@ struct glz::meta<IpcConfig>
         "ws_pub", &T::wsPub,
         "display_rep", &T::displayRep,
         "dashboard_rep", &T::dashboardRep,
-        "heartbeat_rep", &T::heartbeatRep
+        "heartbeat_rep", &T::heartbeatRep,
+        "update_rep", &T::updateRep
     );
 };
 
@@ -208,6 +221,7 @@ struct glz::meta<AppConfig>
         "websocket_application", &T::websocketApplication,
         "display_application", &T::displayApplication,
         "heartbeat_application", &T::heartbeatApplication,
+        "update_application", &T::updateApplication,
         "heartbeat", &T::heartbeat,
         "image_check", &T::imageCheck,
         "update", &T::update,

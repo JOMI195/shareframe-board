@@ -4,6 +4,7 @@
 #include "dashboard/ServiceHandlers.hpp"
 #include "dashboard/SessionManager.hpp"
 #include "dashboard/SystemHandlers.hpp"
+#include "dashboard/UpdateHandlers.hpp"
 #include "dashboard/WifiHandlers.hpp"
 #include "net/HTTPClient.hpp"
 #include <functional>
@@ -20,7 +21,7 @@ class DashboardServer
 public:
     DashboardServer(AppConfig& cfg, IpcClient& ipc, HTTPClient& http,
                     SessionManager& sessions, AuthTokenManager& authTokenManager,
-                    WifiManager& wifi);
+                    WifiManager& wifi, IpcClient& updateIpc);
 
     void start();
     void stop();
@@ -66,6 +67,7 @@ private:
     FrameHandlers frameHandlers_;
     SystemHandlers systemHandlers_;
     ServiceHandlers serviceHandlers_;
+    UpdateHandlers updateHandlers_;
 
     // Routing tables
     std::vector<Route> publicRoutes_;
