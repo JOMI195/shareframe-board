@@ -77,12 +77,38 @@ void DisplayManager::clear()
     _clearHw();
 }
 
+void DisplayManager::clearForShutdown()
+{
+    std::lock_guard lock(_hwMutex);
+    if (_isCleared.load())
+    {
+        _logger->info("Display already cleared, skipping shutdown clear");
+        return;
+    }
+    // No _waitMinRefresh(): shutdown is time-boxed by the service timeout-kill and
+    // must not block up to minRefreshSecs. _clearHw() inits + sleeps the panel itself.
+    _logger->info("Clearing display before shutdown");
+    _clearHw();
+}
+
+void DisplayManager::requestShutdown()
+{
+    // Set under _waitMtx so the flag can't be missed in the gap between a waiter's
+    // predicate check and it blocking (lost-wakeup guard).
+    {
+        std::lock_guard lk(_waitMtx);
+        _shuttingDown.store(true);
+    }
+    _waitCv.notify_all(); // wake any in-progress _waitMinRefresh()
+}
+
 void DisplayManager::_clearHw()
 {
     if (_cfg.display.mockDisplay)
     {
         _logger->info("[mock] Display clear");
         _lastDisplayTime = std::chrono::steady_clock::now();
+        _isCleared = true;
         return;
     }
 
@@ -111,6 +137,7 @@ void DisplayManager::_clearHw()
         _metrics.set("epd_last_refresh_at", nowUnix());
         _metrics.setIfUnset("epd_first_use_at", nowUnix());
         _consecutiveFailures = 0;
+        _isCleared = true;
         _logger->info("Display cleared (panel refresh {} ms)", ms);
     }
 #else
@@ -127,10 +154,19 @@ bool DisplayManager::displayImage(const std::filesystem::path& imagePath)
 
 bool DisplayManager::_displayImageHw(const std::filesystem::path& imagePath)
 {
+    // A min-refresh wait may have just been interrupted by shutdown; don't start a
+    // new panel refresh now — clearForShutdown() will leave the panel blank instead.
+    if (_shuttingDown.load())
+    {
+        _logger->info("Shutdown in progress, skipping image display");
+        return false;
+    }
+
     if (_cfg.display.mockDisplay)
     {
         _logger->info("[mock] Display image: {}", imagePath.string());
         _lastDisplayTime = std::chrono::steady_clock::now();
+        _isCleared = false;
         return true;
     }
 
@@ -163,6 +199,7 @@ bool DisplayManager::_displayImageHw(const std::filesystem::path& imagePath)
     _metrics.set("epd_last_refresh_at", nowUnix());
     _metrics.setIfUnset("epd_first_use_at", nowUnix());
     _consecutiveFailures = 0;
+    _isCleared = false;
     _logger->info("Displayed image: {} (panel refresh {} ms)", imagePath.string(), refreshMs);
     return true;
 #else
@@ -255,13 +292,18 @@ bool DisplayManager::_hwInit()
 void DisplayManager::_waitMinRefresh() const
 {
     const auto elapsed = std::chrono::steady_clock::now() - _lastDisplayTime;
+    const auto minRefresh = std::chrono::seconds(_cfg.display.minRefreshSecs);
+    if (elapsed >= minRefresh)
+        return;
 
-    if (const auto minRefresh = std::chrono::seconds(_cfg.display.minRefreshSecs); elapsed < minRefresh)
-    {
-        const auto remaining = std::chrono::duration_cast<std::chrono::seconds>(minRefresh - elapsed);
-        _logger->info("Waiting {}s for minimum refresh interval", remaining.count());
-        std::this_thread::sleep_for(minRefresh - elapsed);
-    }
+    const auto remaining = minRefresh - elapsed;
+    _logger->info("Waiting {}s for minimum refresh interval",
+                  std::chrono::duration_cast<std::chrono::seconds>(remaining).count());
+    // Interruptible: requestShutdown() wakes us immediately. This is called with
+    // _hwMutex held, so a plain sleep here would pin the bus for up to minRefreshSecs
+    // and stall shutdown past the service timeout-kill.
+    std::unique_lock lk(_waitMtx);
+    _waitCv.wait_for(lk, remaining, [this] { return _shuttingDown.load(); });
 }
 
 std::vector<uint8_t> DisplayManager::_prepareImageBuffer(

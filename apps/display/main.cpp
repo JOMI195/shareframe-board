@@ -21,6 +21,11 @@
 // consume.
 int main(int argc, char* argv[])
 {
+    // Block SIGINT/SIGTERM before any thread is created so the signal reaches the
+    // waitForSignal() thread (graceful shutdown) instead of killing the process via
+    // a worker thread that doesn't block it.
+    blockShutdownSignals();
+
     auto [cfg, profile] = bootstrap(argc, argv);
     initLogging(cfg, cfg.displayApplication.logFile);
     spdlog::info("shareframe-display v{} starting [profile: {}]", cfg.version, profileName(profile));
@@ -129,11 +134,19 @@ int main(int argc, char* argv[])
 
     const int sig = waitForSignal();
     spdlog::info("Received signal {}, shutting down", sig);
+    // Wake any in-flight min-refresh wait first so the image-loop thread unblocks
+    // and the tasks below stop promptly (well within the service timeout-kill).
+    displayManager.requestShutdown();
     subscriber.stop();
     repServer.stop();
     eventBus.stop();
     displayClear.stop();
     displayImageLoop.stop();
+
+    // All display tasks are stopped, so nothing else touches the panel now. Leave
+    // the board powered off with a blank white screen instead of the last image
+    // (e-paper is bistable). No-op if the panel is already cleared.
+    displayManager.clearForShutdown();
 
     return 0;
 }

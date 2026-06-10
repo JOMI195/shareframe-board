@@ -57,6 +57,15 @@ void initLogging(const AppConfig& cfg, const std::string& logFile)
     });
 }
 
+void blockShutdownSignals()
+{
+    sigset_t sigset;
+    sigemptyset(&sigset);
+    sigaddset(&sigset, SIGINT);
+    sigaddset(&sigset, SIGTERM);
+    pthread_sigmask(SIG_BLOCK, &sigset, nullptr);
+}
+
 int waitForSignal()
 {
     sigset_t sigset;
