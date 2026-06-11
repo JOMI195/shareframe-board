@@ -31,6 +31,16 @@ export interface FrameInfo {
     wlan_signal_dbm?: number;
     wlan_connected?: boolean;
     boot_count?: number;
+    host_model?: string;
+    fw_version?: string;
+    build_sha?: string;
+    boot_slot?: string;
+    slot_trial?: boolean;
+    health_state?: string;
+    cpu_freq_mhz?: number;
+    wifi_mode?: string;
+    wifi_ssid?: string;
+    serial?: string;
 }
 
 export interface FrameInfoState {

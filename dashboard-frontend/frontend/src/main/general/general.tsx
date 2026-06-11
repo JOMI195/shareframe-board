@@ -49,6 +49,19 @@ const fmtTime = (iso?: string): string => {
 };
 const orDash = (v?: string): string => (v && v.length ? v : DASH);
 
+// build_sha can coerce to a number server-side when the hex happens to be all digits.
+const fmtFirmware = (version?: string, sha?: string | number): string => {
+    if (!version) return DASH;
+    return sha ? `${version} (${String(sha).slice(0, 7)})` : version;
+};
+const fmtSlot = (slot?: string, trial?: boolean): string =>
+    slot ? `${slot}${trial ? ' (Trial, nicht bestätigt)' : ''}` : DASH;
+const fmtFreq = (mhz?: number): string => (mhz === undefined ? DASH : `${mhz} MHz`);
+const HEALTH_LABELS: Record<string, string> = { ok: 'OK', warn: 'Warnung', critical: 'Kritisch' };
+const fmtHealth = (s?: string): string => (s ? HEALTH_LABELS[s] ?? s : DASH);
+const WIFI_MODE_LABELS: Record<string, string> = { connected: 'Verbunden', connecting: 'Verbinde …', ap: 'Access Point' };
+const fmtWifiMode = (m?: string): string => (m ? WIFI_MODE_LABELS[m] ?? m : DASH);
+
 const General = () => {
     const dispatch = useAppDispatch();
     const info = useAppSelector(selectFrameInfoState).frameInfo;
@@ -67,17 +80,22 @@ const General = () => {
                     title="Gerät"
                     sections={[
                         { label: "Seriennummer", content: orDash(info?.serial_number) },
+                        { label: "Modell", content: orDash(info?.host_model) },
                         { label: "Hostname", content: orDash(info?.hostname) },
                         { label: "Version", content: orDash(info?.version) },
+                        { label: "Firmware", content: fmtFirmware(info?.fw_version, info?.build_sha) },
+                        { label: "Boot-Slot", content: fmtSlot(info?.boot_slot, info?.slot_trial) },
                         { label: "Kernel", content: orDash(info?.kernel) },
                         { label: "Systemzeit", content: fmtTime(info?.time_iso) },
                         { label: "Laufzeit", content: fmtUptime(info?.uptime_seconds) },
+                        { label: "Boot-Zähler", content: info?.boot_count !== undefined ? String(info.boot_count) : DASH },
                     ]}
                 />
 
                 <ShareframeInfoCard
                     title="Netzwerk"
                     sections={[
+                        { label: "Modus", content: fmtWifiMode(info?.wifi_mode) },
                         { label: "WLAN", content: orDash(info?.wlan_ssid) },
                         { label: "Signal", content: fmtSignal(info?.wlan_signal_dbm) },
                         { label: "IP (WLAN)", content: orDash(info?.ip_wlan0) },
@@ -88,7 +106,9 @@ const General = () => {
                 <ShareframeInfoCard
                     title="System"
                     sections={[
+                        { label: "Systemzustand", content: fmtHealth(info?.health_state) },
                         { label: "CPU-Auslastung", content: fmtPct(info?.cpu_usage_percent) },
+                        { label: "CPU-Takt", content: fmtFreq(info?.cpu_freq_mhz) },
                         { label: "CPU-Temperatur", content: fmtTemp(info?.cpu_temp_celsius) },
                         { label: "Load (1/5/15 min)", content: fmtLoad(info?.load_1, info?.load_5, info?.load_15) },
                         { label: "Arbeitsspeicher", content: fmtUsage(info?.ram_available_bytes, info?.ram_total_bytes) },
