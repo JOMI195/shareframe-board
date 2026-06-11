@@ -85,10 +85,8 @@ ix::HttpResponsePtr SystemHandlers::handleCheckInternet(const ix::HttpRequestPtr
 ix::HttpResponsePtr SystemHandlers::handleRestart(const ix::HttpRequestPtr& /*req*/) const
 {
     logger_->info("System reboot requested");
-    // Clean s6 shutdown: signals shutdownd to run rc.shutdown (stop services,
-    // unmount /data, mark RAUC slot) before rebooting. NOT busybox reboot,
-    // which would bypass all of that.
-    auto result = Subprocess::run({"s6-linux-init-shutdown", "-r", "now"}, 5);
+    // /sbin/reboot is the s6 clean wrapper (shutdownd -> rc.shutdown), not busybox.
+    auto result = Subprocess::run({"reboot"}, 5);
 
     if (result.exitCode != 0)
     {
@@ -102,7 +100,7 @@ ix::HttpResponsePtr SystemHandlers::handleRestart(const ix::HttpRequestPtr& /*re
 ix::HttpResponsePtr SystemHandlers::handleShutdown(const ix::HttpRequestPtr& /*req*/) const
 {
     logger_->info("System shutdown requested");
-    auto result = Subprocess::run({"s6-linux-init-shutdown", "-p", "now"}, 5);
+    auto result = Subprocess::run({"shutdown"}, 5);
 
     if (result.exitCode != 0)
     {
