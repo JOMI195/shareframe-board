@@ -1,5 +1,9 @@
-import { useEffect, ReactNode } from 'react';
+import { useEffect, ReactNode, Fragment } from 'react';
 import { Stack, Chip, Typography, Box } from '@mui/material';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useAppDispatch, useAppSelector } from '@/store';
 import {
     selectUpdatesState,
@@ -23,25 +27,38 @@ const fmtTimestamp = (ts: string): string => {
 
 const node = (value: ReactNode) => ({ type: 'reactNode' as const, value });
 
-const entryNode = (entry: UpdateHistoryEntry) => {
+const EntryAccordion = ({ entry }: { entry: UpdateHistoryEntry }) => {
     const chip = RESULT_CHIP[entry.result] ?? { label: entry.result, color: 'warning' as const };
-    return node(
-        <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                <Chip size="small" label={chip.label} color={chip.color} />
-                <Typography variant="body1">
-                    {(entry.from_version || DASH) + ' → ' + (entry.to_version || DASH)}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                    {fmtTimestamp(entry.timestamp)}
-                </Typography>
-            </Box>
-            {entry.error && (
-                <Typography variant="body2" color="error" sx={{ mt: 0.5 }}>
-                    {entry.error}
-                </Typography>
+    const hasError = Boolean(entry.error);
+    return (
+        <Accordion
+            disableGutters
+            elevation={0}
+            expanded={hasError ? undefined : false}
+            sx={{ '&:before': { display: 'none' } }}
+        >
+            <AccordionSummary
+                expandIcon={hasError ? <ExpandMoreIcon /> : null}
+                sx={{ cursor: hasError ? 'pointer' : 'default !important', px: 0 }}
+            >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                    <Chip size="small" label={chip.label} color={chip.color} />
+                    <Typography variant="body1">
+                        {(entry.from_version || DASH) + ' → ' + (entry.to_version || DASH)}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        {fmtTimestamp(entry.timestamp)}
+                    </Typography>
+                </Box>
+            </AccordionSummary>
+            {hasError && (
+                <AccordionDetails sx={{ px: 0, pt: 0 }}>
+                    <Typography variant="body2" color="error">
+                        {entry.error}
+                    </Typography>
+                </AccordionDetails>
             )}
-        </Box>
+        </Accordion>
     );
 };
 
@@ -60,7 +77,7 @@ const UpdateHistory = () => {
                 sections={
                     history.length === 0
                         ? [{ content: "Noch keine Updates durchgeführt." }]
-                        : history.map((entry) => ({ content: entryNode(entry) }))
+                        : [{ content: node(<Box>{history.map((e, i) => <Fragment key={i}><EntryAccordion entry={e} /></Fragment>)}</Box>) }]
                 }
             />
         </Stack>
