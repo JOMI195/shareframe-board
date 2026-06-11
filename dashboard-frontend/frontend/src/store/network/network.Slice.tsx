@@ -137,6 +137,43 @@ export const forgetNetwork = createAsyncThunk(
     }
 );
 
+export const changeApPassword = createAsyncThunk(
+    'network/changeApPassword',
+    async (password: string, { dispatch, rejectWithValue }) => {
+        const loadingSnackbarId = uuid();
+
+        try {
+            dispatch(addLoadingSnackbar(
+                loadingSnackbarId,
+                'AP-Passwort wird geändert'
+            ));
+            const response = await fetchWithTimeout('/api/connection/ap-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ password }),
+            });
+
+            const data: IServerResponse = await response.json();
+
+            if (data.success) {
+                dispatch(addAlertSnackbar(uuid(), "AP-Passwort erfolgreich geändert", "success"));
+                return true;
+            } else {
+                dispatch(addAlertSnackbar(uuid(), data.message || "Ändern des AP-Passworts fehlgeschlagen", "error"));
+                return rejectWithValue(data.message || 'Failed to change AP password');
+            }
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            dispatch(addAlertSnackbar(uuid(), "Ändern des AP-Passworts fehlgeschlagen", "error"));
+            return rejectWithValue(errorMessage);
+        } finally {
+            dispatch(removeLoadingSnackbar(loadingSnackbarId));
+        }
+    }
+);
+
 // Slice
 export const networkSlice = createSlice({
     name: 'network',

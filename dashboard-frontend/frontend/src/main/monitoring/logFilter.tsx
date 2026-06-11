@@ -3,10 +3,13 @@ import {
     Typography,
     Card,
     CardContent,
+    CardActions,
+    Button,
     TextField,
     Grid,
     MenuItem,
 } from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 export interface LogFilterParams {
     since_timestamp: string;
@@ -15,6 +18,8 @@ export interface LogFilterParams {
 
 interface LogFilterProps {
     onChange: (params: LogFilterParams) => void;
+    onRefresh?: () => void;
+    loading?: boolean;
     defaultRange?: string;
     defaultLines?: number;
 }
@@ -31,7 +36,7 @@ const timeRangeOptions = [
     { value: 'custom', label: 'Benutzerdefiniert' },
 ];
 
-const LogFilter: React.FC<LogFilterProps> = ({ onChange, defaultRange = '3h', defaultLines = 1000 }) => {
+const LogFilter: React.FC<LogFilterProps> = ({ onChange, onRefresh, loading, defaultRange = '3h', defaultLines = 1000 }) => {
     const [timeRange, setTimeRange] = useState<string>(defaultRange);
     const [customDate, setCustomDate] = useState<string>(
         new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
@@ -105,6 +110,19 @@ const LogFilter: React.FC<LogFilterProps> = ({ onChange, defaultRange = '3h', de
                     )}
                 </Grid>
             </CardContent>
+            {onRefresh && (
+                <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2 }}>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<RefreshIcon />}
+                        onClick={onRefresh}
+                        disabled={loading}
+                    >
+                        Aktualisieren
+                    </Button>
+                </CardActions>
+            )}
         </Card>
     );
 };

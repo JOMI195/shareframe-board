@@ -35,14 +35,13 @@ const FrameLogs = () => {
                 Dashboard, Heartbeat) findest du auf der jeweiligen Dienst-Seite unter „Verwaltung".
             </Alert>
 
-            <LogFilter onChange={setParams} />
+            <LogFilter onChange={setParams} onRefresh={loadLogs} loading={loading} />
 
             <LogsContent
                 serviceType={ServiceType.SYSTEM}
                 loading={loading}
                 error={error}
                 logs={logsData && logsData.service === 'system' ? logsData : null}
-                onRefresh={loadLogs}
             />
         </Stack>
     );

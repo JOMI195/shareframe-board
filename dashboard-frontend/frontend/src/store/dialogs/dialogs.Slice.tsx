@@ -5,6 +5,7 @@ type SliceState = {
     general: {
         shutdown: { open: boolean };
         restart: { open: boolean };
+        changePassword: { open: boolean };
     },
     updates: {
         confirmUpdate: { open: boolean };
@@ -13,13 +14,15 @@ type SliceState = {
         addNetwork: { open: boolean };
         forgetNetwork: { open: boolean; ssid: string };
         renameNetwork: { open: boolean; ssid: string; newName: string };
+        changeApPassword: { open: boolean };
     }
 };
 
 const initialState: SliceState = {
     general: {
         shutdown: { open: false },
-        restart: { open: false }
+        restart: { open: false },
+        changePassword: { open: false }
     },
     updates: {
         confirmUpdate: { open: false }
@@ -27,7 +30,8 @@ const initialState: SliceState = {
     network: {
         addNetwork: { open: false },
         forgetNetwork: { open: false, ssid: '' },
-        renameNetwork: { open: false, ssid: '', newName: '' }
+        renameNetwork: { open: false, ssid: '', newName: '' },
+        changeApPassword: { open: false }
     }
 };
 
@@ -79,6 +83,18 @@ const dialogsSlice = createSlice({
         },
         networkRenameNetworkNameChanged: (state, action) => {
             state.network.renameNetwork.newName = action.payload.newName;
+        },
+        generalChangePasswordDialogOpened: (state) => {
+            state.general.changePassword.open = true;
+        },
+        generalChangePasswordDialogClosed: (state) => {
+            state.general.changePassword.open = false;
+        },
+        networkChangeApPasswordDialogOpened: (state) => {
+            state.network.changeApPassword.open = true;
+        },
+        networkChangeApPasswordDialogClosed: (state) => {
+            state.network.changeApPassword.open = false;
         },
     },
 });
@@ -138,6 +154,22 @@ export const updateNetworkRenameNetworkName = (newName: string) => ({
     payload: { newName },
 });
 
+export const openGeneralChangePasswordDialog = () => ({
+    type: dialogsSlice.actions.generalChangePasswordDialogOpened.type,
+});
+
+export const closeGeneralChangePasswordDialog = () => ({
+    type: dialogsSlice.actions.generalChangePasswordDialogClosed.type,
+});
+
+export const openNetworkChangeApPasswordDialog = () => ({
+    type: dialogsSlice.actions.networkChangeApPasswordDialogOpened.type,
+});
+
+export const closeNetworkChangeApPasswordDialog = () => ({
+    type: dialogsSlice.actions.networkChangeApPasswordDialogClosed.type,
+});
+
 export const {
     shutdownDialogOpened,
     shutdownDialogClosed,
@@ -151,7 +183,11 @@ export const {
     networkForgetNetworkDialogClosed,
     networkRenameNetworkDialogOpened,
     networkRenameNetworkDialogClosed,
-    networkRenameNetworkNameChanged
+    networkRenameNetworkNameChanged,
+    generalChangePasswordDialogOpened,
+    generalChangePasswordDialogClosed,
+    networkChangeApPasswordDialogOpened,
+    networkChangeApPasswordDialogClosed
 } = dialogsSlice.actions;
 
 export default dialogsSlice.reducer;

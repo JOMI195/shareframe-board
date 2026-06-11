@@ -29,16 +29,19 @@ export const checkAuthStatusThunk = createAsyncThunk(
   }
 );
 
+// Login works with the cloud-verified OTP or, offline, the local device password.
+export type LoginCredentials = { otp: string } | { password: string };
+
 // Async Thunk for login
 export const loginThunk = createAsyncThunk(
   'auth/login',
-  async (otp: string, { dispatch, rejectWithValue }) => {
+  async (credentials: LoginCredentials, { dispatch, rejectWithValue }) => {
     const snackbarId = uuid();
     try {
       // Add loading snackbar
       dispatch(addLoadingSnackbar(
         snackbarId,
-        'Überprüfung des OTP',
+        'otp' in credentials ? 'Überprüfung des OTP' : 'Passwort wird überprüft',
       ));
 
       const response = await fetchWithTimeout('/api/auth/login', {
@@ -46,7 +49,7 @@ export const loginThunk = createAsyncThunk(
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ otp }),
+        body: JSON.stringify(credentials),
       });
 
       const data: IServerResponse = await response.json();
@@ -83,6 +86,64 @@ export const loginThunk = createAsyncThunk(
       ));
 
       return rejectWithValue('Authentication failed');
+    }
+  }
+);
+
+// Async Thunk for changing the device password (requires active session)
+export const changePasswordThunk = createAsyncThunk(
+  'auth/changePassword',
+  async (
+    { currentPassword, newPassword }: { currentPassword: string; newPassword: string },
+    { dispatch, rejectWithValue }
+  ) => {
+    const snackbarId = uuid();
+    try {
+      dispatch(addLoadingSnackbar(
+        snackbarId,
+        'Passwort wird geändert',
+      ));
+
+      const response = await fetchWithTimeout('/api/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword,
+        }),
+      });
+
+      const data: IServerResponse = await response.json();
+
+      dispatch(removeLoadingSnackbar(snackbarId));
+
+      if (data.success) {
+        dispatch(addAlertSnackbar(
+          uuid(),
+          'Passwort erfolgreich geändert',
+          'success'
+        ));
+        return true;
+      } else {
+        dispatch(addAlertSnackbar(
+          uuid(),
+          data.message ? data.message : 'Passwortänderung fehlgeschlagen',
+          'error'
+        ));
+        return rejectWithValue(data.message || 'Password change failed');
+      }
+    } catch (error) {
+      dispatch(removeLoadingSnackbar(snackbarId));
+
+      dispatch(addAlertSnackbar(
+        uuid(),
+        'Passwortänderung fehlgeschlagen',
+        'error'
+      ));
+
+      return rejectWithValue('Password change failed');
     }
   }
 );

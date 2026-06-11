@@ -1,31 +1,47 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  Box, Typography, TextField, Button,
+  Alert, Box, Typography, TextField, Button,
   InputAdornment,
-  IconButton
+  IconButton,
+  Link
 } from '@mui/material';
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { useAppDispatch, useAppSelector } from '@/store';
 import { loginThunk, selectAuth } from '@/store/auth/auth.Slice';
+import { selectConnectionMode } from '@/store/connectionMode/connectionMode.Slice';
 import { usePiConnection } from '@/context/piConnection/piConnectionContext';
 import { useNavigate } from 'react-router';
-import { getHomeUrl } from '@/assets/endpoints/app/appEndpoints';
+import { getHomeUrl, getSetupUrl } from '@/assets/endpoints/app/appEndpoints';
+
+type LoginMethod = 'otp' | 'password';
 
 const SignIn = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { isConnected } = usePiConnection();
   const { isAuthenticated } = useAppSelector(selectAuth);
-  const [password, setPassword] = useState<string>('');
+  const { internet, loaded, mode } = useAppSelector(selectConnectionMode);
+  const [method, setMethod] = useState<LoginMethod>('otp');
+  const [secret, setSecret] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Without internet the OTP cannot be verified upstream — default to the
+  // offline password once, without ever overriding a manual toggle.
+  const autoSwitched = useRef(false);
+  useEffect(() => {
+    if (!autoSwitched.current && loaded && !internet) {
+      autoSwitched.current = true;
+      setMethod('password');
+    }
+  }, [loaded, internet]);
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     setLoading(true);
     try {
-      await dispatch(loginThunk(password));
+      await dispatch(loginThunk(method === 'otp' ? { otp: secret } : { password: secret }));
     } finally {
       setLoading(false);
     }
@@ -36,6 +52,11 @@ const SignIn = () => {
       navigate(getHomeUrl());
     }
   }, [isAuthenticated]);
+
+  const handleToggleMethod = () => {
+    setMethod((m) => (m === 'otp' ? 'password' : 'otp'));
+    setSecret('');
+  };
 
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
@@ -61,8 +82,24 @@ const SignIn = () => {
       </Typography>
 
       <Typography textAlign={"center"}>
-        {"Nutze ein OTP um dich bei deinem Bilderrahmen anzumelden. Dieses erhälst du in der ShareFrame Website Bilderrahmen Übersicht"}
+        {method === 'otp'
+          ? "Nutze ein OTP um dich bei deinem Bilderrahmen anzumelden. Dieses erhälst du in der ShareFrame Website Bilderrahmen Übersicht"
+          : "Melde dich mit dem Geräte-Passwort an."}
       </Typography>
+
+      {loaded && !internet && (
+        <Alert severity="info" sx={{ mt: 2, width: '100%' }}>
+          {"Keine Internetverbindung – die OTP-Anmeldung ist derzeit nicht möglich."}
+          {mode === 'ap' && (
+            <>
+              {' '}
+              <Link component="button" type="button" onClick={() => navigate(getSetupUrl())}>
+                {"WLAN einrichten"}
+              </Link>
+            </>
+          )}
+        </Alert>
+      )}
 
       <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
         <TextField
@@ -71,12 +108,12 @@ const SignIn = () => {
           required
           fullWidth
           name="password"
-          label="OTP"
+          label={method === 'otp' ? "OTP" : "Passwort"}
           type={showPassword ? "text" : "password"}
           id="password"
           autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          value={secret}
+          onChange={(e) => setSecret(e.target.value)}
           InputProps={{
             endAdornment: (
               <InputAdornment position="end">
@@ -98,10 +135,14 @@ const SignIn = () => {
           variant="contained"
           color="primary"
           sx={{ mt: 3, mb: 2 }}
-          disabled={loading || !password || !isConnected}
+          disabled={loading || !secret || !isConnected}
         >
           {'Anmelden'}
         </Button>
+
+        <Link component="button" type="button" variant="body2" onClick={handleToggleMethod}>
+          {method === 'otp' ? "Mit Passwort anmelden" : "Mit OTP anmelden"}
+        </Link>
       </Box>
     </Box>
   );

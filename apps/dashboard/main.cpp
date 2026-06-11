@@ -8,6 +8,7 @@
 #include "ipc/IpcClient.hpp"
 #include "ipc/NngRepServer.hpp"
 #include "net/HTTPClient.hpp"
+#include "repository/SettingsRepository.hpp"
 #include "repository/TokenRepository.hpp"
 #include <spdlog/spdlog.h>
 
@@ -33,6 +34,9 @@ int main(int argc, char* argv[])
     TokenRepository tokenRepo(db.get());
     AuthTokenManager authTokenManager(cfg, tokenRepo, http);
 
+    // Settings store (persists the user-set dashboard password hash on /data)
+    SettingsRepository settingsRepo(db.get());
+
     // Managers
     WifiManager wifi;
     SessionManager sessions;
@@ -42,7 +46,7 @@ int main(int argc, char* argv[])
     if (!updateIpc.connect())
         spdlog::warn("Update service IPC endpoint not available yet, will retry on first request");
 
-    DashboardServer server(cfg, ipc, http, sessions, authTokenManager, wifi, updateIpc);
+    DashboardServer server(cfg, ipc, http, sessions, authTokenManager, wifi, updateIpc, settingsRepo);
     server.start();
 
     // Health endpoint so other services can probe the dashboard over nng.

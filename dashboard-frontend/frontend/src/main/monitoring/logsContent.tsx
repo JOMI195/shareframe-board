@@ -1,6 +1,5 @@
 import { ServiceType, SERVICE_LABELS } from "@/types";
-import { Box, Card, CardContent, CircularProgress, Divider, IconButton, Tooltip, Typography } from "@mui/material";
-import RefreshIcon from '@mui/icons-material/Refresh';
+import { Box, Card, CardContent, CircularProgress, Divider, Typography } from "@mui/material";
 
 export interface LogsContentProps {
     serviceType: ServiceType;
@@ -13,10 +12,9 @@ export interface LogsContentProps {
         log_count: number;
         logs: string[];
     } | null;
-    onRefresh: () => void;
 }
 
-const LogsContent: React.FC<LogsContentProps> = ({ loading, error, logs, onRefresh }) => {
+const LogsContent: React.FC<LogsContentProps> = ({ loading, error, logs }) => {
     if (loading) {
         return (
             <Box display="flex" justifyContent="center" p={3}>
@@ -31,33 +29,22 @@ const LogsContent: React.FC<LogsContentProps> = ({ loading, error, logs, onRefre
 
     return (
         <Box>
-            <Box mb={2} display="flex" justifyContent="space-between" alignItems="center">
-                <Box>
-                    <Typography variant="body2">
-                        Dienst: <strong>{SERVICE_LABELS[logs.service] ?? logs.service}</strong>
-                    </Typography>
-                    <Typography variant="body2">
-                        Zeitraum: <strong>{logs.period}</strong>
-                    </Typography>
-                    <Typography variant="body2">
-                        Zeitpunkt: <strong>{new Date(logs.timestamp).toLocaleString('de-DE', {
-                            dateStyle: 'medium',
-                            timeStyle: 'medium'
-                        })}</strong>
-                    </Typography>
-                    <Typography variant="body2">
-                        Anzahl Einträge: <strong>{logs.log_count}</strong>
-                    </Typography>
-                </Box>
-                <Tooltip title="Protokolle aktualisieren">
-                    <IconButton
-                        onClick={onRefresh}
-                        disabled={loading}
-                        color="primary"
-                    >
-                        <RefreshIcon />
-                    </IconButton>
-                </Tooltip>
+            <Box mb={2}>
+                <Typography variant="body2">
+                    Dienst: <strong>{SERVICE_LABELS[logs.service] ?? logs.service}</strong>
+                </Typography>
+                <Typography variant="body2">
+                    Zeitraum: <strong>{logs.period}</strong>
+                </Typography>
+                <Typography variant="body2">
+                    Zeitpunkt: <strong>{new Date(logs.timestamp).toLocaleString('de-DE', {
+                        dateStyle: 'medium',
+                        timeStyle: 'medium'
+                    })}</strong>
+                </Typography>
+                <Typography variant="body2">
+                    Anzahl Einträge: <strong>{logs.log_count}</strong>
+                </Typography>
             </Box>
             <Divider sx={{ mb: 2 }} />
             <Card variant="outlined" sx={{ bgcolor: 'background.paper' }}>

@@ -5,6 +5,7 @@ import { Outlet, useLocation, useNavigate } from "react-router";
 import { fetchConnectionMode, selectConnectionMode } from "@/store/connectionMode/connectionMode.Slice";
 import { selectAuth } from "@/store/auth/auth.Slice";
 import { getSetupUrl } from "@/assets/endpoints/app/appEndpoints";
+import { getAuthenticationUrl } from "@/assets/endpoints/app/authEndpoints";
 
 const RouterContext = () => {
     const dispatch = useAppDispatch();
@@ -25,11 +26,13 @@ const RouterContext = () => {
         return () => clearInterval(id);
     }, [dispatch]);
 
-    // AP fallback: the user cannot complete OTP login without internet, so when
-    // the board is hosting its AP and there is no session, send them straight to
-    // the offline WiFi-setup page instead of the (unusable) sign-in screen.
+    // AP fallback: without internet the OTP login cannot complete, so an
+    // unauthenticated user lands on the offline WiFi-setup page. The /auth
+    // routes are exempt — the password login works offline.
     useEffect(() => {
-        if (loaded && mode === 'ap' && !isAuthenticated && location.pathname !== getSetupUrl()) {
+        if (loaded && mode === 'ap' && !isAuthenticated
+            && location.pathname !== getSetupUrl()
+            && !location.pathname.startsWith(getAuthenticationUrl())) {
             navigate(getSetupUrl(), { replace: true });
         }
     }, [loaded, mode, isAuthenticated, location.pathname, navigate]);

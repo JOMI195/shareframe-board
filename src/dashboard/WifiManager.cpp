@@ -165,3 +165,17 @@ nlohmann::json WifiManager::forget(const std::string& ssid) const
     logger_->info("Forgot WiFi: {}", ssid);
     return {{"message", "Connection deleted"}};
 }
+
+nlohmann::json WifiManager::setApPassword(const std::string& password) const
+{
+    auto result = Subprocess::run({"shareframe-ap", "setpass", password}, 20);
+
+    if (result.exitCode != 0)
+    {
+        logger_->error("shareframe-ap setpass failed: {}", result.stdErr);
+        return {{"error", "Failed to set AP password"}};
+    }
+
+    logger_->info("AP password changed");
+    return {{"message", "AP-Passwort geändert"}};
+}

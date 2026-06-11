@@ -1,8 +1,11 @@
 import { useEffect } from 'react';
-import { Stack } from '@mui/material';
+import { Button, Stack } from '@mui/material';
+import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { selectFrameInfoState, fetchFrameInfos } from '@/store/frameInfo/frameInfo.Slice';
+import { openGeneralChangePasswordDialog } from '@/store/dialogs/dialogs.Slice';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
+import ChangePasswordDialog from './dialogs/changePasswordDialog';
 
 const RESOLUTION = "800mm x 480mm";
 const SYSTEM_INFO_POLL_MS = 5000;
@@ -122,7 +125,29 @@ const General = () => {
                         { label: "Display-Größe", content: RESOLUTION },
                     ]}
                 />
+
+                <ShareframeInfoCard
+                    title="Sicherheit"
+                    minHeight="0px"
+                    sections={[
+                        {
+                            label: "Geräte-Passwort",
+                            content: "Passwort für die Anmeldung am Dashboard ohne Internetverbindung.",
+                        },
+                    ]}
+                    actions={
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            startIcon={<VpnKeyIcon />}
+                            onClick={() => dispatch(openGeneralChangePasswordDialog())}
+                        >
+                            Passwort ändern
+                        </Button>
+                    }
+                />
             </Stack>
+            <ChangePasswordDialog />
         </>
     );
 };

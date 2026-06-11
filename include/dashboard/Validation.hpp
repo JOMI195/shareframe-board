@@ -32,6 +32,15 @@ inline bool isValidPassword(const std::string& password)
         && !containsControlChars(password);
 }
 
+// hostapd only accepts 8-63 printable-ASCII passphrases; anything else makes
+// it exit on startup, which would brick the AP fallback.
+inline bool isValidWpaPassphrase(const std::string& password)
+{
+    return password.size() >= MIN_PASSWORD_LENGTH
+        && password.size() <= MAX_PASSWORD_LENGTH
+        && std::ranges::all_of(password, [](unsigned char c) { return c >= 0x20 && c <= 0x7e; });
+}
+
 inline bool isValidNetworkName(const std::string& name)
 {
     return !name.empty() && name.size() <= MAX_NETWORK_NAME_LENGTH && !containsControlChars(name);

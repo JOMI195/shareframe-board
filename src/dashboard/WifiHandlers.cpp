@@ -63,3 +63,16 @@ ix::HttpResponsePtr WifiHandlers::handleForget(const ix::HttpRequestPtr& req) co
 
     return wifiResult(wifi_.forget(ssid));
 }
+
+ix::HttpResponsePtr WifiHandlers::handleSetApPassword(const ix::HttpRequestPtr& req) const
+{
+    nlohmann::json body;
+    try { body = nlohmann::json::parse(req->body); }
+    catch (...) { return errorResponse(400, "Bad Request", "Invalid JSON"); }
+
+    auto password = body.value("password", "");
+    if (!Validation::isValidWpaPassphrase(password))
+        return errorResponse(400, "Bad Request", "Ungültiges AP-Passwort (8–63 ASCII-Zeichen)");
+
+    return wifiResult(wifi_.setApPassword(password));
+}

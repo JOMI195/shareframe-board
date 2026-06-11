@@ -79,9 +79,10 @@ AppConfig ConfigLoader::load(
         std::cerr << "[config] Profile file not found, using base config: " << profileFile << '\n';
     }
 
-    // Secrets
+    // Secrets — lenient on unknown keys so older firmware keeps booting after
+    // a newer key is provisioned on /data (A/B rollback safety).
     SecretsConfig secrets;
-    auto serr = glz::read_file_toml(secrets, secretsFilePath, std::string{});
+    auto serr = readTomlFile(secrets, secretsFilePath);
     if (serr)
         throw std::runtime_error(
             std::string("Failed to load secrets '") + secretsFilePath

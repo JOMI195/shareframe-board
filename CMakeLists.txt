@@ -111,6 +111,7 @@ set(COMMON_SOURCES
         src/auth/AuthTokenManager.cpp
         src/auth/Ed25519Auth.cpp
         src/auth/FrameIdentity.cpp
+        src/auth/PasswordHash.cpp
         src/auth/TokenAuth.cpp
         src/util/Base64.cpp
         src/util/FileHash.cpp

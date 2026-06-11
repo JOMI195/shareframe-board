@@ -20,6 +20,10 @@ public:
     // banner and the offline AP-setup flow.
     [[nodiscard]] nlohmann::json getWifiMode() const;
 
+    // Persists the AP-fallback password to /data/wifi/ap.conf (and restarts
+    // hostapd when the AP is live) via `shareframe-ap setpass`.
+    nlohmann::json setApPassword(const std::string& password) const;
+
 private:
     [[nodiscard]] bool _isProtected(const std::string& name) const;
     [[nodiscard]] std::string _aliasIfProtected(const std::string& name) const;

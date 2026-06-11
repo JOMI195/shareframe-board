@@ -1,18 +1,31 @@
 #include "dashboard/DashboardServer.hpp"
+#include "auth/PasswordHash.hpp"
 #include "auth/TokenAuth.hpp"
 #include "dashboard/ResponseUtil.hpp"
+#include "dashboard/Validation.hpp"
 #include "util/HttpUtil.hpp"
+#include <algorithm>
+#include <chrono>
 #include <fstream>
+#include <thread>
 
 using dashboard::errorResponse;
 using dashboard::jsonResponse;
 
+namespace
+{
+constexpr const char* kPasswordHashKey = "dashboard_password_hash";
+const std::string kNotConfiguredMsg =
+    "Passwort-Anmeldung ist auf diesem Gerät nicht eingerichtet.";
+}
+
 DashboardServer::DashboardServer(AppConfig& cfg, IpcClient& ipc,
                                  HTTPClient& http, SessionManager& sessions,
                                  AuthTokenManager& authTokenManager, WifiManager& wifi,
-                                 IpcClient& updateIpc)
+                                 IpcClient& updateIpc, SettingsRepository& settings)
     : cfg_(cfg), http_(http), sessions_(sessions),
       authTokenManager_(authTokenManager),
+      settings_(settings), wifi_(wifi),
       server_(cfg.dashboardApplication.port, cfg.dashboardApplication.host),
       logger_(spdlog::default_logger()->clone("DashboardServer")),
       wifiHandlers_(wifi),
@@ -60,10 +73,13 @@ void DashboardServer::_initRoutes()
         {"GET",  "/api/system/health",   [this](auto& req, auto&) { return systemHandlers_.handleHealth(req); }},
         // Public so the SPA can read the network mode before any login and
         // route to the offline AP-setup view when the board is hosting its AP.
-        {"GET",  "/api/connection/mode", [this](auto& req, auto&) { return wifiHandlers_.handleMode(req); }},
+        {"GET",  "/api/connection/mode", [this](auto& req, auto&) { return _handleConnectionMode(req); }},
     };
 
     protectedRoutes_ = {
+        // Auth
+        {"POST", "/api/auth/change-password", [this](auto& req, auto&) { return _handleChangePassword(req); }},
+
         // Frame / Slideshow
         {"GET",  "/api/frame/slideshow/status",   [this](auto& req, auto&) { return frameHandlers_.handleStatus(req); }},
         {"POST", "/api/frame/slideshow",          [this](auto& req, auto&) { return frameHandlers_.handleControl(req); }},
@@ -77,6 +93,7 @@ void DashboardServer::_initRoutes()
         {"GET",  "/api/connection/saved-networks", [this](auto& req, auto&) { return wifiHandlers_.handleSavedNetworks(req); }},
         {"POST", "/api/connection/connect",        [this](auto& req, auto&) { return wifiHandlers_.handleConnect(req); }},
         {"POST", "/api/connection/forget",         [this](auto& req, auto&) { return wifiHandlers_.handleForget(req); }},
+        {"POST", "/api/connection/ap-password",    [this](auto& req, auto&) { return wifiHandlers_.handleSetApPassword(req); }},
 
         // System
         {"GET",  "/api/system/info",             [this](auto& req, auto&) { return systemHandlers_.handleInfo(req); }},
@@ -110,11 +127,17 @@ ix::HttpResponsePtr DashboardServer::_handleRequest(
         if (req->method == method && path == routePath)
             return handler(req, queryParams);
 
-    // AP fallback: with no internet the user cannot complete the upstream OTP
-    // login, so the connection endpoints (status/saved-networks/connect/forget)
-    // are reachable without a session *only* while hosting the AP. Everything
-    // else still requires auth.
-    const bool apBypass = _isApMode() && path.rfind("/api/connection/", 0) == 0;
+    // AP fallback: joining the AP (SSID + password) is treated as implicit
+    // auth for the WiFi-setup endpoints only — explicit allowlist, NOT a
+    // prefix, so e.g. /api/connection/ap-password stays session-gated.
+    static const std::vector<std::string> kApBypassPaths = {
+        "/api/connection/status",
+        "/api/connection/saved-networks",
+        "/api/connection/connect",
+        "/api/connection/forget",
+    };
+    const bool apBypass = _isApMode()
+        && std::find(kApBypassPaths.begin(), kApBypassPaths.end(), path) != kApBypassPaths.end();
 
     // All remaining routes require auth
     if (!apBypass)
@@ -145,7 +168,12 @@ ix::HttpResponsePtr DashboardServer::_handleLogin(const ix::HttpRequestPtr& req)
 
     auto otpIt = body.find("otp");
     if (otpIt == body.end() || !otpIt->is_string())
-        return errorResponse(400, "Bad Request", "Missing otp field");
+    {
+        // Offline fallback: local password instead of the upstream OTP.
+        if (auto pwIt = body.find("password"); pwIt != body.end() && pwIt->is_string())
+            return _handlePasswordLogin(pwIt->get<std::string>());
+        return errorResponse(400, "Bad Request", "Missing otp or password field");
+    }
 
     auto otp = otpIt->get<std::string>();
 
@@ -185,7 +213,11 @@ ix::HttpResponsePtr DashboardServer::_handleLogin(const ix::HttpRequestPtr& req)
         return errorResponse(401, "Unauthorized", "OTP invalid");
     }
 
-    // Create session
+    return _sessionLoginResponse();
+}
+
+ix::HttpResponsePtr DashboardServer::_sessionLoginResponse() const
+{
     std::string sessionId = sessions_.createSession();
     logger_->info("Login successful, created session");
 
@@ -205,6 +237,87 @@ ix::HttpResponsePtr DashboardServer::_handleLogin(const ix::HttpRequestPtr& req)
         200, "OK", ix::HttpErrorCode::Ok, respHeaders, respBody.dump());
 }
 
+bool DashboardServer::_verifyDashboardPassword(const std::string& password) const
+{
+    if (auto stored = settings_.get(kPasswordHashKey))
+    {
+        if (PasswordHash::isWellFormed(*stored))
+            return PasswordHash::verify(password, *stored);
+        // Treat like an absent row (same trust level as the documented
+        // delete-row recovery) so a corrupted value can't brick the login.
+        logger_->error("Stored dashboard password hash is malformed, falling back to initial password");
+    }
+    return !cfg_.secrets.dashboardInitialPassword.empty()
+        && PasswordHash::constantTimeEquals(password, cfg_.secrets.dashboardInitialPassword);
+}
+
+bool DashboardServer::_isPasswordLoginConfigured() const
+{
+    if (auto stored = settings_.get(kPasswordHashKey); stored && PasswordHash::isWellFormed(*stored))
+        return true;
+    return !cfg_.secrets.dashboardInitialPassword.empty();
+}
+
+ix::HttpResponsePtr DashboardServer::_handlePasswordLogin(const std::string& password) const
+{
+    if (int wait = throttle_.retryAfterSecs(); wait > 0)
+        return errorResponse(429, "Too Many Requests",
+                             "Zu viele Fehlversuche. Bitte warte kurz und versuche es erneut.");
+
+    if (!_isPasswordLoginConfigured())
+        return errorResponse(403, "Forbidden", kNotConfiguredMsg);
+
+    if (!_verifyDashboardPassword(password))
+    {
+        throttle_.recordFailure();
+        // Flat-rate failed attempts; each connection has its own thread.
+        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        return errorResponse(401, "Unauthorized", "Passwort ungültig");
+    }
+
+    throttle_.recordSuccess();
+    return _sessionLoginResponse();
+}
+
+ix::HttpResponsePtr DashboardServer::_handleChangePassword(const ix::HttpRequestPtr& req) const
+{
+    nlohmann::json body;
+    try
+    {
+        body = nlohmann::json::parse(req->body);
+    }
+    catch (...)
+    {
+        return errorResponse(400, "Bad Request", "Invalid JSON");
+    }
+
+    const std::string currentPassword = body.value("current_password", "");
+    const std::string newPassword = body.value("new_password", "");
+
+    if (int wait = throttle_.retryAfterSecs(); wait > 0)
+        return errorResponse(429, "Too Many Requests",
+                             "Zu viele Fehlversuche. Bitte warte kurz und versuche es erneut.");
+
+    if (!_isPasswordLoginConfigured())
+        return errorResponse(403, "Forbidden", kNotConfiguredMsg);
+
+    if (!dashboard::Validation::isValidPassword(newPassword))
+        return errorResponse(400, "Bad Request",
+                             "Neues Passwort ungültig (8–63 Zeichen, keine Steuerzeichen)");
+
+    if (!_verifyDashboardPassword(currentPassword))
+    {
+        throttle_.recordFailure();
+        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        return errorResponse(401, "Unauthorized", "Aktuelles Passwort ungültig");
+    }
+
+    throttle_.recordSuccess();
+    settings_.set(kPasswordHashKey, PasswordHash::hash(newPassword));
+    logger_->info("Dashboard password changed");
+    return jsonResponse(200, "OK", nlohmann::json::object(), "Passwort geändert");
+}
+
 ix::HttpResponsePtr DashboardServer::_handleCheckAuth(const ix::HttpRequestPtr& req) const
 {
     const std::string sessionId = _extractSessionId(req);
@@ -217,6 +330,16 @@ ix::HttpResponsePtr DashboardServer::_handleLogout(const ix::HttpRequestPtr& req
     if (const std::string sessionId = _extractSessionId(req); !sessionId.empty())
         sessions_.removeSession(sessionId);
     return jsonResponse(200, "OK", nlohmann::json::object());
+}
+
+ix::HttpResponsePtr DashboardServer::_handleConnectionMode(const ix::HttpRequestPtr& req) const
+{
+    auto mode = wifi_.getWifiMode();
+    // AP clients implicitly know the AP password; a logged-in owner may read it
+    // (e.g. to note it before it changes). Everyone else on the LAN must not.
+    if (mode.value("mode", "") != "ap" && !_hasValidSession(req))
+        mode["ap_password"] = "";
+    return jsonResponse(200, "OK", mode);
 }
 
 // --- Helpers ---
@@ -233,11 +356,17 @@ bool DashboardServer::_isApMode()
 
 ix::HttpResponsePtr DashboardServer::_loginRequired(const ix::HttpRequestPtr& req) const
 {
-    if (const std::string sessionId = _extractSessionId(req); sessionId.empty() || !sessions_.isValid(sessionId))
+    if (!_hasValidSession(req))
     {
         return errorResponse(401, "Unauthorized", "Authentication required");
     }
     return nullptr; // authenticated
+}
+
+bool DashboardServer::_hasValidSession(const ix::HttpRequestPtr& req) const
+{
+    const std::string sessionId = _extractSessionId(req);
+    return !sessionId.empty() && sessions_.isValid(sessionId);
 }
 
 std::string DashboardServer::_extractSessionId(const ix::HttpRequestPtr& req)

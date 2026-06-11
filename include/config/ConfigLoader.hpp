@@ -13,7 +13,8 @@ struct glz::meta<SecretsConfig>
 {
     using T = SecretsConfig;
     static constexpr auto value = glz::object(
-        "ed25519_private_key", &T::ed25519PrivateKey
+        "ed25519_private_key", &T::ed25519PrivateKey,
+        "dashboard_initial_password", &T::dashboardInitialPassword
     );
 };
 

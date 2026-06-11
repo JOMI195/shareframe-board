@@ -1,22 +1,28 @@
 import {
     Box,
+    Button,
     Typography,
     Stack,
     CircularProgress,
     LinearProgress,
 } from '@mui/material';
 import { useEffect } from 'react';
+import uuid from 'react-uuid';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { selectFrameInfoState } from '@/store/frameInfo/frameInfo.Slice';
-import { selectUpdatesState, fetchUpdateStatus } from '@/store/updates/updates.Slice';
+import { selectUpdatesState, fetchUpdateStatus, fetchLatestRelease } from '@/store/updates/updates.Slice';
+import { openUpdatesConfirmUpdateDialog } from '@/store/dialogs/dialogs.Slice';
+import { addLoadingSnackbar, removeLoadingSnackbar } from '@/store/snackbars/snackbars.Slice';
+import { usePiConnection } from '@/context/piConnection/piConnectionContext';
 import { isVersionNewer } from '@/common/utils/version';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import UpdateIcon from '@mui/icons-material/Update';
 import ErrorIcon from '@mui/icons-material/Error';
 import HourglassTopIcon from '@mui/icons-material/HourglassTop';
+import BuildIcon from '@mui/icons-material/Build';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import Dialogs from './dialogs/dialogs';
-import { Actions } from './actions/actions';
 
 const phaseLabel = (phase: string): string => {
     switch (phase) {
@@ -32,6 +38,7 @@ const Updates = () => {
     const dispatch = useAppDispatch();
     const { latest_release, update_status, loading } = useAppSelector(selectUpdatesState);
     const { frameInfo } = useAppSelector(selectFrameInfoState);
+    const { isConnected } = usePiConnection();
 
     const isNewVersion = (latest_release && frameInfo && isVersionNewer(latest_release.version, frameInfo.version)) ?? false;
     const updateActive = update_status != null
@@ -39,6 +46,18 @@ const Updates = () => {
     const awaitingConfirm = update_status != null
         && update_status.pending_slot !== ''
         && update_status.pending_slot === update_status.booted_slot;
+    const updateBusy = updateActive || awaitingConfirm;
+
+    const handleConfirmUpdate = (): void => {
+        dispatch(openUpdatesConfirmUpdateDialog());
+    };
+
+    const handleFetchLatestRelease = async (): Promise<void> => {
+        const snackbarId = uuid();
+        dispatch(addLoadingSnackbar(snackbarId, "Suche nach Updates"));
+        await dispatch(fetchLatestRelease());
+        dispatch(removeLoadingSnackbar(snackbarId));
+    };
 
     // Poll the installer state; tighter while an update runs.
     useEffect(() => {
@@ -187,6 +206,17 @@ const Updates = () => {
                                         content: latest_release?.release_notes
                                     }
                                 ]}
+                                actions={
+                                    <Button
+                                        variant="contained"
+                                        color="primary"
+                                        startIcon={<BuildIcon />}
+                                        onClick={handleConfirmUpdate}
+                                        disabled={loading || !isConnected || updateBusy}
+                                    >
+                                        Jetzt installieren
+                                    </Button>
+                                }
                             />
                         ) : (
                             <ShareframeInfoCard
@@ -205,6 +235,17 @@ const Updates = () => {
                                         content: "Bilderrahmen ist auf dem neusten Stand!"
                                     },
                                 ]}
+                                actions={
+                                    <Button
+                                        variant="contained"
+                                        color="primary"
+                                        startIcon={<RefreshIcon />}
+                                        onClick={handleFetchLatestRelease}
+                                        disabled={loading || !isConnected}
+                                    >
+                                        Auf Updates prüfen
+                                    </Button>
+                                }
                             />
 
                         )
@@ -212,7 +253,6 @@ const Updates = () => {
                 }
             </Stack >
 
-            <Actions />
             <Dialogs />
         </>
     );

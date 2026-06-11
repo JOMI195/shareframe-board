@@ -11,6 +11,8 @@ import NetworkStatusBanner from '@/common/components/networkStatusBanner';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { addNetwork, selectNetworkState } from '@/store/network/network.Slice';
 import { selectConnectionMode } from '@/store/connectionMode/connectionMode.Slice';
+import { useNavigate } from 'react-router';
+import { getAuthenticationUrl, getSignInUrl } from '@/assets/endpoints/app/authEndpoints';
 
 // AP gateway IP — must match overlay/usr/bin/shareframe-ap (AP_IP) and
 // overlay/etc/dnsmasq.d/shareframe-ap.conf on the board.
@@ -22,6 +24,7 @@ const AP_GATEWAY_IP = '192.168.4.1';
 // backend allows /api/connection/* without a session while in AP mode.
 const WifiSetup = () => {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
     const { loading } = useAppSelector(selectNetworkState);
@@ -129,6 +132,15 @@ const WifiSetup = () => {
                                         Verbinden
                                     </Button>
                                 </Box>
+
+                                <Button
+                                    variant="text"
+                                    fullWidth
+                                    sx={{ mt: 1 }}
+                                    onClick={() => navigate(getAuthenticationUrl() + getSignInUrl())}
+                                >
+                                    Stattdessen mit Passwort anmelden
+                                </Button>
                             </>
                         )}
                     </CardContent>

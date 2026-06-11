@@ -22,7 +22,7 @@ import migrations from './migrations';
 
 const persistConfig: PersistConfig<any> = {
   key: 'shareframe-dashboard-data',
-  version: 2,
+  version: 3,
   storage,
   stateReconciler: autoMergeLevel2,
   migrate: createMigrate(migrations, { debug: import.meta.env.VITE_APP_PRODUCTION === "False" ? true : false }),

@@ -56,14 +56,13 @@ const ServiceDetail: React.FC<{ serviceId: ServiceType }> = ({ serviceId }) => {
                     Protokolle
                 </Typography>
                 <Box mb={3}>
-                    <LogFilter onChange={setParams} defaultLines={500} />
+                    <LogFilter onChange={setParams} onRefresh={loadLogs} loading={loading} defaultLines={500} />
                 </Box>
                 <LogsContent
                     serviceType={serviceId}
                     loading={loading}
                     error={error}
                     logs={logsData && logsData.service === serviceId ? logsData : null}
-                    onRefresh={loadLogs}
                 />
             </Box>
         </Stack>

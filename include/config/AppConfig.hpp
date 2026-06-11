@@ -4,6 +4,9 @@
 struct SecretsConfig
 {
     std::string ed25519PrivateKey;
+    // Initial dashboard login password (offline fallback). Only used until the
+    // user sets their own (stored hashed in the settings table, which wins).
+    std::string dashboardInitialPassword;
 };
 
 struct LogConfig

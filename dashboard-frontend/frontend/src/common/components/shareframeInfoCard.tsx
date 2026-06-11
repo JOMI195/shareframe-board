@@ -88,7 +88,7 @@ const ShareframeInfoCard: React.FC<ShareframeInfoCardProps> = ({
             </CardContent>
 
             {actions && (
-                <CardActions>
+                <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2 }}>
                     {actions}
                 </CardActions>
             )}
