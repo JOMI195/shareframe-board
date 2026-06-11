@@ -23,11 +23,9 @@ export const loadingWallSlice = createSlice({
             state.hideAfter = Date.now() + 3 * 60 * 1000; // 3 minutes in the future
         },
         loadingWallHidden: (state) => {
-            if (state.hideAfter && Date.now() >= state.hideAfter) {
-                state.isLoadingWallVisible = false;
-                state.message = "";
-                state.hideAfter = undefined;
-            }
+            state.isLoadingWallVisible = false;
+            state.message = "";
+            state.hideAfter = undefined;
         },
     }
 });

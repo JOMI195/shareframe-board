@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Box, CircularProgress } from '@mui/material';
 import { useAppDispatch, useAppSelector } from './store';
 import {
@@ -7,13 +7,15 @@ import {
 import Logo from './common/components/logo';
 import { hideLoadingWall, selectLoadingWallState } from './store/loadingWall/loadingWall.Slice';
 import LoadingWall from './main/loadingWall/loadingWall';
+import { usePiConnection } from './context/piConnection/piConnectionContext';
 import { RouterProvider } from 'react-router';
 import Routing from './routes/routing';
 
 const App = () => {
   const dispatch = useAppDispatch();
 
-  const { isLoadingWallVisible } = useAppSelector(selectLoadingWallState);
+  const { isLoadingWallVisible, hideAfter } = useAppSelector(selectLoadingWallState);
+  const { isConnected } = usePiConnection();
   const [initialLoad, setInitialLoad] = useState(true);
   const [authCheckComplete, setAuthCheckComplete] = useState(false);
 
@@ -23,9 +25,30 @@ const App = () => {
       setAuthCheckComplete(true);
     };
 
-    dispatch(hideLoadingWall());
     checkAuth();
   }, [dispatch]);
+
+  // Dismiss the loading wall once the board is reachable again. Requiring a
+  // false -> true transition keeps the wall up while the board reboots (and
+  // avoids dismissing it the moment an update is started while still connected).
+  const prevConnected = useRef(false);
+  useEffect(() => {
+    if (isLoadingWallVisible && isConnected && !prevConnected.current) {
+      dispatch(hideLoadingWall());
+    }
+    prevConnected.current = isConnected;
+  }, [isConnected, isLoadingWallVisible, dispatch]);
+
+  // Hard fallback: never let the wall stick past its deadline, even if the
+  // board never reports healthy.
+  useEffect(() => {
+    if (!isLoadingWallVisible || !hideAfter) return;
+    const timer = setTimeout(
+      () => dispatch(hideLoadingWall()),
+      Math.max(0, hideAfter - Date.now()),
+    );
+    return () => clearTimeout(timer);
+  }, [isLoadingWallVisible, hideAfter, dispatch]);
 
   // Timer to ensure loading screen displays for at least 3 seconds
   useEffect(() => {
