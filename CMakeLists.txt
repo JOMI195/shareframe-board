@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(shareframe-service VERSION 1.0.0 LANGUAGES CXX C)
+project(shareframe-service LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -194,7 +194,7 @@ target_link_libraries(shareframe-update PRIVATE shareframe-common)
 add_executable(shareframe-migrate apps/migrate/main.cpp)
 target_link_libraries(shareframe-migrate PRIVATE shareframe-common)
 
-set(CONFIG_FILES config.toml .env.secrets.toml config.dev.toml config.prod.toml VERSION.toml)
+set(CONFIG_FILES config.toml .env.secrets.toml config.dev.toml config.prod.toml)
 foreach (f ${CONFIG_FILES})
     configure_file(${CMAKE_SOURCE_DIR}/${f} ${CMAKE_BINARY_DIR}/${f} COPYONLY)
 endforeach ()
@@ -245,7 +245,6 @@ endif ()
 install(FILES
         ${CMAKE_SOURCE_DIR}/config.toml
         ${CMAKE_SOURCE_DIR}/config.${SHAREFRAME_PROFILE}.toml
-        ${CMAKE_SOURCE_DIR}/VERSION.toml
         DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/shareframe)
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/migrations/
         DESTINATION ${CMAKE_INSTALL_DATADIR}/shareframe/migrations

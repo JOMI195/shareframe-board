@@ -1,15 +1,15 @@
 #pragma once
 #include "task/PeriodicTask.hpp"
+#include <nlohmann/json.hpp>
 #include <string>
 
 class HTTPClient;
 class AuthTokenManager;
 class IpcClient;
 
-/// Periodically POSTs a heartbeat to the server (frame-hearbeat endpoint) with the
-/// frame's local IP, version, and the running state of the websocket + display +
-/// dashboard processes (each probed over its nng health endpoint). Runs as its
-/// own process (shareframe-heartbeat).
+/// Periodically POSTs a heartbeat to the server with the frame's local IP,
+/// version, process health, and system metrics (from shareframe-sysinfo).
+/// Runs as its own process (shareframe-heartbeat).
 class Heartbeat : public PeriodicTask
 {
 public:
@@ -23,6 +23,7 @@ protected:
 
 private:
     static std::string _getLocalIp();
+    nlohmann::json _getSysInfo() const;
 
     const HTTPClient& http_;
     AuthTokenManager& auth_;

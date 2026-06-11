@@ -93,14 +93,17 @@ AppConfig ConfigLoader::load(
     if (!cfg.secrets.ed25519PrivateKey.empty())
         cfg.frameId = FrameIdentity::fingerprint(cfg.secrets.ed25519PrivateKey);
 
-    // Version
-    VersionConfig ver;
-    auto verr = readTomlFile(ver, versionFilePath);
-    if (verr)
-        throw std::runtime_error(
-            std::string("Failed to load version '") + versionFilePath
-            + "': " + glz::format_error(verr, ""));
-    cfg.version = ver.version;
+    if (std::filesystem::exists(versionFilePath)) {
+        VersionConfig ver;
+        auto verr = readTomlFile(ver, versionFilePath);
+        if (verr)
+            throw std::runtime_error(
+                std::string("Failed to load version '") + versionFilePath
+                + "': " + glz::format_error(verr, ""));
+        cfg.version = ver.version;
+    } else {
+        cfg.version = "dev";
+    }
 
     resolvePaths(cfg);
     validate(cfg);
