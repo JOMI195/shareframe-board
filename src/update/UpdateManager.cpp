@@ -1,6 +1,8 @@
 #include "update/UpdateManager.hpp"
 #include "auth/TokenAuth.hpp"
+#include "util/FileHash.hpp"
 #include "util/Subprocess.hpp"
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <regex>
@@ -135,7 +137,8 @@ std::string UpdateManager::_committedSlot()
 bool UpdateManager::startUpdate(std::string& error)
 {
     std::lock_guard lock(mutex_);
-    if (phase_ == Phase::Checking || phase_ == Phase::Downloading || phase_ == Phase::Installing)
+    if (phase_ == Phase::Checking || phase_ == Phase::Downloading || phase_ == Phase::Installing
+        || phase_ == Phase::AwaitingReboot)
     {
         error = "Update already in progress";
         return false;
@@ -196,33 +199,53 @@ void UpdateManager::_worker(nlohmann::json release)
     }
 
     fs::create_directories(kCacheDir, ec);
+    // stale bundles from skipped/aborted updates would pile up on /data
+    for (const auto& e : fs::directory_iterator(kCacheDir, ec))
+        if (e.path().extension() == ".raucb" || e.path().extension() == ".part")
+            fs::remove(e.path(), ec);
     const std::string bundle = std::string(kCacheDir) + "/shareframe-" + version + ".raucb";
     const std::string part = bundle + ".part";
-    fs::remove(part, ec);
 
     {
         std::lock_guard lock(mutex_);
         phase_ = Phase::Downloading;
-        downloadPath_ = part;
-        expectedSize_ = release.value("size", 0LL);
+        downloadedBytes_ = 0;
+        totalBytes_ = 0;
     }
 
     auto authHeaders = TokenAuth::buildTokenAuthHeaders(authTokenManager_);
-    std::vector<std::string> curl = {"curl", "-fsSL", "--connect-timeout", "30", "-o", part};
-    for (auto& [k, v] : authHeaders)
-    {
-        curl.emplace_back("-H");
-        curl.emplace_back(k + ": " + v);
-    }
-    curl.push_back(url);
+    HTTPClient::Headers headers(authHeaders.begin(), authHeaders.end());
 
     logger_->info("Downloading update {} from {}", version, url);
-    if (auto dl = Subprocess::run(curl, 1800); dl.exitCode != 0)
+    auto dl = http_.downloadToFile(url, part, headers,
+                                   [this](const size_t received, const size_t total)
+                                   {
+                                       downloadedBytes_ = received;
+                                       totalBytes_ = total;
+                                   });
+    if (!dl.ok())
     {
-        fs::remove(part, ec);
-        _fail("Download failed: " + dl.stdErr, version);
+        _fail("Download failed: " + (dl.errorMsg.empty()
+                  ? "HTTP " + std::to_string(dl.statusCode) : dl.errorMsg), version);
         return;
     }
+
+    // transport integrity: server's checksum (set at upload) must match the
+    // downloaded file; the RAUC signature check remains the security boundary
+    std::string expected = release.value("checksum", "");
+    std::transform(expected.begin(), expected.end(), expected.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    if (expected.empty())
+    {
+        logger_->warn("Server release has no checksum; skipping integrity check");
+    }
+    else if (const auto actual = FileHash::sha256File(part); actual != expected)
+    {
+        fs::remove(part, ec);
+        _fail("Checksum mismatch: expected " + expected + ", got " + actual, version);
+        return;
+    }
+
     fs::rename(part, bundle, ec);
     if (ec)
     {
@@ -303,13 +326,8 @@ nlohmann::json UpdateManager::status() const
     };
     st["committed"] = !st["pending_slot"].get<std::string>().empty() ? false : true;
 
-    if (phase_ == Phase::Downloading && expectedSize_ > 0)
-    {
-        std::error_code ec;
-        const auto sz = fs::file_size(downloadPath_, ec);
-        if (!ec)
-            st["progress"] = static_cast<int>((sz * 100) / expectedSize_);
-    }
+    if (phase_ == Phase::Downloading && totalBytes_ > 0)
+        st["progress"] = static_cast<int>((downloadedBytes_ * 100) / totalBytes_);
 
     // last finished attempt (committed / rolled-back / install-failed)
     std::ifstream hist(kHistoryFile);

@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include <map>
 #include <string>
 
@@ -20,6 +21,14 @@ public:
 
     [[nodiscard]] HttpResponse get(const std::string& url, const Headers& headers = {}) const;
     [[nodiscard]] HttpResponse post(const std::string& url, const std::string& body, const Headers& headers = {}) const;
+
+    // Streams the response body to destPath (no in-memory copy). progress gets
+    // (received, total) with total = Content-Length or 0 if unknown. On any
+    // failure the partial file is removed and the response carries the error.
+    using ProgressFn = std::function<void(size_t received, size_t total)>;
+    [[nodiscard]] HttpResponse downloadToFile(const std::string& url, const std::string& destPath,
+                                              const Headers& headers = {},
+                                              const ProgressFn& progress = nullptr) const;
 
 private:
     int _connectTimeout;

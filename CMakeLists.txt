@@ -113,6 +113,7 @@ set(COMMON_SOURCES
         src/auth/FrameIdentity.cpp
         src/auth/TokenAuth.cpp
         src/util/Base64.cpp
+        src/util/FileHash.cpp
         src/repository/TokenRepository.cpp
         src/repository/ImageRepository.cpp
         src/repository/SettingsRepository.cpp

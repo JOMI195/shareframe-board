@@ -1,6 +1,7 @@
 #pragma once
 #include "config/AppConfig.hpp"
 #include "net/HTTPClient.hpp"
+#include <atomic>
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include <optional>
@@ -63,8 +64,8 @@ private:
     Phase phase_ = Phase::Idle;
     std::string error_;
     std::string targetVersion_;
-    long long expectedSize_ = 0;
-    std::string downloadPath_;
+    std::atomic<size_t> downloadedBytes_{0};
+    std::atomic<size_t> totalBytes_{0};
     std::jthread worker_;
     std::jthread checker_;
 };

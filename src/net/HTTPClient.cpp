@@ -1,4 +1,6 @@
 #include "net/HTTPClient.hpp"
+#include <cstdio>
+#include <fstream>
 #include <ixwebsocket/IXHttpClient.h>
 #include <spdlog/spdlog.h>
 
@@ -47,4 +49,45 @@ HttpResponse HTTPClient::post(const std::string& url, const std::string& body, c
     ix::HttpClient client;
     const auto args = makeArgs(_connectTimeout, _transferTimeout, headers);
     return toResponse(client.post(url, body, args));
+}
+
+HttpResponse HTTPClient::downloadToFile(const std::string& url, const std::string& destPath,
+                                        const Headers& headers, const ProgressFn& progress) const
+{
+    spdlog::debug("HTTP GET (to file) {} -> {}", url, destPath);
+
+    std::ofstream out(destPath, std::ios::binary | std::ios::trunc);
+    if (!out)
+        return {0, "", "cannot open " + destPath + " for writing"};
+
+    ix::HttpClient client;
+    const auto args = makeArgs(_connectTimeout, _transferTimeout, headers);
+    bool writeError = false;
+    args->onChunkCallback = [&out, &writeError](const std::string& chunk)
+    {
+        out.write(chunk.data(), static_cast<std::streamsize>(chunk.size()));
+        if (!out)
+            writeError = true;
+    };
+    if (progress)
+    {
+        args->onProgressCallback = [&progress](int current, int total) -> bool
+        {
+            progress(current > 0 ? static_cast<size_t>(current) : 0,
+                     total > 0 ? static_cast<size_t>(total) : 0);
+            return true;
+        };
+    }
+
+    auto resp = toResponse(client.get(url, args));
+    out.close();
+
+    if (writeError && resp.ok())
+    {
+        resp.statusCode = 0;
+        resp.errorMsg = "write failed for " + destPath + " (disk full?)";
+    }
+    if (!resp.ok())
+        std::remove(destPath.c_str());
+    return resp;
 }
