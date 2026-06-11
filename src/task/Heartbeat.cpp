@@ -5,8 +5,9 @@
 #include "ipc/HealthCheck.hpp"
 #include "ipc/IpcClient.hpp"
 #include "net/HTTPClient.hpp"
+#include "util/Subprocess.hpp"
 #include <arpa/inet.h>
-#include <nlohmann/json.hpp>
+#include <sstream>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -35,7 +36,7 @@ void Heartbeat::execute()
     const bool wsRunning = health::isRunning(wsIpc_);
     const bool displayRunning = health::isRunning(displayIpc_);
     const bool dashboardRunning = health::isRunning(dashboardIpc_);
-    const nlohmann::json payload = {
+    nlohmann::json payload = {
         {"local_ip_address", localIp},
         {"version", cfg_.version},
         // application_running kept for backend compatibility: the former monolith
@@ -43,8 +44,23 @@ void Heartbeat::execute()
         {"application_running", wsRunning && displayRunning},
         {"websocket_running", wsRunning},
         {"display_running", displayRunning},
-        {"dashboard_running", dashboardRunning}
+        {"dashboard_running", dashboardRunning},
+        {"serial_number", cfg_.frameId},
     };
+
+    const auto sysInfo = _getSysInfo();
+    static const std::vector<std::string> sysInfoKeys = {
+        "fw_version", "kernel", "boot_slot", "time_iso", "uptime_seconds",
+        "boot_count", "health_state", "cpu_usage_percent", "cpu_freq_mhz",
+        "cpu_temp_celsius", "load_1", "load_5", "load_15",
+        "ram_total_bytes", "ram_available_bytes",
+        "storage_data_total_bytes", "storage_data_free_bytes",
+    };
+    for (const auto& key : sysInfoKeys)
+    {
+        if (sysInfo.contains(key))
+            payload[key] = sysInfo[key];
+    }
 
     auto headers = TokenAuth::buildTokenAuthHeaders(auth_);
     if (headers.empty())
@@ -71,6 +87,33 @@ void Heartbeat::execute()
         return;
     }
     logger_->debug("Heartbeat acknowledged ({})", res.statusCode);
+}
+
+nlohmann::json Heartbeat::_getSysInfo() const
+{
+    nlohmann::json result = nlohmann::json::object();
+    auto info = Subprocess::run({"shareframe-sysinfo"}, 10);
+    if (info.exitCode != 0)
+    {
+        logger_->warn("shareframe-sysinfo failed: {}", info.stdErr);
+        return result;
+    }
+    std::istringstream stream(info.stdOut);
+    std::string line;
+    while (std::getline(stream, line))
+    {
+        auto eq = line.find('=');
+        if (eq == std::string::npos || eq == 0) continue;
+        const auto key = line.substr(0, eq);
+        const auto val = line.substr(eq + 1);
+        // Coerce numeric/bool strings to typed JSON scalars.
+        if (val == "true")  { result[key] = true;  continue; }
+        if (val == "false") { result[key] = false; continue; }
+        try { std::size_t p; long long i = std::stoll(val, &p); if (p == val.size()) { result[key] = i; continue; } } catch (...) {}
+        try { std::size_t p; double d  = std::stod(val, &p);  if (p == val.size()) { result[key] = d; continue; } } catch (...) {}
+        result[key] = val;
+    }
+    return result;
 }
 
 std::string Heartbeat::_getLocalIp()
