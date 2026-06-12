@@ -10,6 +10,7 @@ import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { useAppDispatch, useAppSelector } from '@/store';
 import { loginThunk, selectAuth } from '@/store/auth/auth.Slice';
 import { selectConnectionMode } from '@/store/connectionMode/connectionMode.Slice';
+import { removeAllSnackbars } from '@/store/snackbars/snackbars.Slice';
 import { usePiConnection } from '@/context/piConnection/piConnectionContext';
 import { useNavigate } from 'react-router';
 import { getHomeUrl, getSetupUrl } from '@/assets/endpoints/app/appEndpoints';
@@ -26,6 +27,10 @@ const SignIn = () => {
   const [secret, setSecret] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    dispatch(removeAllSnackbars());
+  }, []);
 
   // Without internet the OTP cannot be verified upstream — default to the
   // offline password once, without ever overriding a manual toggle.
