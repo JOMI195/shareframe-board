@@ -26,7 +26,7 @@ void WebsocketClient::_setupWebsocket()
     constexpr int pingIntervalSecs = 30;
     ws_.setPingInterval(pingIntervalSecs);
 
-    constexpr int handshakeTimeoutSecs = 1;
+    constexpr int handshakeTimeoutSecs = 60;
     ws_.setHandshakeTimeout(handshakeTimeoutSecs);
 
     ws_.setOnMessageCallback([this](const ix::WebSocketMessagePtr& msg)

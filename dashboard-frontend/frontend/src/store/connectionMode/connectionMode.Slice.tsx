@@ -29,8 +29,8 @@ export const fetchConnectionMode = createAsyncThunk(
     'connectionMode/fetch',
     async (_, { rejectWithValue }) => {
         try {
-            // Short timeout: this is a fast local endpoint and we poll it often.
-            const res = await fetchWithTimeout('/api/connection/mode', {}, 8000);
+            // Pessimistic timeout: tolerate slow/bad links during connecting.
+            const res = await fetchWithTimeout('/api/connection/mode', {}, 60000);
             const payload = await res.json();
             if (payload?.success) {
                 return payload.data as Partial<ConnectionModeState>;

@@ -17,7 +17,7 @@ class HTTPClient
 public:
     using Headers = std::map<std::string, std::string>;
 
-    explicit HTTPClient(int connectTimeoutSecs = 30, int transferTimeoutSecs = 60);
+    explicit HTTPClient(int connectTimeoutSecs = 60, int transferTimeoutSecs = 60);
 
     [[nodiscard]] HttpResponse get(const std::string& url, const Headers& headers = {}) const;
     [[nodiscard]] HttpResponse post(const std::string& url, const std::string& body, const Headers& headers = {}) const;
