@@ -36,6 +36,10 @@ public:
     /// and display on the e-paper (init → display → sleep cycle).
     [[nodiscard]] bool displayImage(const std::filesystem::path& imagePath);
 
+    /// Seconds until the next refresh is allowed (0 if ready). Lock-free so a
+    /// caller can wait it out and re-decide what to paint with fresh state.
+    [[nodiscard]] int secondsUntilRefreshReady() const;
+
     /// Put the display into deep sleep mode.
     void sleep();
 
@@ -69,7 +73,9 @@ private:
     /// True when the panel shows white. Written under _hwMutex; read on shutdown
     /// to decide if a final clear is needed. In-memory (boot always clears).
     std::atomic<bool> _isCleared{false};
-    std::chrono::steady_clock::time_point _lastDisplayTime{};
+    /// Atomic so it reads lock-free during a multi-second refresh; mutated only
+    /// by the hw threads.
+    std::atomic<std::chrono::steady_clock::time_point> _lastDisplayTime{};
     std::mutex _hwMutex; ///< serializes all EPD hardware access (init/clear/display/sleep)
 
     /// Set by requestShutdown(): makes the min-refresh wait return early so

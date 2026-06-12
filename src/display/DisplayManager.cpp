@@ -23,8 +23,8 @@ int64_t nowUnix()
 DisplayManager::DisplayManager(const AppConfig& cfg, DisplayMetricsRepository& metrics)
     : _cfg(cfg), _metrics(metrics), _logger(spdlog::default_logger()->clone("Display"))
 {
-    _lastDisplayTime = std::chrono::steady_clock::now()
-        - std::chrono::seconds(_cfg.display.minRefreshSecs);
+    _lastDisplayTime.store(std::chrono::steady_clock::now()
+        - std::chrono::seconds(_cfg.display.minRefreshSecs));
     _logger->info("DisplayManager created (mock={})", _cfg.display.mockDisplay);
 }
 
@@ -105,7 +105,7 @@ void DisplayManager::_clearHw()
     if (_cfg.display.mockDisplay)
     {
         _logger->info("[mock] Display clear");
-        _lastDisplayTime = std::chrono::steady_clock::now();
+        _lastDisplayTime.store(std::chrono::steady_clock::now());
         _isCleared = true;
         return;
     }
@@ -118,7 +118,7 @@ void DisplayManager::_clearHw()
     const UBYTE rc = EPD_7IN5_V2_Clear();
     const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - t0).count();
-    _lastDisplayTime = std::chrono::steady_clock::now();
+    _lastDisplayTime.store(std::chrono::steady_clock::now());
     _hwSleep();
     if (rc != 0)
     {
@@ -162,7 +162,7 @@ bool DisplayManager::_displayImageHw(const std::filesystem::path& imagePath)
     if (_cfg.display.mockDisplay)
     {
         _logger->info("[mock] Display image: {}", imagePath.string());
-        _lastDisplayTime = std::chrono::steady_clock::now();
+        _lastDisplayTime.store(std::chrono::steady_clock::now());
         _isCleared = false;
         return true;
     }
@@ -180,7 +180,7 @@ bool DisplayManager::_displayImageHw(const std::filesystem::path& imagePath)
     const UBYTE rc = EPD_7IN5_V2_Display(buffer.data());
     const auto refreshMs = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - t0).count();
-    _lastDisplayTime = std::chrono::steady_clock::now();
+    _lastDisplayTime.store(std::chrono::steady_clock::now());
     _hwSleep();
     if (rc != 0)
     {
@@ -283,9 +283,19 @@ bool DisplayManager::_hwInit()
 #endif
 }
 
+int DisplayManager::secondsUntilRefreshReady() const
+{
+    const auto elapsed = std::chrono::steady_clock::now() - _lastDisplayTime.load();
+    const auto minRefresh = std::chrono::seconds(_cfg.display.minRefreshSecs);
+    if (elapsed >= minRefresh)
+        return 0;
+    return static_cast<int>(
+        std::chrono::ceil<std::chrono::seconds>(minRefresh - elapsed).count());
+}
+
 void DisplayManager::_waitMinRefresh() const
 {
-    const auto elapsed = std::chrono::steady_clock::now() - _lastDisplayTime;
+    const auto elapsed = std::chrono::steady_clock::now() - _lastDisplayTime.load();
     const auto minRefresh = std::chrono::seconds(_cfg.display.minRefreshSecs);
     if (elapsed >= minRefresh)
         return;

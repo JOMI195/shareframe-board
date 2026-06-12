@@ -26,6 +26,8 @@ void DisplayImageLoop::start()
 {
     bus_.subscribe<Topic::IMAGE_REMOVED>(
         [this](const std::vector<int64_t>& ids) { _onImageRemoved(ids); });
+    bus_.subscribe<Topic::IMAGE_NEW>(
+        [this](const int64_t&) { _onImageNew(); });
     bus_.subscribe<Topic::SKIP_IMAGE>(
         [this](const SkipImageEvent&) { _onSkipImage(); });
     bus_.subscribe<Topic::UPDATE_DISPLAY_INTERVAL>(
@@ -137,6 +139,18 @@ void DisplayImageLoop::_run(const std::stop_token st)
                         break;
                     }
 
+                    // Wait out a pending panel refresh delay before painting so
+                    // an image arriving meanwhile pre-empts the default.
+                    if (const int wait = display_.secondsUntilRefreshReady(); wait > 0)
+                    {
+                        std::unique_lock lk(mtx_);
+                        skipCurrent_ = false;
+                        newImage_ = false;
+                        cv_.wait_for(lk, std::chrono::seconds(wait),
+                                     [&st, this] { return st.stop_requested() || newImage_ || skipCurrent_ || !settings_.isSlideshowActive(); });
+                        continue;
+                    }
+
                     if (defaultImageIdx_ >= defaultImages.size())
                         defaultImageIdx_ = 0;
 
@@ -153,8 +167,9 @@ void DisplayImageLoop::_run(const std::stop_token st)
                     _armNextChange();
                     std::unique_lock lk(mtx_);
                     skipCurrent_ = false;
+                    newImage_ = false;
                     cv_.wait_for(lk, std::chrono::seconds(settings_.getDisplayInterval()),
-                                 [&st, this] { return st.stop_requested() || skipCurrent_ || !settings_.isSlideshowActive(); });
+                                 [&st, this] { return st.stop_requested() || newImage_ || skipCurrent_ || !settings_.isSlideshowActive(); });
                 }
                 continue;
             }
@@ -216,6 +231,13 @@ void DisplayImageLoop::_run(const std::stop_token st)
                          [&st] { return st.stop_requested(); });
         }
     }
+}
+
+void DisplayImageLoop::_onImageNew()
+{
+    std::lock_guard lk(mtx_);
+    newImage_ = true;
+    cv_.notify_one();
 }
 
 void DisplayImageLoop::_onSkipImage()

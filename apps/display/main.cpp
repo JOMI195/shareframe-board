@@ -124,8 +124,9 @@ int main(int argc, char* argv[])
         }
         else if (topic == event_topics::ImageNew)
         {
-            // The loop re-scans each cycle, so a new image needs no nudge — log only.
+            // Wake the loop so defaults yield to a freshly arrived image.
             spdlog::debug("Event: new image {}", payload.value("id", int64_t{0}));
+            eventBus.publish<Topic::IMAGE_NEW>(payload.value("id", int64_t{0}));
         }
     });
     subscriber.start();
