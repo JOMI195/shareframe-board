@@ -11,10 +11,8 @@
 
 class AuthTokenManager;
 
-// Drives the A/B image update: check server, download bundle to /data/cache,
-// rauc install, tryboot reboot. Slot state (pending/committed) is owned by the
-// OS (tryboot-backend + rauc-reconcile/mark-good oneshots); this class only
-// reads it for status reporting.
+// Drives the A/B update: check server, download bundle, rauc install, tryboot
+// reboot. Slot state is owned by the OS; this class only reads it for status.
 class UpdateManager
 {
 public:
@@ -34,8 +32,8 @@ public:
     // Proxy of the server's latest-release metadata (TokenAuth).
     [[nodiscard]] HttpResponse fetchLatestRelease() const;
 
-    // Start the async download+install worker. Fails when busy, when an
-    // uncommitted update awaits confirmation, or when no newer version exists.
+    // Start the async download+install worker. Fails when busy, awaiting
+    // confirmation, or no newer version exists.
     bool startUpdate(std::string& error);
 
     // Periodic server check; auto-installs criticalities from cfg (Critical).

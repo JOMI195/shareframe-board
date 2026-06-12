@@ -22,6 +22,9 @@ public:
     /// is paused / no change is scheduled. Thread-safe (atomic read).
     [[nodiscard]] int secondsUntilNext() const;
 
+    /// True once the loop has displayed its first image (default or user).
+    [[nodiscard]] bool isReady() const { return ready_.load(); }
+
 protected:
     void _run(std::stop_token st) override;
 
@@ -42,4 +45,5 @@ private:
     size_t defaultImageIdx_ = 0;
     // steady_clock ms at which the next image change is due; 0 = none scheduled.
     std::atomic<int64_t> nextChangeAtMs_{0};
+    std::atomic<bool> ready_{false};
 };

@@ -34,7 +34,6 @@ const LoadingSnackbar = ({ snackbar }: ILoadingSnackbarProps) => {
                     minWidth: '300px', // Ensuring a minimum width
                     maxWidth: '500px', // Optional: limit the max width
                 }}
-            //onClick={closeSnackbar} // Close snackbar on click
             >
                 <CircularProgress
                     color="inherit"

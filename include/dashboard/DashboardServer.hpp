@@ -59,14 +59,12 @@ private:
     // Helpers
     ix::HttpResponsePtr _loginRequired(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr _sessionLoginResponse() const;
-    // True when the password matches the user-set hash (settings table) or,
-    // when none is set, the provisioned initial password from secrets.
+    // True when the password matches the stored hash, or the initial password if none set.
     bool _verifyDashboardPassword(const std::string& password) const;
     bool _isPasswordLoginConfigured() const;
     bool _hasValidSession(const ix::HttpRequestPtr& req) const;
     static std::string _extractSessionId(const ix::HttpRequestPtr& req);
-    // True while the board hosts its AP fallback (no internet => OTP login is
-    // impossible, so /api/connection/* is reachable without a session).
+    // True while the board hosts its AP fallback (OTP login impossible offline).
     static bool _isApMode();
 
     AppConfig& cfg_;

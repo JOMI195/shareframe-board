@@ -15,10 +15,8 @@ const initialState: PiPowerState = {};
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// A power command (reboot/shutdown) tears the server down, so its HTTP response
-// often never arrives - the connection just drops. That is the expected happy
-// path, NOT a failure. We only treat an explicit `success: false` body as a real
-// rejection; any network/abort error means "the box is going away as asked".
+// A power command tears the server down, so no HTTP response is the happy path,
+// not a failure. Only an explicit `success: false` body counts as a rejection.
 const sendPowerCommand = async (url: string): Promise<'accepted' | 'rejected'> => {
     try {
         const response = await fetchWithTimeout(url, { method: 'POST' }, 8000);

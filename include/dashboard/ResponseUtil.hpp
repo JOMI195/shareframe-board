@@ -4,10 +4,8 @@
 
 namespace dashboard {
 
-// Every dashboard response shares one envelope so the frontend can read it
-// uniformly: { "success": bool, "message": string, "data": object|null }.
-// Domain handlers keep passing their payload object as `data`; success is
-// derived from the HTTP status.
+// Every dashboard response shares one envelope { success, message, data } so the
+// frontend reads it uniformly; success is derived from the HTTP status.
 inline ix::HttpResponsePtr jsonResponse(int status, const std::string& statusText,
                                         const nlohmann::json& data = nlohmann::json::object(),
                                         const std::string& message = "")

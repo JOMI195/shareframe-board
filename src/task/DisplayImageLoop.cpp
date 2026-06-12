@@ -141,7 +141,10 @@ void DisplayImageLoop::_run(const std::stop_token st)
                         defaultImageIdx_ = 0;
 
                     if (const auto& path = defaultImages[defaultImageIdx_]; display_.displayImage(path))
+                    {
+                        ready_.store(true);
                         logger_->info("Displaying default image ({})", path.string());
+                    }
                     else
                         logger_->error("Failed to display default image: {}", path.string());
 
@@ -180,7 +183,10 @@ void DisplayImageLoop::_run(const std::stop_token st)
 
             // Display the image (DisplayManager enforces min refresh)
             if (display_.displayImage(image.imagePath))
+            {
+                ready_.store(true);
                 logger_->info("Displaying image {} ({})", nextId, image.imagePath.string());
+            }
             else
                 logger_->error("Failed to display image {}", nextId);
 

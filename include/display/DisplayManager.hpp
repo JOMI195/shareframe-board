@@ -24,15 +24,12 @@ public:
     /// Clear the display to white (init → clear → sleep cycle).
     void clear();
 
-    /// Clear before shutdown if the panel is still showing content. Unlike
-    /// clear() this skips the min-refresh wait (shutdown cannot block) and is a
-    /// no-op when the last operation already left the panel cleared.
+    /// Clear before shutdown if the panel still shows content; skips the
+    /// min-refresh wait (shutdown can't block) and no-ops if already cleared.
     void clearForShutdown();
 
-    /// Signal that the process is shutting down: wakes any in-progress min-refresh
-    /// wait immediately and makes pending image displays bail out. Call this before
-    /// stopping the display tasks so they unblock within the service timeout-kill
-    /// window instead of holding _hwMutex for up to minRefreshSecs.
+    /// Signal shutdown: wakes the min-refresh wait and makes pending displays bail,
+    /// so tasks unblock within the timeout-kill window instead of holding the lock.
     void requestShutdown();
 
     /// Load image from path, resize to 800x480, convert to 1-bit,
@@ -42,10 +39,8 @@ public:
     /// Put the display into deep sleep mode.
     void sleep();
 
-    /// Persisted wear counters + derived health (status, wear%, consecutive
-    /// failures) as JSON, for the get_display_stats IPC query. Lock-free w.r.t.
-    /// the hardware mutex: it must answer the IPC REP thread immediately even
-    /// while a multi-second panel refresh holds _hwMutex.
+    /// Wear counters + derived health as JSON for the IPC query. Lock-free w.r.t.
+    /// the hardware mutex so it answers even during a multi-second refresh.
     [[nodiscard]] nlohmann::json healthSnapshot() const;
 
     static constexpr int WIDTH = 800;
@@ -68,20 +63,17 @@ private:
     DisplayMetricsRepository& _metrics;
     std::shared_ptr<spdlog::logger> _logger;
     bool _initialized = false;
-    /// In-memory since boot; drives health status. Atomic so healthSnapshot()
-    /// can read it from the REP thread without taking _hwMutex (which a refresh
-    /// holds for seconds). Mutated only by the hw threads, already under _hwMutex.
+    /// In-memory since boot; atomic so healthSnapshot() reads it without the
+    /// hw mutex. Mutated only by the hw threads (already under _hwMutex).
     std::atomic<int> _consecutiveFailures{0};
-    /// True when the panel currently shows white (last hw op was a clear), false
-    /// when it shows content. Written under _hwMutex by the hw paths; read on the
-    /// shutdown path (clearForShutdown) to decide whether a final clear is needed.
-    /// In-memory only: boot always clears, so it resets to a known state each run.
+    /// True when the panel shows white. Written under _hwMutex; read on shutdown
+    /// to decide if a final clear is needed. In-memory (boot always clears).
     std::atomic<bool> _isCleared{false};
     std::chrono::steady_clock::time_point _lastDisplayTime{};
     std::mutex _hwMutex; ///< serializes all EPD hardware access (init/clear/display/sleep)
 
-    /// Set by requestShutdown(). Makes _waitMinRefresh() return early and pending
-    /// image displays bail, so shutdown does not block on the min-refresh wait.
+    /// Set by requestShutdown(): makes the min-refresh wait return early so
+    /// shutdown doesn't block.
     std::atomic<bool> _shuttingDown{false};
     mutable std::mutex _waitMtx;             ///< guards the interruptible min-refresh wait
     mutable std::condition_variable _waitCv; ///< woken by requestShutdown()

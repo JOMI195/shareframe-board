@@ -13,9 +13,9 @@
 
 Heartbeat::Heartbeat(EventBus& bus, const AppConfig& cfg, const HTTPClient& http,
                      AuthTokenManager& auth, IpcClient& wsIpc, IpcClient& displayIpc,
-                     IpcClient& dashboardIpc)
+                     IpcClient& dashboardIpc, IpcClient& updateIpc)
     : PeriodicTask(bus, cfg, "Heartbeat"), http_(http), auth_(auth),
-      wsIpc_(wsIpc), displayIpc_(displayIpc), dashboardIpc_(dashboardIpc)
+      wsIpc_(wsIpc), displayIpc_(displayIpc), dashboardIpc_(dashboardIpc), updateIpc_(updateIpc)
 {
 }
 
@@ -33,27 +33,33 @@ void Heartbeat::execute()
         return;
     }
 
-    const bool wsRunning = health::isRunning(wsIpc_);
-    const bool displayRunning = health::isRunning(displayIpc_);
+    const bool wsRunning        = health::isRunning(wsIpc_);
+    const bool displayRunning   = health::isRunning(displayIpc_);
     const bool dashboardRunning = health::isRunning(dashboardIpc_);
+    const bool updateRunning    = health::isRunning(updateIpc_);
     nlohmann::json payload = {
+        // Identity
+        {"serial_number", cfg_.frameId},
         {"local_ip_address", localIp},
         {"version", cfg_.version},
-        // application_running kept for backend compatibility: the former monolith
-        // is healthy iff both successor services answer.
-        {"application_running", wsRunning && displayRunning},
+        // Service health
         {"websocket_running", wsRunning},
         {"display_running", displayRunning},
         {"dashboard_running", dashboardRunning},
-        {"serial_number", cfg_.frameId},
+        {"update_running", updateRunning},
     };
 
     const auto sysInfo = _getSysInfo();
     static const std::vector<std::string> sysInfoKeys = {
-        "fw_version", "kernel", "boot_slot", "time_iso", "uptime_seconds",
-        "boot_count", "health_state", "cpu_usage_percent", "cpu_freq_mhz",
-        "cpu_temp_celsius", "load_1", "load_5", "load_15",
+        // System state
+        "health_state", "uptime_seconds", "boot_count", "boot_slot",
+        "time_iso", "kernel", "fw_version",
+        // CPU
+        "cpu_temp_celsius", "cpu_usage_percent", "cpu_freq_mhz",
+        "load_1", "load_5", "load_15",
+        // RAM
         "ram_total_bytes", "ram_available_bytes",
+        // Storage
         "storage_data_total_bytes", "storage_data_free_bytes",
     };
     for (const auto& key : sysInfoKeys)

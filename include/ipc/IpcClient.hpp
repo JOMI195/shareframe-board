@@ -7,13 +7,9 @@
 #include <spdlog/spdlog.h>
 #include <string>
 
-/// Request/response client over nng REQ. `url` is an nng endpoint
-/// (e.g. "ipc:///tmp/shareframe-display.rep.sock"). The dialer reconnects
-/// automatically, so the peer service may start after this client.
-///
-/// nng REQ/REP is strictly lockstep: every request expects a reply. `send()`
-/// therefore performs a full round-trip and discards the reply body; use it for
-/// fire-and-forget commands, `sendAndReceive()` for queries.
+/// Request/response client over nng REQ (auto-reconnecting, so the peer may
+/// start later). REQ/REP is lockstep: send() does a full round-trip and discards
+/// the reply (fire-and-forget); sendAndReceive() returns it.
 class IpcClient
 {
 public:

@@ -4,10 +4,8 @@ import SignalWifiStatusbarConnectedNoInternet4Icon from '@mui/icons-material/Sig
 import { useAppSelector } from '@/store';
 import { selectConnectionMode } from '@/store/connectionMode/connectionMode.Slice';
 
-// Sticky status bar that reflects the board's network mode. Hidden while the
-// board is connected and online (the happy path) to avoid clutter; shown for
-// "connecting", "no internet" and "AP mode". Polling is driven centrally by
-// RouterContext, so this component only reads the slice.
+// Sticky network-mode banner: hidden on the happy path, shown for connecting /
+// no-internet / AP mode. Polling is central (RouterContext); this only reads.
 const NetworkStatusBanner = () => {
     const { mode, ssid, internet, ap_ssid, ap_password, loaded } = useAppSelector(selectConnectionMode);
 

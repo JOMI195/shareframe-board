@@ -85,16 +85,14 @@ void DisplayManager::clearForShutdown()
         _logger->info("Display already cleared, skipping shutdown clear");
         return;
     }
-    // No _waitMinRefresh(): shutdown is time-boxed by the service timeout-kill and
-    // must not block up to minRefreshSecs. _clearHw() inits + sleeps the panel itself.
+    // No _waitMinRefresh(): shutdown is time-boxed and must not block.
     _logger->info("Clearing display before shutdown");
     _clearHw();
 }
 
 void DisplayManager::requestShutdown()
 {
-    // Set under _waitMtx so the flag can't be missed in the gap between a waiter's
-    // predicate check and it blocking (lost-wakeup guard).
+    // Set under _waitMtx to avoid a lost wakeup vs. a waiter about to block.
     {
         std::lock_guard lk(_waitMtx);
         _shuttingDown.store(true);
@@ -154,8 +152,7 @@ bool DisplayManager::displayImage(const std::filesystem::path& imagePath)
 
 bool DisplayManager::_displayImageHw(const std::filesystem::path& imagePath)
 {
-    // A min-refresh wait may have just been interrupted by shutdown; don't start a
-    // new panel refresh now — clearForShutdown() will leave the panel blank instead.
+    // Shutdown may have interrupted the wait; don't start a new refresh now.
     if (_shuttingDown.load())
     {
         _logger->info("Shutdown in progress, skipping image display");
@@ -230,10 +227,8 @@ void DisplayManager::_hwSleep()
 
 nlohmann::json DisplayManager::healthSnapshot() const
 {
-    // Deliberately does NOT take _hwMutex: that lock is held for the whole
-    // multi-second init->refresh->sleep cycle, and the single-threaded REP
-    // server must keep answering queries during a refresh. Metric reads are
-    // serialized by the repository's own mutex; the failure streak is atomic.
+    // Deliberately no _hwMutex (held for the whole multi-second refresh cycle):
+    // metric reads use the repository mutex, the failure streak is atomic.
     const auto metrics = _metrics.all();
     const int failures = _consecutiveFailures.load(std::memory_order_relaxed);
 
@@ -244,8 +239,7 @@ nlohmann::json DisplayManager::healthSnapshot() const
     const auto it = metrics.find("epd_refresh_total");
     const int64_t refreshes = (it != metrics.end()) ? it->second : 0;
 
-    // No panel sensor exists: health is derived purely from the in-memory
-    // consecutive-failure streak (a sustained streak means dead SPI/wiring/panel).
+    // No panel sensor: health derives from the consecutive-failure streak.
     j["consecutive_failures"] = failures;
     j["rated_refreshes"] = RATED_REFRESHES;
     j["wear_percent"] = static_cast<double>(refreshes) / RATED_REFRESHES * 100.0;
@@ -299,9 +293,8 @@ void DisplayManager::_waitMinRefresh() const
     const auto remaining = minRefresh - elapsed;
     _logger->info("Waiting {}s for minimum refresh interval",
                   std::chrono::duration_cast<std::chrono::seconds>(remaining).count());
-    // Interruptible: requestShutdown() wakes us immediately. This is called with
-    // _hwMutex held, so a plain sleep here would pin the bus for up to minRefreshSecs
-    // and stall shutdown past the service timeout-kill.
+    // Interruptible (requestShutdown wakes us): called with _hwMutex held, so a
+    // plain sleep would pin the bus and stall shutdown.
     std::unique_lock lk(_waitMtx);
     _waitCv.wait_for(lk, remaining, [this] { return _shuttingDown.load(); });
 }

@@ -8,8 +8,7 @@
 using namespace dashboard;
 
 namespace {
-// Turn a shareframe-sysinfo "value" token into a typed JSON scalar so the
-// frontend receives numbers/bools it can render directly (not strings).
+// Coerce a sysinfo value token into a typed JSON scalar for the frontend.
 nlohmann::json coerceScalar(const std::string& v)
 {
     if (v == "true")  return true;
@@ -23,17 +22,14 @@ nlohmann::json coerceScalar(const std::string& v)
 SystemHandlers::SystemHandlers(const AppConfig& cfg, WifiManager& wifi)
     : cfg_(cfg), wifi_(wifi),
       logger_(spdlog::default_logger()->clone("SystemHandlers")),
-      // Stable short ids form the public log contract (the frontend's
-      // ServiceType enum); each maps to its spdlog file below in handleLogs.
-      // Decoupled from internal *.service names / log filenames on purpose.
+      // Stable short ids = the public log contract; mapped to files in handleLogs.
       allowedServiceNames_({"websocket", "display", "dashboard", "heartbeat", "update", "system"})
 {
 }
 
 ix::HttpResponsePtr SystemHandlers::handleHealth(const ix::HttpRequestPtr& /*req*/) const
 {
-    // Health hook: serving this request means the dashboard is running. Always
-    // true for now; can later reflect internal state.
+    // Serving this means the dashboard is running; always true for now.
     return jsonResponse(200, "OK", {{"running", true}});
 }
 
@@ -44,9 +40,8 @@ ix::HttpResponsePtr SystemHandlers::handleInfo(const ix::HttpRequestPtr& /*req*/
         {"version", cfg_.version},
     };
 
-    // Board-specific metrics come from the shareframe-sysinfo overlay script
-    // (key=value lines). Absent metrics are simply missing keys -> treated as
-    // null by the frontend; never fail the whole response over them.
+    // Board metrics from the shareframe-sysinfo overlay (key=value); absent keys
+    // are just missing — never fail the whole response.
     auto info = Subprocess::run({"shareframe-sysinfo"}, 10);
     if (info.exitCode == 0)
     {
@@ -64,8 +59,7 @@ ix::HttpResponsePtr SystemHandlers::handleInfo(const ix::HttpRequestPtr& /*req*/
         logger_->warn("shareframe-sysinfo failed: {}", info.stdErr);
     }
 
-    // SSID can contain spaces, so source it from the wifi parser rather than
-    // the script's key=value output.
+    // SSID can contain spaces, so take it from the wifi parser, not key=value.
     auto wifi = wifi_.getCurrentConnection();
     data["wlan_ssid"] = wifi.value("connection_name", "");
 
@@ -132,9 +126,8 @@ ix::HttpResponsePtr SystemHandlers::handleLogs(
     }
     lines = Validation::clampLogLines(lines);
 
-    // No journald on the board. App services are spdlog rotating files under
-    // cfg.log.logPath; "system" is the busybox syslog (klogd + daemons) at its
-    // own absolute path. Map the (already-validated) short id to a full path.
+    // No journald: app services are spdlog files; "system" is the busybox syslog.
+    // Map the validated short id to a path.
     std::string path;
     if (serviceName == "dashboard")
         path = cfg_.log.logPath + "/" + cfg_.dashboardApplication.logFile;

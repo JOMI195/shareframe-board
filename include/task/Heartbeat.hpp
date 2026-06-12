@@ -15,7 +15,7 @@ class Heartbeat : public PeriodicTask
 public:
     Heartbeat(EventBus& bus, const AppConfig& cfg, const HTTPClient& http,
               AuthTokenManager& auth, IpcClient& wsIpc, IpcClient& displayIpc,
-              IpcClient& dashboardIpc);
+              IpcClient& dashboardIpc, IpcClient& updateIpc);
 
 protected:
     [[nodiscard]] int intervalSecs() const override;
@@ -30,4 +30,5 @@ private:
     IpcClient& wsIpc_;
     IpcClient& displayIpc_;
     IpcClient& dashboardIpc_;
+    IpcClient& updateIpc_;
 };

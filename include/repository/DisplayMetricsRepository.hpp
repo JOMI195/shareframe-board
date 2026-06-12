@@ -5,12 +5,9 @@
 #include <mutex>
 #include <string>
 
-/// Persistent counters for e-paper wear/usage (refreshes, power-ons, failures,
-/// cumulative busy time, timestamps). Backed by the display_metrics key/value
-/// table. All access is serialized by an internal mutex: the display process
-/// shares one SQLite connection across several threads (display loop, clear
-/// task, event bus, REP handler) and relies on SQLite's serialized threadsafe
-/// build for cross-connection safety.
+/// Persistent key/value counters for e-paper wear/usage. All access is serialized
+/// by an internal mutex: the display process shares one SQLite connection across
+/// several threads.
 class DisplayMetricsRepository
 {
 public:

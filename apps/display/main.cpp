@@ -15,24 +15,20 @@
 #include "task/DisplayImageLoop.hpp"
 #include <spdlog/spdlog.h>
 
-// Owns all display behavior. Commands/queries arrive over nng REP (from the
-// dashboard + heartbeat); broadcast events arrive over nng SUB (from the
-// websocket service). Both feed the internal EventBus, which the display tasks
-// consume.
+// Owns all display behavior. Commands/queries arrive over nng REP, broadcast
+// events over nng SUB; both feed the EventBus the display tasks consume.
 int main(int argc, char* argv[])
 {
-    // Block SIGINT/SIGTERM before any thread is created so the signal reaches the
-    // waitForSignal() thread (graceful shutdown) instead of killing the process via
-    // a worker thread that doesn't block it.
+    // Block SIGINT/SIGTERM before any thread is created so it reaches the
+    // waitForSignal() thread instead of a worker (graceful shutdown).
     blockShutdownSignals();
 
     auto [cfg, profile] = bootstrap(argc, argv);
     initLogging(cfg, cfg.displayApplication.logFile);
     spdlog::info("shareframe-display v{} starting [profile: {}]", cfg.version, profileName(profile));
 
-    // Reads/writes its own state only; migrations are run by the standalone
-    // shareframe-migrate oneshot before any service starts, so open without
-    // migrating.
+    // Migrations run by the shareframe-migrate oneshot before any service; open
+    // without migrating.
     Database database;
     database.init(cfg.database, false);
     ImageRepository imageRepo(database.get());
@@ -55,9 +51,8 @@ int main(int argc, char* argv[])
 
     eventBus.start();
 
-    // REP handler: reproduces the former IpcServer dispatch. Commands publish to
-    // the bus and ack with {}; queries return data. Every request gets a reply
-    // (REQ/REP is lockstep).
+    // REP handler: commands publish to the bus and ack with {}; queries return
+    // data. Every request gets a reply (REQ/REP is lockstep).
     NngRepServer repServer(cfg.ipc.displayRep, [&](const IpcMessage& msg) -> nlohmann::json
     {
         switch (msg.type)
@@ -97,7 +92,11 @@ int main(int argc, char* argv[])
         }
 
         case IpcMessageType::GetSlideshowActive:
-            return {{"active", runtimeSettings.isSlideshowActive()}};
+            return {
+                {"active", runtimeSettings.isSlideshowActive()},
+                {"loop_started", displayImageLoop.isReady()},
+                {"image_count", static_cast<int64_t>(imageRepo.getAllIds().size())}
+            };
 
         case IpcMessageType::GetSecondsUntilNext:
             return {{"seconds_until_next", displayImageLoop.secondsUntilNext()}};
@@ -125,8 +124,7 @@ int main(int argc, char* argv[])
         }
         else if (topic == event_topics::ImageNew)
         {
-            // The display loop re-scans the image set every cycle, so a new image
-            // is picked up without an explicit nudge — log for observability only.
+            // The loop re-scans each cycle, so a new image needs no nudge — log only.
             spdlog::debug("Event: new image {}", payload.value("id", int64_t{0}));
         }
     });
@@ -134,8 +132,7 @@ int main(int argc, char* argv[])
 
     const int sig = waitForSignal();
     spdlog::info("Received signal {}, shutting down", sig);
-    // Wake any in-flight min-refresh wait first so the image-loop thread unblocks
-    // and the tasks below stop promptly (well within the service timeout-kill).
+    // Wake the in-flight min-refresh wait first so the tasks below stop promptly.
     displayManager.requestShutdown();
     subscriber.stop();
     repServer.stop();
@@ -143,9 +140,8 @@ int main(int argc, char* argv[])
     displayClear.stop();
     displayImageLoop.stop();
 
-    // All display tasks are stopped, so nothing else touches the panel now. Leave
-    // the board powered off with a blank white screen instead of the last image
-    // (e-paper is bistable). No-op if the panel is already cleared.
+    // Tasks stopped; leave a blank white screen (e-paper is bistable). No-op if
+    // already cleared.
     displayManager.clearForShutdown();
 
     return 0;

@@ -15,18 +15,16 @@
 #include "task/ImageUpdate.hpp"
 #include <spdlog/spdlog.h>
 
-// Owns network + image ingest. Inbound server messages are parsed by
-// WebsocketClient into the internal EventBus; ImageUpdate persists images to
-// disk + DB. EventBridge forwards selected internal events out over nng PUB so
-// the display service can react. A nng REP socket answers health probes.
+// Owns network + image ingest. WebsocketClient parses server messages into the
+// EventBus; ImageUpdate persists images; EventBridge forwards events over nng
+// PUB for the display service; a REP socket answers health probes.
 int main(int argc, char* argv[])
 {
     auto [cfg, profile] = bootstrap(argc, argv);
     initLogging(cfg, cfg.websocketApplication.logFile);
     spdlog::info("shareframe-websocket v{} starting [profile: {}]", cfg.version, profileName(profile));
 
-    // Writes images/tokens but does NOT migrate: the standalone shareframe-migrate
-    // oneshot runs migrations before any service starts.
+    // Does NOT migrate: the shareframe-migrate oneshot runs migrations first.
     Database database;
     database.init(cfg.database, false);
     TokenRepository tokenRepo(database.get());
@@ -39,8 +37,7 @@ int main(int argc, char* argv[])
 
     EventBus eventBus;
 
-    // Cross-process event publisher + bridge. Bridge subscribes the bus, so wire
-    // it before eventBus.start().
+    // Bridge subscribes the bus, so wire it before eventBus.start().
     EventPublisher publisher(cfg.ipc.wsPub);
     publisher.start();
     EventBridge bridge(eventBus, publisher);

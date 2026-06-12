@@ -18,10 +18,8 @@ import { getAuthenticationUrl, getSignInUrl } from '@/assets/endpoints/app/authE
 // overlay/etc/dnsmasq.d/shareframe-ap.conf on the board.
 const AP_GATEWAY_IP = '192.168.4.1';
 
-// Unauthenticated WiFi-setup page shown while the board hosts its AP fallback.
-// In AP mode the board has no internet, so the normal OTP login cannot complete
-// — this page lets the user enter new credentials over the board's own AP. The
-// backend allows /api/connection/* without a session while in AP mode.
+// Unauthenticated wifi-setup page for AP-fallback mode (no internet, so OTP
+// login can't complete). The backend allows /api/connection/* without a session.
 const WifiSetup = () => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();

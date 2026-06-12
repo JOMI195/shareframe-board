@@ -9,11 +9,7 @@
 class TokenAuth : NonInstantiable
 {
 public:
-    /// Builds the Authorization header for token-authenticated API requests.
-    /// Calls getOrFetchToken() internally — triggers a fetch if the token is
-    /// expired or missing.
-    /// @param tokenManager  Manager used to retrieve or refresh the access token.
-    /// @return Map containing {"Authorization": "Frame-Access-Token <token>"},
-    ///         or an empty map if no valid token could be obtained.
+    /// Builds the Authorization header (fetches/refreshes the token as needed);
+    /// empty map if no valid token could be obtained.
     static std::map<std::string, std::string> buildTokenAuthHeaders(const AuthTokenManager& tokenManager);
 };

@@ -3,10 +3,9 @@
 
 class EventBus;
 
-/// Forwards selected internal EventBus topics out onto the nng PUB socket so the
-/// display service can react. Kept separate from WebsocketClient: the WS task
-/// stays a pure producer into the internal bus (see feedback_ws_architecture);
-/// this bridge is the sole owner of bus → cross-process fan-out.
+/// Forwards selected EventBus topics onto the nng PUB socket for the display
+/// service. Sole owner of bus → cross-process fan-out (the WS task stays a pure
+/// producer into the bus).
 class EventBridge
 {
 public:

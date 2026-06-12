@@ -47,7 +47,7 @@ const FrameActions: React.FC = () => {
 
     const { isConnected } = usePiConnection();
     const { isToggling, isClearingDisplay, isSkippingImage, isFetchingInterval, isUpdatingInterval } = useAppSelector(selectSlideshowOperation);
-    const { isActive, lastCheckedAt, secondsUntilNext } = useAppSelector(selectSlideshowStatus);
+    const { isActive, loopStarted, imageCount, lastCheckedAt, secondsUntilNext } = useAppSelector(selectSlideshowStatus);
 
     // Interval form state
     const [intervalValue, setIntervalValue] = useState<number>(useAppSelector(selectDisplayRefreshInterval));
@@ -131,8 +131,9 @@ const FrameActions: React.FC = () => {
 
     const { min, max, step = 1 } = getMinMaxValues();
 
+    const isLoopLoading = isActive && !loopStarted && isConnected && lastCheckedAt !== null;
     const isTimerRunning = isSlideshowActionsTimerActive || isAppIntialLoadTimerActive;
-    const isButtonsDisabled = isTimerRunning || isToggling || isClearingDisplay || isSkippingImage || !isConnected || lastCheckedAt === null;
+    const isButtonsDisabled = isTimerRunning || isLoopLoading || isToggling || isClearingDisplay || isSkippingImage || !isConnected || lastCheckedAt === null;
 
     return (
         <>
@@ -146,11 +147,22 @@ const FrameActions: React.FC = () => {
                                 content: {
                                     type: 'reactNode',
                                     value: (
-                                        <Box display="flex" alignItems="center" gap={1.5}>
-                                            <TimerOutlined color="action" />
-                                            <Typography variant="h4" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                                                {countdownText}
-                                            </Typography>
+                                        <Box display="flex" alignItems="center" justifyContent="space-between">
+                                            <Box display="flex" alignItems="center" gap={1.5}>
+                                                <TimerOutlined color="action" />
+                                                <Typography variant="h4" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                                                    {countdownText}
+                                                </Typography>
+                                            </Box>
+                                            <Chip
+                                                label={
+                                                    (isConnected && lastCheckedAt !== null && imageCount != null)
+                                                        ? `${imageCount} ${imageCount === 1 ? 'Bild' : 'Bilder'}`
+                                                        : '—'
+                                                }
+                                                size="small"
+                                                variant="outlined"
+                                            />
                                         </Box>
                                     )
                                 }
@@ -163,6 +175,14 @@ const FrameActions: React.FC = () => {
                     <Grid item xs={12}>
                         <Alert severity="info" sx={{ display: 'flex', alignItems: 'center' }}>
                             Bitte warte einen Augenblick bis der aktuelle Status der Bildwiedergabe ermittelt wurde
+                        </Alert>
+                    </Grid>
+                )}
+
+                {!isTimerRunning && isLoopLoading && (
+                    <Grid item xs={12}>
+                        <Alert severity="info" sx={{ display: 'flex', alignItems: 'center' }}>
+                            Der Bilderrahmen startet noch. Bitte warte einen Moment.
                         </Alert>
                     </Grid>
                 )}

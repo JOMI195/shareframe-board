@@ -8,10 +8,9 @@
 #include <string>
 #include <thread>
 
-/// Request/response server over nng REP. Generic: the owning service supplies a
-/// handler that turns a parsed IpcMessage into the response data. Because
-/// REQ/REP is lockstep, the handler is called for *every* request and its return
-/// value is always sent back (an empty object acts as a command ack).
+/// Request/response server over nng REP. The owning service supplies a handler
+/// turning an IpcMessage into response data; its return is always sent back
+/// (empty object = command ack).
 class NngRepServer
 {
 public:

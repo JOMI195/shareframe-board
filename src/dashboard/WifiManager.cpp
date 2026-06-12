@@ -110,10 +110,9 @@ nlohmann::json WifiManager::connect(const std::string& ssid, const std::string& 
 
     logger_->info("Added WiFi network: {}", ssid);
 
-    // Nudge wifi-mode-manager to retry the station immediately. This matters in
-    // AP fallback mode: it switches back to the new network at once instead of
-    // waiting for the periodic retry or a manual reboot. No-op (file just sits)
-    // when already connected. /run/shareframe is created by the daemon.
+    // Nudge wifi-mode-manager to retry the station now (switches out of AP
+    // fallback at once instead of waiting for the periodic retry). No-op if
+    // already connected.
     if (std::ofstream retryFlag{"/run/shareframe/wifi-retry-requested"}; !retryFlag)
         logger_->warn("could not create wifi-retry-requested flag");
 

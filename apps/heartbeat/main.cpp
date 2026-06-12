@@ -25,16 +25,17 @@ int main(int argc, char* argv[])
     HTTPClient http(60, 600);
     AuthTokenManager authTokenManager(cfg, tokenRepo, http);
 
-    // IPC clients: probe the websocket + display + dashboard services over nng REP
+    // IPC clients: probe the websocket + display + dashboard + update services over nng REP
     IpcClient wsIpc(cfg.ipc.wsRep);
     IpcClient displayIpc(cfg.ipc.displayRep);
     IpcClient dashboardIpc(cfg.ipc.dashboardRep);
+    IpcClient updateIpc(cfg.ipc.updateRep);
 
     // EventBus is required by the PeriodicTask base ctor; the heartbeat sends via
     // HTTP, not the bus, so it is intentionally left unstarted.
     EventBus eventBus;
 
-    Heartbeat heartbeat(eventBus, cfg, http, authTokenManager, wsIpc, displayIpc, dashboardIpc);
+    Heartbeat heartbeat(eventBus, cfg, http, authTokenManager, wsIpc, displayIpc, dashboardIpc, updateIpc);
     heartbeat.start();
 
     // Health endpoint so other services can probe the heartbeat over nng.
@@ -48,6 +49,7 @@ int main(int argc, char* argv[])
     wsIpc.disconnect();
     displayIpc.disconnect();
     dashboardIpc.disconnect();
+    updateIpc.disconnect();
 
     return 0;
 }

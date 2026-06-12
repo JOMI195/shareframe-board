@@ -6,6 +6,8 @@ import { fetchWithTimeout } from '@/common/utils/fetch';
 // Types for Slideshow Status State
 interface SlideshowStatusState {
     isActive: boolean;
+    loopStarted: boolean;
+    imageCount: number | null;
     secondsUntilNext: number | null; // remaining until next image; null = unknown/paused
     isLoading: boolean;
     error: string | null;
@@ -15,6 +17,8 @@ interface SlideshowStatusState {
 // Initial State
 const initialState: SlideshowStatusState = {
     isActive: false,
+    loopStarted: false,
+    imageCount: null,
     secondsUntilNext: null,
     isLoading: false,
     error: null,
@@ -34,8 +38,11 @@ export const checkSlideshowStatusThunk = createAsyncThunk(
             }
 
             const raw = payload.data.seconds_until_next;
+            const rawCount = payload.data.image_count;
             return {
                 active: payload.data.active as boolean,
+                loopStarted: payload.data.loop_started as boolean ?? false,
+                imageCount: (typeof rawCount === 'number' && rawCount >= 0) ? rawCount : null,
                 secondsUntilNext: (typeof raw === 'number' && raw >= 0) ? raw : null,
             };
         } catch (error) {
@@ -75,6 +82,8 @@ export const slideshowStatusSlice = createSlice({
     reducers: {
         resetStatus: (state) => {
             state.isActive = false;
+            state.loopStarted = false;
+            state.imageCount = null;
             state.secondsUntilNext = null;
             state.isLoading = false;
             state.error = null;
@@ -88,6 +97,8 @@ export const slideshowStatusSlice = createSlice({
             })
             .addCase(checkSlideshowStatusThunk.fulfilled, (state, action) => {
                 state.isActive = action.payload.active;
+                state.loopStarted = action.payload.loopStarted;
+                state.imageCount = action.payload.imageCount;
                 state.secondsUntilNext = action.payload.secondsUntilNext;
                 state.isLoading = false;
                 state.error = null;
@@ -97,6 +108,8 @@ export const slideshowStatusSlice = createSlice({
                 state.isLoading = false;
                 state.error = action.payload as string;
                 state.isActive = false;
+                state.loopStarted = false;
+                state.imageCount = null;
                 state.secondsUntilNext = null;
             });
     }

@@ -3,15 +3,9 @@
 #include <spdlog/spdlog.h>
 #include <exception>
 
-// Standalone DB migration entrypoint. On the device this runs as the
-// `shareframe-db-migrate` s6 oneshot, before any service starts; on dev it is a
-// one-command DB setup tool: `SHAREFRAME_PROFILE=dev ./shareframe-migrate`.
-//
-// The migration logic itself lives in shareframe-common (Database +
-// MigrationRunner) and is equally callable from tests via
-// `Database::init(cfg, true)` — this binary is just a thin entrypoint, not a
-// separate application. Exits non-zero on failure so the s6 oneshot fail-stops
-// (dependent services won't start against an unmigrated DB).
+// Standalone DB migration entrypoint: runs as the s6 oneshot before any service,
+// and doubles as a dev DB-setup tool. The logic lives in shareframe-common; this
+// is a thin wrapper. Exits non-zero on failure so the oneshot fail-stops.
 int main(int argc, char* argv[])
 {
     auto [cfg, profile] = bootstrap(argc, argv);

@@ -28,6 +28,8 @@ ix::HttpResponsePtr FrameHandlers::handleStatus(const ix::HttpRequestPtr& /*req*
 
     return jsonResponse(200, "OK", {
         {"active", activeResult->value("active", true)},
+        {"loop_started", activeResult->value("loop_started", false)},
+        {"image_count", activeResult->value("image_count", 0)},
         {"interval_seconds", intervalResult->value("interval_secs", cfg_.display.intervalSecs)},
         {"seconds_until_next", secondsResult ? secondsResult->value("seconds_until_next", -1) : -1}
     });

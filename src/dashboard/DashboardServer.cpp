@@ -71,8 +71,7 @@ void DashboardServer::_initRoutes()
         {"GET",  "/api/auth/status",      [this](auto& req, auto&) { return _handleCheckAuth(req); }},
         {"POST", "/api/auth/logout",      [this](auto& req, auto&) { return _handleLogout(req); }},
         {"GET",  "/api/system/health",   [this](auto& req, auto&) { return systemHandlers_.handleHealth(req); }},
-        // Public so the SPA can read the network mode before any login and
-        // route to the offline AP-setup view when the board is hosting its AP.
+        // Public so the SPA can route to AP-setup before any login.
         {"GET",  "/api/connection/mode", [this](auto& req, auto&) { return _handleConnectionMode(req); }},
     };
 
@@ -127,9 +126,8 @@ ix::HttpResponsePtr DashboardServer::_handleRequest(
         if (req->method == method && path == routePath)
             return handler(req, queryParams);
 
-    // AP fallback: joining the AP (SSID + password) is treated as implicit
-    // auth for the WiFi-setup endpoints only — explicit allowlist, NOT a
-    // prefix, so e.g. /api/connection/ap-password stays session-gated.
+    // AP fallback: joining the AP is implicit auth for the wifi-setup endpoints
+    // only — explicit allowlist (ap-password stays session-gated).
     static const std::vector<std::string> kApBypassPaths = {
         "/api/connection/status",
         "/api/connection/saved-networks",
@@ -226,8 +224,7 @@ ix::HttpResponsePtr DashboardServer::_sessionLoginResponse() const
     respHeaders["Set-Cookie"] = "session=" + sessionId
         + "; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800";
 
-    // Same {success,message,data} envelope as jsonResponse, but built by hand
-    // because we also need to attach the Set-Cookie header.
+    // Same envelope as jsonResponse, but by hand to attach the Set-Cookie header.
     nlohmann::json respBody = {
         {"success", true},
         {"message", "Login erfolgreich"},
@@ -243,8 +240,7 @@ bool DashboardServer::_verifyDashboardPassword(const std::string& password) cons
     {
         if (PasswordHash::isWellFormed(*stored))
             return PasswordHash::verify(password, *stored);
-        // Treat like an absent row (same trust level as the documented
-        // delete-row recovery) so a corrupted value can't brick the login.
+        // Treat like an absent row so a corrupted value can't brick the login.
         logger_->error("Stored dashboard password hash is malformed, falling back to initial password");
     }
     return !cfg_.secrets.dashboardInitialPassword.empty()
@@ -335,8 +331,7 @@ ix::HttpResponsePtr DashboardServer::_handleLogout(const ix::HttpRequestPtr& req
 ix::HttpResponsePtr DashboardServer::_handleConnectionMode(const ix::HttpRequestPtr& req) const
 {
     auto mode = wifi_.getWifiMode();
-    // AP clients implicitly know the AP password; a logged-in owner may read it
-    // (e.g. to note it before it changes). Everyone else on the LAN must not.
+    // AP clients + a logged-in owner may read the AP password; nobody else on the LAN.
     if (mode.value("mode", "") != "ap" && !_hasValidSession(req))
         mode["ap_password"] = "";
     return jsonResponse(200, "OK", mode);

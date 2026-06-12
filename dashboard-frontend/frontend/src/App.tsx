@@ -28,9 +28,8 @@ const App = () => {
     checkAuth();
   }, [dispatch]);
 
-  // Dismiss the loading wall once the board is reachable again. Requiring a
-  // false -> true transition keeps the wall up while the board reboots (and
-  // avoids dismissing it the moment an update is started while still connected).
+  // Dismiss the loading wall on a false->true reconnect, so it stays up while
+  // the board reboots and doesn't vanish the moment an update starts.
   const prevConnected = useRef(false);
   useEffect(() => {
     if (isLoadingWallVisible && isConnected && !prevConnected.current) {
@@ -39,8 +38,7 @@ const App = () => {
     prevConnected.current = isConnected;
   }, [isConnected, isLoadingWallVisible, dispatch]);
 
-  // Hard fallback: never let the wall stick past its deadline, even if the
-  // board never reports healthy.
+  // Hard fallback: never let the wall stick past its deadline.
   useEffect(() => {
     if (!isLoadingWallVisible || !hideAfter) return;
     const timer = setTimeout(
@@ -77,16 +75,10 @@ const App = () => {
         dispatch(checkAuthStatusThunk());
       };
 
-      // Check auth when user interacts with the page
-      //window.addEventListener('click', checkAuth);
-      //window.addEventListener('keydown', checkAuth);
-
-      // Also check when user returns to the tab/window
+      // Re-check auth when the user returns to the tab.
       window.addEventListener('focus', checkAuth);
 
       return () => {
-        //window.removeEventListener('click', checkAuth);
-        //window.removeEventListener('keydown', checkAuth);
         window.removeEventListener('focus', checkAuth);
       };
     }
