@@ -52,6 +52,8 @@ FetchContent_Declare(ixwebsocket
         GIT_REPOSITORY https://github.com/machinezone/IXWebSocket.git
         GIT_TAG v11.4.5
         GIT_SHALLOW TRUE
+        # Force IPv4-only DNS resolution (server's IPv6 is unreachable).
+        PATCH_COMMAND sed -i "s/hints.ai_family = AF_UNSPEC/hints.ai_family = AF_INET/" ixwebsocket/IXDNSLookup.cpp
         EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(ixwebsocket)
 target_link_libraries(external INTERFACE ixwebsocket)
