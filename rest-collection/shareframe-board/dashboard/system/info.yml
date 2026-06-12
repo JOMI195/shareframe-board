@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: "http://localhost:8080/api/system/info"
+  url: "{{baseUrl}}/api/system/info"
   headers:
     Cookie: "session={{sessionCookie}}"
   auth: none

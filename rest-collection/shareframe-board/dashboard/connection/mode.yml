@@ -1,11 +1,12 @@
 info:
-  name: clear
+  name: mode
   type: http
-  seq: 1
+  seq: 5
 
 http:
-  method: POST
-  url: {{baseUrl}}/api/frame/clear
+  method: GET
+  url: "{{baseUrl}}/api/connection/mode"
+  auth: none
 
 settings:
   encodeUrl: true

@@ -5,7 +5,7 @@ info:
 
 http:
   method: POST
-  url: "http://localhost:8080/api/connection/forget"
+  url: "{{baseUrl}}/api/connection/forget"
   headers:
     Cookie: "session={{sessionCookie}}"
   body:

@@ -5,7 +5,7 @@ info:
 
 http:
   method: POST
-  url: "http://localhost:8080/api/frame/slideshow/skip"
+  url: "{{baseUrl}}/api/frame/slideshow/skip"
   headers:
     Cookie: "session={{sessionCookie}}"
   auth: none

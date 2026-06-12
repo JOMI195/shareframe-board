@@ -1,19 +1,18 @@
 info:
-  name: rename
+  name: restart
   type: http
-  seq: 5
+  seq: 2
 
 http:
   method: POST
-  url: "http://localhost:8080/api/connection/rename"
+  url: "{{baseUrl}}/api/services/restart"
   headers:
     Cookie: "session={{sessionCookie}}"
   body:
     type: json
     data: |-
       {
-        "old_name": "MyNetwork",
-        "new_name": "MyNewNetwork"
+        "service": "shareframe"
       }
   auth: none
 

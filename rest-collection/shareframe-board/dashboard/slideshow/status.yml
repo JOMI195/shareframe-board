@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: "http://localhost:8080/api/frame/slideshow/status"
+  url: "{{baseUrl}}/api/frame/slideshow/status"
   headers:
     Cookie: "session={{sessionCookie}}"
   auth: none

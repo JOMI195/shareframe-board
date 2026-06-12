@@ -1,11 +1,11 @@
 info:
-  name: shutdown
+  name: display-stats
   type: http
-  seq: 3
+  seq: 4
 
 http:
-  method: POST
-  url: "{{baseUrl}}/api/system/shutdown"
+  method: GET
+  url: "{{baseUrl}}/api/frame/display/stats"
   headers:
     Cookie: "session={{sessionCookie}}"
   auth: none

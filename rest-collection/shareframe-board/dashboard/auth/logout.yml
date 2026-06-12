@@ -5,7 +5,7 @@ info:
 
 http:
   method: POST
-  url: "http://localhost:8080/api/auth/logout"
+  url: "{{baseUrl}}/api/auth/logout"
   headers:
     Cookie: "session={{sessionCookie}}"
   auth: none

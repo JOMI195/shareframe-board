@@ -1,11 +1,12 @@
 info:
-  name: clear
+  name: health
   type: http
-  seq: 1
+  seq: 9
 
 http:
-  method: POST
-  url: {{baseUrl}}/api/frame/clear
+  method: GET
+  url: "{{baseUrl}}/api/system/health"
+  auth: none
 
 settings:
   encodeUrl: true

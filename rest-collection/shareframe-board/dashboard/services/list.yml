@@ -1,11 +1,11 @@
 info:
-  name: shutdown
+  name: list
   type: http
-  seq: 3
+  seq: 1
 
 http:
-  method: POST
-  url: "{{baseUrl}}/api/system/shutdown"
+  method: GET
+  url: "{{baseUrl}}/api/services"
   headers:
     Cookie: "session={{sessionCookie}}"
   auth: none

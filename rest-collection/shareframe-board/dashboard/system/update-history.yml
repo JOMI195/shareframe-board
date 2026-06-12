@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: "http://localhost:8080/api/system/updates/history"
+  url: "{{baseUrl}}/api/system/updates/history"
   headers:
     Cookie: "session={{sessionCookie}}"
   auth: none

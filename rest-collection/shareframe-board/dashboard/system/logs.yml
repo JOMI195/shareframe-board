@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: "http://localhost:8080/api/system/logs?service_name=shareframe.service&lines=100"
+  url: "{{baseUrl}}/api/system/logs?service_name=shareframe.service&lines=100"
   headers:
     Cookie: "session={{sessionCookie}}"
   auth: none
