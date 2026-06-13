@@ -19,6 +19,8 @@ ix::HttpResponsePtr UpdateHandlers::handleLatest(const ix::HttpRequestPtr& /*req
         return errorResponse(503, "Service Unavailable", "Update service not reachable");
     if (!resp->value("ok", false))
     {
+        if (resp->value("status_code", 0) == 404)
+            return jsonResponse(200, "OK", nullptr);  // no release available
         logger_->error("Update check failed: {}", resp->value("error", ""));
         return errorResponse(502, "Bad Gateway", "Failed to check for updates");
     }

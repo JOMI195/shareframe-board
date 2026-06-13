@@ -55,9 +55,9 @@ export const fetchLatestRelease = createAsyncThunk(
     async (_, { dispatch, rejectWithValue }) => {
         try {
             const response = await fetchWithTimeout(getLatestReleaseUrl());
-            const payload: IServerResponse & { data: Release } = await response.json();
+            const payload: IServerResponse & { data: Release | null } = await response.json();
 
-            if (payload.success && payload.data) {
+            if (payload.success) {
                 return payload.data;
             } else {
                 dispatch(addAlertSnackbar(uuid(), "Suche nach neuster Version fehlgeschlagen", "error"));
