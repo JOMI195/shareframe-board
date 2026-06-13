@@ -42,7 +42,7 @@ dashboard for setup and management, and handles Wi-Fi configuration and over-the
 
 ## Local board dashboard
 
-<img width="1504" height="1161" alt="Screenshot From 2026-06-13 14-42-15" src="https://github.com/user-attachments/assets/6d8f9159-73b3-4a3d-ac1d-db495532acb5" />
+<img width="1060" height="870" alt="local embedded board dashboard" src="https://github.com/user-attachments/assets/7c65148e-716f-4842-9afa-c260b3ab664c" />
 
 *Figure 2: Quick overview of the local picture frame management dashboard. It provides controls and give information about the health and state of the picture frame*
 
