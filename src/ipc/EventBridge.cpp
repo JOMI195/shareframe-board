@@ -23,4 +23,9 @@ void EventBridge::wire()
     {
         pub_.publish(std::string(event_topics::DisplayClear), msg);
     });
+
+    bus_.subscribe<Topic::WS_CONNECTED>([this](const WsConnectedEvent&)
+    {
+        pub_.publish(std::string(event_topics::WsConnected), nlohmann::json::object());
+    });
 }

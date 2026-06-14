@@ -29,9 +29,19 @@ void PeriodicTask::_run(std::stop_token st)
         }
 
         std::unique_lock lock(mtx_);
-        cv_.wait_for(lock, std::chrono::seconds(intervalSecs()), [&st]
+        cv_.wait_for(lock, std::chrono::seconds(intervalSecs()), [&]
         {
-            return st.stop_requested();
+            return st.stop_requested() || runNow_;
         });
+        runNow_ = false;
     }
+}
+
+void PeriodicTask::runNow()
+{
+    {
+        std::lock_guard lk(mtx_);
+        runNow_ = true;
+    }
+    cv_.notify_one();
 }

@@ -65,7 +65,7 @@ heartbeat_rep = "ipc:///tmp/shareframe-heartbeat.rep.sock"
 update_rep = "ipc:///tmp/shareframe-update.rep.sock"
 
 [heartbeat]
-interval_secs = 60
+interval_secs = 300
 http_url = "/api/frames/frame-hearbeat/"
 
 [expiry_cleanup]
