@@ -122,9 +122,9 @@ struct glz::meta<HeartbeatConfig>
 };
 
 template <>
-struct glz::meta<ImageCheckConfig>
+struct glz::meta<ExpiryCleanupConfig>
 {
-    using T = ImageCheckConfig;
+    using T = ExpiryCleanupConfig;
     static constexpr auto value = glz::object(
         "interval_secs", &T::intervalSecs
     );
@@ -224,7 +224,7 @@ struct glz::meta<AppConfig>
         "heartbeat_application", &T::heartbeatApplication,
         "update_application", &T::updateApplication,
         "heartbeat", &T::heartbeat,
-        "image_check", &T::imageCheck,
+        "expiry_cleanup", &T::expiryCleanup,
         "update", &T::update,
         "ipc", &T::ipc
     );

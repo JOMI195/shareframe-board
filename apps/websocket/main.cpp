@@ -11,8 +11,9 @@
 #include "net/WebsocketClient.hpp"
 #include "repository/ImageRepository.hpp"
 #include "repository/TokenRepository.hpp"
-#include "task/ImageCheck.hpp"
+#include "task/ExpiredImageCleanup.hpp"
 #include "task/ImageUpdate.hpp"
+#include "task/MissingImageCheck.hpp"
 #include <spdlog/spdlog.h>
 
 // Owns network + image ingest. WebsocketClient parses server messages into the
@@ -48,8 +49,10 @@ int main(int argc, char* argv[])
     wsClient.start();
     ImageUpdate imageUpdate(eventBus, imageManager, imageRepo);
     imageUpdate.start();
-    ImageCheck imageCheck(eventBus, cfg, imageRepo);
-    imageCheck.start();
+    MissingImageCheck missingImageCheck(eventBus, imageRepo);
+    missingImageCheck.start();
+    ExpiredImageCleanup expiredImageCleanup(eventBus, cfg, imageManager);
+    expiredImageCleanup.start();
 
     eventBus.start();
 
@@ -61,7 +64,8 @@ int main(int argc, char* argv[])
     spdlog::info("Received signal {}, shutting down", sig);
     repServer.stop();
     eventBus.stop();
-    imageCheck.stop();
+    missingImageCheck.stop();
+    expiredImageCleanup.stop();
     wsClient.stop();
     imageUpdate.stop();
 

@@ -68,5 +68,5 @@ update_rep = "ipc:///tmp/shareframe-update.rep.sock"
 interval_secs = 60
 http_url = "/api/frames/frame-hearbeat/"
 
-[image_check]
+[expiry_cleanup]
 interval_secs = 900

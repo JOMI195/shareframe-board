@@ -115,7 +115,7 @@ struct HeartbeatConfig
     std::string httpUrl = "/api/frames/frame-hearbeat/";
 };
 
-struct ImageCheckConfig
+struct ExpiryCleanupConfig
 {
     int intervalSecs = 900;
 };
@@ -148,7 +148,7 @@ struct AppConfig
     DisplayApplicationConfig displayApplication;
     HeartbeatApplicationConfig heartbeatApplication;
     HeartbeatConfig heartbeat;
-    ImageCheckConfig imageCheck;
+    ExpiryCleanupConfig expiryCleanup;
     IpcConfig ipc;
 
     [[nodiscard]] std::string httpBaseUrl() const { return (production ? "https://" : "http://") + baseUrl; }

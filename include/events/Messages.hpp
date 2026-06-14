@@ -14,6 +14,10 @@ using TopicMessage_t = typename TopicMessage<T>::type;
 // Outbound WebSocket message (JSON payload to send to server)
 template <> struct TopicMessage<Topic::WS_SEND> { using type = nlohmann::json; };
 
+// WebSocket connection established (fires on every connect and reconnect)
+struct WsConnectedEvent {};
+template <> struct TopicMessage<Topic::WS_CONNECTED> { using type = WsConnectedEvent; };
+
 // Inbound WebSocket message types (JSON payload from server)
 template <> struct TopicMessage<Topic::PICTURE>       { using type = nlohmann::json; };
 template <> struct TopicMessage<Topic::CLEAR_IMAGES>  { using type = nlohmann::json; };

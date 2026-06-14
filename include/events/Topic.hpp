@@ -2,6 +2,7 @@
 
 enum class Topic {
     WS_SEND,
+    WS_CONNECTED,
     PICTURE,
     CLEAR_IMAGES,
     CLEAR_DISPLAY,

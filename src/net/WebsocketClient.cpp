@@ -36,6 +36,7 @@ void WebsocketClient::_setupWebsocket()
             logger_->info("WebSocket connected");
             reconnectCount_.store(0);
             _flushSendQueue();
+            bus_.publish<Topic::WS_CONNECTED>({});
         }
         else if (msg->type == ix::WebSocketMessageType::Close)
         {

@@ -22,7 +22,8 @@ public:
     void removeImages(const std::vector<int64_t>& ids) const;
 
     /// Removes images that have expired (expiresAt < now) from DB and disk.
-    void removeExpired() const;
+    /// Returns the ids of the removed images.
+    [[nodiscard]] std::vector<int64_t> removeExpired() const;
 
 private:
     void removeOrphaned() const;

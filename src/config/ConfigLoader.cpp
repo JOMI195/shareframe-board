@@ -126,7 +126,7 @@ void ConfigLoader::validate(const AppConfig& cfg)
     req(!cfg.websocket.wsPath.empty(), "websocket.ws_path is empty");
 
     req(cfg.heartbeat.intervalSecs > 0, "heartbeat.interval_secs must be > 0");
-    req(cfg.imageCheck.intervalSecs > 0, "image_check.interval_secs must be > 0");
+    req(cfg.expiryCleanup.intervalSecs > 0, "expiry_cleanup.interval_secs must be > 0");
     req(cfg.display.intervalSecs > 0, "display.interval_secs must be > 0");
     req(cfg.display.minRefreshSecs > 0, "display.min_refresh_secs must be > 0");
     req(cfg.display.clearTargetHour >= 0 && cfg.display.clearTargetHour <= 23,

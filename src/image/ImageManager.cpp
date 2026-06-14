@@ -86,7 +86,7 @@ void ImageManager::removeImages(const std::vector<int64_t>& ids) const
     _repo.removeByIds(ids);
 }
 
-void ImageManager::removeExpired() const
+std::vector<int64_t> ImageManager::removeExpired() const
 {
     const auto now = std::time(nullptr);
     const auto allImages = _repo.getAll();
@@ -110,6 +110,8 @@ void ImageManager::removeExpired() const
         _repo.removeByIds(expiredIds);
         spdlog::info("Removed {} expired images", expiredIds.size());
     }
+
+    return expiredIds;
 }
 
 void ImageManager::removeOrphaned() const

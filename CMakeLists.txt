@@ -140,7 +140,8 @@ set(WEBSOCKET_SOURCES
         src/net/WebsocketClient.cpp
         src/image/ImageManager.cpp
         src/task/ImageUpdate.cpp
-        src/task/ImageCheck.cpp
+        src/task/MissingImageCheck.cpp
+        src/task/ExpiredImageCleanup.cpp
         src/ipc/EventBridge.cpp
 )
 add_executable(shareframe-websocket ${WEBSOCKET_SOURCES})
