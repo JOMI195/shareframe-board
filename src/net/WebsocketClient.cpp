@@ -23,6 +23,12 @@ void WebsocketClient::_setupWebsocket()
     ws_.setExtraHeaders(wsHeaders);
     ws_.enableAutomaticReconnection();
 
+    constexpr uint32_t minReconnectWaitMs = 1000;
+    ws_.setMinWaitBetweenReconnectionRetries(minReconnectWaitMs);
+
+    constexpr uint32_t maxReconnectWaitMs = 60000;
+    ws_.setMaxWaitBetweenReconnectionRetries(maxReconnectWaitMs);
+
     constexpr int pingIntervalSecs = 30;
     ws_.setPingInterval(pingIntervalSecs);
 
