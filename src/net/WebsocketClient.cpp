@@ -26,7 +26,7 @@ void WebsocketClient::_setupWebsocket()
     constexpr uint32_t minReconnectWaitMs = 1000;
     ws_.setMinWaitBetweenReconnectionRetries(minReconnectWaitMs);
 
-    constexpr uint32_t maxReconnectWaitMs = 60000;
+    constexpr uint32_t maxReconnectWaitMs = 180000;
     ws_.setMaxWaitBetweenReconnectionRetries(maxReconnectWaitMs);
 
     constexpr int pingIntervalSecs = 30;

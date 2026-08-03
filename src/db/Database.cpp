@@ -23,6 +23,7 @@ void Database::open(const DatabaseConfig& config)
     _db = std::make_unique<SQLite::Database>(fullPath.string(), SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
     _db->setBusyTimeout(5000); // wait up to 5s on a locked DB instead of throwing immediately
     _db->exec("PRAGMA journal_mode=WAL");
+    _db->exec("PRAGMA synchronous=NORMAL"); // WAL pairing: fsync at checkpoint only, spares the SD card
 }
 
 void Database::runMigrations(const std::filesystem::path& migrationsPath) const

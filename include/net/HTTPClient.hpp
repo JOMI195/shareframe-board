@@ -31,6 +31,11 @@ public:
                                               const ProgressFn& progress = nullptr) const;
 
 private:
+    // Retries the request while the server can't be reached, backing off
+    // between attempts. Defined in the .cpp where it is instantiated.
+    template <typename Fn>
+    HttpResponse _withRetry(Fn&& doRequest) const;
+
     int _connectTimeout;
     int _transferTimeout;
 };
