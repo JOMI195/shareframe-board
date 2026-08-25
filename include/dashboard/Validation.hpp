@@ -11,6 +11,10 @@ constexpr size_t MAX_PASSWORD_LENGTH = 63;
 constexpr size_t MIN_PASSWORD_LENGTH = 8;
 constexpr size_t MAX_NETWORK_NAME_LENGTH = 128;
 
+// Slideshow
+constexpr int MIN_INTERVAL_SECS = 180;
+constexpr int MAX_INTERVAL_SECS = 86400;
+
 // Logs
 constexpr int MAX_LOG_LINES = 10000;
 constexpr int DEFAULT_LOG_LINES = 100;
@@ -61,6 +65,16 @@ inline int clampLogLines(int lines)
 inline bool isValidSlideshowAction(const std::string& action)
 {
     return action == "start" || action == "stop";
+}
+
+inline bool isValidIntervalSecs(const int secs)
+{
+    return secs >= MIN_INTERVAL_SECS && secs <= MAX_INTERVAL_SECS;
+}
+
+inline bool isValidHour(const int hour)
+{
+    return hour >= 0 && hour <= 23;
 }
 
 } // namespace dashboard::Validation

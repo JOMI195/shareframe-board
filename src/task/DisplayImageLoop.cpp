@@ -32,19 +32,25 @@ void DisplayImageLoop::start()
         [this](const SkipImageEvent&) { _onSkipImage(); });
     bus_.subscribe<Topic::UPDATE_DISPLAY_INTERVAL>(
         [this](const UpdateDisplayIntervalEvent& evt) { _onUpdateInterval(evt); });
+    bus_.subscribe<Topic::UPDATE_NIGHT_MODE>(
+        [this](const UpdateNightModeEvent& evt) { _onUpdateNightMode(evt); });
     bus_.subscribe<Topic::SET_SLIDESHOW_ACTIVE>(
         [this](const SetSlideshowActiveEvent& evt) { _onSetSlideshowActive(evt); });
 
     logger_->info("Starting DisplayImageLoop (interval={}s, minRefresh={}s, active={})",
                   settings_.getDisplayInterval(), cfg_.display.minRefreshSecs,
                   settings_.isSlideshowActive());
+    logger_->info("Night mode {} (window={}-{}, interval={}s)",
+                  settings_.isNightModeEnabled() ? "enabled" : "disabled",
+                  settings_.getNightStartHour(), settings_.getNightEndHour(),
+                  settings_.getNightInterval());
     Task::start();
 }
 
 void DisplayImageLoop::_armNextChange()
 {
     nextChangeAtMs_.store(steadyNowMs()
-        + static_cast<int64_t>(settings_.getDisplayInterval()) * 1000);
+        + static_cast<int64_t>(settings_.getEffectiveInterval()) * 1000);
 }
 
 int DisplayImageLoop::secondsUntilNext() const
@@ -59,7 +65,7 @@ int DisplayImageLoop::secondsUntilNext() const
         return 0;
     int secs = static_cast<int>(remMs / 1000);
     // Guard against a stale arm reporting more than a full interval.
-    if (const int interval = settings_.getDisplayInterval(); secs > interval)
+    if (const int interval = settings_.getEffectiveInterval(); secs > interval)
         secs = interval;
     return secs;
 }
@@ -106,7 +112,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
             logger_->debug("Slideshow inactive, waiting");
             nextChangeAtMs_.store(0);
             std::unique_lock lk(mtx_);
-            cv_.wait_for(lk, std::chrono::seconds(settings_.getDisplayInterval()),
+            cv_.wait_for(lk, std::chrono::seconds(settings_.getEffectiveInterval()),
                          [&st, this] { return st.stop_requested() || settings_.isSlideshowActive(); });
             continue;
         }
@@ -124,7 +130,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
                     logger_->debug("No images available, waiting");
                     _armNextChange();
                     std::unique_lock lk(mtx_);
-                    cv_.wait_for(lk, std::chrono::seconds(settings_.getDisplayInterval()),
+                    cv_.wait_for(lk, std::chrono::seconds(settings_.getEffectiveInterval()),
                                  [&st, this] { return st.stop_requested() || skipCurrent_ || !settings_.isSlideshowActive(); });
                     continue;
                 }
@@ -147,7 +153,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
                         skipCurrent_ = false;
                         newImage_ = false;
                         cv_.wait_for(lk, std::chrono::seconds(wait),
-                                     [&st, this] { return st.stop_requested() || newImage_ || skipCurrent_ || !settings_.isSlideshowActive(); });
+                                     [&st, this] { return st.stop_requested() || (newImage_ && !settings_.isNightNow()) || skipCurrent_ || !settings_.isSlideshowActive(); });
                         continue;
                     }
 
@@ -168,8 +174,8 @@ void DisplayImageLoop::_run(const std::stop_token st)
                     std::unique_lock lk(mtx_);
                     skipCurrent_ = false;
                     newImage_ = false;
-                    cv_.wait_for(lk, std::chrono::seconds(settings_.getDisplayInterval()),
-                                 [&st, this] { return st.stop_requested() || newImage_ || skipCurrent_ || !settings_.isSlideshowActive(); });
+                    cv_.wait_for(lk, std::chrono::seconds(settings_.getEffectiveInterval()),
+                                 [&st, this] { return st.stop_requested() || (newImage_ && !settings_.isNightNow()) || skipCurrent_ || !settings_.isSlideshowActive(); });
                 }
                 continue;
             }
@@ -212,7 +218,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
                 _armNextChange();
                 std::unique_lock lk(mtx_);
                 skipCurrent_ = false;
-                cv_.wait_for(lk, std::chrono::seconds(settings_.getDisplayInterval()),
+                cv_.wait_for(lk, std::chrono::seconds(settings_.getEffectiveInterval()),
                              [&st, this] { return st.stop_requested() || skipCurrent_ || !settings_.isSlideshowActive(); });
             }
         }
@@ -252,6 +258,11 @@ void DisplayImageLoop::_onUpdateInterval(const UpdateDisplayIntervalEvent& evt) 
 {
     logger_->info("Updating display interval to {}s", evt.intervalSecs);
     settings_.setDisplayInterval(evt.intervalSecs);
+}
+
+void DisplayImageLoop::_onUpdateNightMode(const UpdateNightModeEvent& evt) const
+{
+    settings_.setNightMode(evt.enabled, evt.startHour, evt.endHour, evt.intervalSecs);
 }
 
 void DisplayImageLoop::_onSetSlideshowActive(const SetSlideshowActiveEvent& evt)

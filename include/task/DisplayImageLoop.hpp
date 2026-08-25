@@ -8,6 +8,7 @@
 
 class RuntimeSettings;
 struct SetSlideshowActiveEvent;
+struct UpdateNightModeEvent;
 
 class DisplayImageLoop : public Task
 {
@@ -34,6 +35,7 @@ private:
     void _onImageNew();
     void _onSkipImage();
     void _onUpdateInterval(const UpdateDisplayIntervalEvent& evt) const;
+    void _onUpdateNightMode(const UpdateNightModeEvent& evt) const;
     void _onSetSlideshowActive(const SetSlideshowActiveEvent& evt);
     [[nodiscard]] std::vector<std::filesystem::path> _loadDefaultImages() const;
 

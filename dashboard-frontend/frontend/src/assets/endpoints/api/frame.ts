@@ -13,6 +13,7 @@ export const getConnectionForgetUrl = () => `${getConnectionBaseUrl()}/forget`;
 export const getSlideshowUrl = () => `${frameBaseUrl()}/slideshow`;
 export const getSlideshowStatusUrl = () => `${frameBaseUrl()}/slideshow/status`;
 export const getSlideshowIntervalUrl = () => `${frameBaseUrl()}/slideshow/interval`;
+export const getSlideshowNightModeUrl = () => `${frameBaseUrl()}/slideshow/night-mode`;
 export const getSkipSlideshowImageUrl = () => `${frameBaseUrl()}/slideshow/skip`;
 export const getClearDisplayUrl = () => `${frameBaseUrl()}/clear`;
 

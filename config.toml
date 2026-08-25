@@ -31,6 +31,10 @@ min_refresh_secs = 180
 loading_image_path = "assets/image/loading"
 default_images_path = "assets/image/default"
 clear_target_hour = 2
+night_mode_enabled = true
+night_start_hour = 2
+night_end_hour = 5
+night_interval_secs = 3600
 
 [update]
 http_latest_url = "/api/frame-updates/latest/"

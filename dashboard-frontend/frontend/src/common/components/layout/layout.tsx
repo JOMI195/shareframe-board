@@ -6,7 +6,7 @@ import { useAppDispatch, useAppSelector } from "@/store";
 import { useTimer } from "@/hooks/useTimer";
 import { useEffect } from "react";
 import { startContinuousStatusCheck } from "@/store/slideshowStatus/slideshowStatus.Slice";
-import { fetchDisplayImagesLoopInterval } from "@/store/slideshowOperation/slideshowOperation.Slice";
+import { fetchDisplayImagesLoopInterval, fetchNightMode } from "@/store/slideshowOperation/slideshowOperation.Slice";
 import { fetchFrameInfos } from "@/store/frameInfo/frameInfo.Slice";
 import { fetchLatestRelease } from "@/store/updates/updates.Slice";
 import Sidebar from "./sidebar/sidebar";
@@ -41,6 +41,7 @@ const MainLayout = () => {
         }
 
         dispatch(fetchDisplayImagesLoopInterval());
+        dispatch(fetchNightMode());
         dispatch(fetchFrameInfos());
         dispatch(fetchLatestRelease());
     }, [dispatch]);

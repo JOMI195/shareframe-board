@@ -54,6 +54,11 @@ struct DisplayConfig
     std::string loadingImagePath = "assets/image/loading";
     std::string defaultImagesPath = "assets/image/default";
     int clearTargetHour = 2;
+    // Quiet hours: the rotation slows to a longer interval to save panel wear.
+    bool nightModeEnabled = false;
+    int nightStartHour = 2;
+    int nightEndHour = 5;
+    int nightIntervalSecs = 3600;
 };
 
 struct UpdateConfig

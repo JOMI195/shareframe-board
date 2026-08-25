@@ -12,6 +12,7 @@ public:
     ix::HttpResponsePtr handleStatus(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleControl(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleUpdateInterval(const ix::HttpRequestPtr& req) const;
+    ix::HttpResponsePtr handleUpdateNightMode(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleSkip(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleClear(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleDisplayStats(const ix::HttpRequestPtr& req) const;

@@ -30,8 +30,10 @@ template <> struct TopicMessage<Topic::IMAGE_NEW>     { using type = int64_t; };
 // Dashboard IPC events
 struct SkipImageEvent {};
 struct UpdateDisplayIntervalEvent { int intervalSecs; };
+struct UpdateNightModeEvent { bool enabled; int startHour; int endHour; int intervalSecs; };
 struct SetSlideshowActiveEvent { bool active; };
 
 template <> struct TopicMessage<Topic::SKIP_IMAGE>                { using type = SkipImageEvent; };
 template <> struct TopicMessage<Topic::UPDATE_DISPLAY_INTERVAL>   { using type = UpdateDisplayIntervalEvent; };
+template <> struct TopicMessage<Topic::UPDATE_NIGHT_MODE>         { using type = UpdateNightModeEvent; };
 template <> struct TopicMessage<Topic::SET_SLIDESHOW_ACTIVE>      { using type = SetSlideshowActiveEvent; };

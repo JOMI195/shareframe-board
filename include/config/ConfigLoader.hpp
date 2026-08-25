@@ -140,7 +140,11 @@ struct glz::meta<DisplayConfig>
         "min_refresh_secs", &T::minRefreshSecs,
         "loading_image_path", &T::loadingImagePath,
         "default_images_path", &T::defaultImagesPath,
-        "clear_target_hour", &T::clearTargetHour
+        "clear_target_hour", &T::clearTargetHour,
+        "night_mode_enabled", &T::nightModeEnabled,
+        "night_start_hour", &T::nightStartHour,
+        "night_end_hour", &T::nightEndHour,
+        "night_interval_secs", &T::nightIntervalSecs
     );
 };
 

@@ -83,6 +83,7 @@ void DashboardServer::_initRoutes()
         {"GET",  "/api/frame/slideshow/status",   [this](auto& req, auto&) { return frameHandlers_.handleStatus(req); }},
         {"POST", "/api/frame/slideshow",          [this](auto& req, auto&) { return frameHandlers_.handleControl(req); }},
         {"POST", "/api/frame/slideshow/interval", [this](auto& req, auto&) { return frameHandlers_.handleUpdateInterval(req); }},
+        {"POST", "/api/frame/slideshow/night-mode", [this](auto& req, auto&) { return frameHandlers_.handleUpdateNightMode(req); }},
         {"POST", "/api/frame/slideshow/skip",     [this](auto& req, auto&) { return frameHandlers_.handleSkip(req); }},
         {"POST", "/api/frame/clear",              [this](auto& req, auto&) { return frameHandlers_.handleClear(req); }},
         {"GET",  "/api/frame/display/stats",      [this](auto& req, auto&) { return frameHandlers_.handleDisplayStats(req); }},

@@ -14,6 +14,8 @@ import {
     InputLabel,
     Select,
     MenuItem,
+    Switch,
+    FormControlLabel,
 } from '@mui/material';
 import {
     PlayArrowOutlined,
@@ -22,7 +24,8 @@ import {
     PhotoLibraryOutlined,
     SkipNextOutlined,
     TimerOutlined,
-    SaveOutlined
+    SaveOutlined,
+    BedtimeOutlined
 } from '@mui/icons-material';
 import { useAppDispatch, useAppSelector } from '@/store';
 import {
@@ -31,7 +34,13 @@ import {
     clearDisplayThunk,
     skipImageThunk,
     selectDisplayRefreshInterval,
-    updateDisplayImagesLoopInterval
+    updateDisplayImagesLoopInterval,
+    selectNightModeEnabled,
+    selectNightModeActiveNow,
+    selectNightStartHour,
+    selectNightEndHour,
+    selectNightIntervalMins,
+    updateNightMode
 } from '@/store/slideshowOperation/slideshowOperation.Slice';
 import { selectSlideshowStatus } from '@/store/slideshowStatus/slideshowStatus.Slice';
 import { usePiConnection } from '@/context/piConnection/piConnectionContext';
@@ -46,12 +55,31 @@ const FrameActions: React.FC = () => {
     const theme = useTheme();
 
     const { isConnected } = usePiConnection();
-    const { isToggling, isClearingDisplay, isSkippingImage, isFetchingInterval, isUpdatingInterval } = useAppSelector(selectSlideshowOperation);
+    const { isToggling, isClearingDisplay, isSkippingImage, isFetchingInterval, isUpdatingInterval, isFetchingNightMode, isUpdatingNightMode } = useAppSelector(selectSlideshowOperation);
     const { isActive, loopStarted, imageCount, lastCheckedAt, secondsUntilNext } = useAppSelector(selectSlideshowStatus);
 
     // Interval form state
     const [intervalValue, setIntervalValue] = useState<number>(useAppSelector(selectDisplayRefreshInterval));
     const [intervalUnit, setIntervalUnit] = useState<'minutes' | 'hours'>('minutes');
+
+    // Night mode form state, re-seeded whenever the stored values arrive
+    const storedNightEnabled = useAppSelector(selectNightModeEnabled);
+    const storedNightStart = useAppSelector(selectNightStartHour);
+    const storedNightEnd = useAppSelector(selectNightEndHour);
+    const storedNightInterval = useAppSelector(selectNightIntervalMins);
+    const isNightActiveNow = useAppSelector(selectNightModeActiveNow);
+
+    const [nightEnabled, setNightEnabled] = useState<boolean>(storedNightEnabled);
+    const [nightStart, setNightStart] = useState<number>(storedNightStart);
+    const [nightEnd, setNightEnd] = useState<number>(storedNightEnd);
+    const [nightInterval, setNightInterval] = useState<number>(storedNightInterval);
+
+    useEffect(() => {
+        setNightEnabled(storedNightEnabled);
+        setNightStart(storedNightStart);
+        setNightEnd(storedNightEnd);
+        setNightInterval(storedNightInterval);
+    }, [storedNightEnabled, storedNightStart, storedNightEnd, storedNightInterval]);
 
     // Live countdown to the next image change: seeded from the polled status
     // (every 5s) and ticked locally each second in between.
@@ -131,6 +159,18 @@ const FrameActions: React.FC = () => {
 
     const { min, max, step = 1 } = getMinMaxValues();
 
+    const NIGHT_MIN_MINS = 5;
+    const NIGHT_MAX_MINS = 1440;
+    const hours = Array.from({ length: 24 }, (_, h) => h);
+
+    const handleUpdateNightMode = () => {
+        dispatch(updateNightMode(nightEnabled, nightStart, nightEnd, nightInterval));
+    };
+
+    const isNightFormInvalid = nightStart === nightEnd
+        || nightInterval < NIGHT_MIN_MINS
+        || nightInterval > NIGHT_MAX_MINS;
+
     const isLoopLoading = isActive && !loopStarted && isConnected && lastCheckedAt !== null;
     const isTimerRunning = isSlideshowActionsTimerActive || isAppIntialLoadTimerActive;
     const isButtonsDisabled = isTimerRunning || isLoopLoading || isToggling || isClearingDisplay || isSkippingImage || !isConnected || lastCheckedAt === null;
@@ -154,15 +194,26 @@ const FrameActions: React.FC = () => {
                                                     {countdownText}
                                                 </Typography>
                                             </Box>
-                                            <Chip
-                                                label={
-                                                    (isConnected && lastCheckedAt !== null && imageCount != null)
-                                                        ? `${imageCount} ${imageCount === 1 ? 'Bild' : 'Bilder'}`
-                                                        : '—'
-                                                }
-                                                size="small"
-                                                variant="outlined"
-                                            />
+                                            <Box display="flex" alignItems="center" gap={1}>
+                                                {isNightActiveNow && (
+                                                    <Chip
+                                                        icon={<BedtimeOutlined />}
+                                                        label="Nachtmodus"
+                                                        size="small"
+                                                        color="primary"
+                                                        variant="outlined"
+                                                    />
+                                                )}
+                                                <Chip
+                                                    label={
+                                                        (isConnected && lastCheckedAt !== null && imageCount != null)
+                                                            ? `${imageCount} ${imageCount === 1 ? 'Bild' : 'Bilder'}`
+                                                            : '—'
+                                                    }
+                                                    size="small"
+                                                    variant="outlined"
+                                                />
+                                            </Box>
                                         </Box>
                                     )
                                 }
@@ -320,6 +371,96 @@ const FrameActions: React.FC = () => {
                                 disabled={isButtonsDisabled || isUpdatingInterval || isFetchingInterval || intervalValue < min || intervalValue > max}
                             >
                                 Intervall speichern
+                            </Button>
+                        }
+                    />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                    <ShareframeInfoCard
+                        title="Nachtmodus"
+                        minHeight={INFO_CARD_HEIGHT}
+                        sections={[
+                            {
+                                content: {
+                                    type: 'reactNode',
+                                    value: (
+                                        <Stack spacing={2}>
+                                            <Box display="flex" alignItems="center">
+                                                <BedtimeOutlined sx={{ mr: 1 }} />
+                                                <Typography variant="body2">
+                                                    In den Nachtstunden seltener wechseln, um den Bildschirm zu schonen.
+                                                </Typography>
+                                            </Box>
+                                            <FormControlLabel
+                                                control={
+                                                    <Switch
+                                                        checked={nightEnabled}
+                                                        onChange={(e) => setNightEnabled(e.target.checked)}
+                                                        disabled={isButtonsDisabled || isUpdatingNightMode}
+                                                    />
+                                                }
+                                                label="Nachtmodus aktivieren"
+                                            />
+                                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                                <FormControl sx={{ flex: 1 }}>
+                                                    <InputLabel>Von</InputLabel>
+                                                    <Select
+                                                        value={nightStart}
+                                                        label="Von"
+                                                        onChange={(e) => setNightStart(Number(e.target.value))}
+                                                        disabled={isButtonsDisabled || isUpdatingNightMode || !nightEnabled}
+                                                    >
+                                                        {hours.map((h) => (
+                                                            <MenuItem key={h} value={h}>{`${h}:00`}</MenuItem>
+                                                        ))}
+                                                    </Select>
+                                                </FormControl>
+                                                <FormControl sx={{ flex: 1 }}>
+                                                    <InputLabel>Bis</InputLabel>
+                                                    <Select
+                                                        value={nightEnd}
+                                                        label="Bis"
+                                                        onChange={(e) => setNightEnd(Number(e.target.value))}
+                                                        disabled={isButtonsDisabled || isUpdatingNightMode || !nightEnabled}
+                                                    >
+                                                        {hours.map((h) => (
+                                                            <MenuItem key={h} value={h}>{`${h}:00`}</MenuItem>
+                                                        ))}
+                                                    </Select>
+                                                </FormControl>
+                                            </Box>
+                                            <TextField
+                                                type="number"
+                                                label="Intervall in der Nacht (Minuten)"
+                                                value={nightInterval}
+                                                onChange={(e) => setNightInterval(Number(e.target.value))}
+                                                inputProps={{
+                                                    min: NIGHT_MIN_MINS,
+                                                    max: NIGHT_MAX_MINS,
+                                                    step: 1
+                                                }}
+                                                disabled={isButtonsDisabled || isUpdatingNightMode || !nightEnabled}
+                                            />
+                                            {nightStart === nightEnd && (
+                                                <Typography variant="body2" color="error">
+                                                    Start und Ende dürfen nicht gleich sein.
+                                                </Typography>
+                                            )}
+                                        </Stack>
+                                    )
+                                }
+                            }
+                        ]}
+                        actions={
+                            <Button
+                                variant="contained"
+                                startIcon={<SaveOutlined />}
+                                onClick={handleUpdateNightMode}
+                                fullWidth
+                                disabled={isButtonsDisabled || isUpdatingNightMode || isFetchingNightMode || isNightFormInvalid}
+                            >
+                                Nachtmodus speichern
                             </Button>
                         }
                     />

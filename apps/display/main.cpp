@@ -78,6 +78,34 @@ int main(int argc, char* argv[])
         case IpcMessageType::GetDisplayInterval:
             return {{"interval_secs", runtimeSettings.getDisplayInterval()}};
 
+        case IpcMessageType::UpdateNightMode:
+        {
+            const bool enabled = msg.data.value("enabled", false);
+            const int startHour = msg.data.value("start_hour", -1);
+            const int endHour = msg.data.value("end_hour", -1);
+            const int secs = msg.data.value("interval_secs", 0);
+            if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23
+                || startHour == endHour || secs <= 0)
+            {
+                spdlog::warn("IPC: invalid payload in update_night_mode");
+                return nlohmann::json::object();
+            }
+            spdlog::info("IPC: update night mode to enabled={}, window={}-{}, interval={}s",
+                         enabled, startHour, endHour, secs);
+            eventBus.publish<Topic::UPDATE_NIGHT_MODE>(
+                UpdateNightModeEvent{enabled, startHour, endHour, secs});
+            return nlohmann::json::object();
+        }
+
+        case IpcMessageType::GetNightMode:
+            return {
+                {"enabled", runtimeSettings.isNightModeEnabled()},
+                {"start_hour", runtimeSettings.getNightStartHour()},
+                {"end_hour", runtimeSettings.getNightEndHour()},
+                {"interval_secs", runtimeSettings.getNightInterval()},
+                {"active_now", runtimeSettings.isNightNow()}
+            };
+
         case IpcMessageType::ClearDisplay:
             spdlog::info("IPC: clear display");
             eventBus.publish<Topic::CLEAR_DISPLAY>(nlohmann::json{});

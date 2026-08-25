@@ -5,7 +5,7 @@ import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '../
 import { fetchWithTimeout } from '@/common/utils/fetch';
 import { IServerResponse } from '@/types';
 import { addTimer, resetTimer, startTimer } from '../timers/timers.Slice';
-import { getClearDisplayUrl, getSlideshowIntervalUrl, getSkipSlideshowImageUrl, getSlideshowStatusUrl, getSlideshowUrl } from '@/assets/endpoints/api/frame';
+import { getClearDisplayUrl, getSlideshowIntervalUrl, getSlideshowNightModeUrl, getSkipSlideshowImageUrl, getSlideshowStatusUrl, getSlideshowUrl } from '@/assets/endpoints/api/frame';
 
 
 const MAX_OPERATION_WAIT_TIME = 10 * 60 * 1000; // 10 minutes
@@ -17,7 +17,14 @@ interface SlideshowOperationState {
     isSkippingImage: boolean;
     isUpdatingInterval: boolean;
     isFetchingInterval: boolean;
+    isUpdatingNightMode: boolean;
+    isFetchingNightMode: boolean;
     displayImagesIntervalMins: number;
+    nightModeEnabled: boolean;
+    nightModeActiveNow: boolean;
+    nightStartHour: number;
+    nightEndHour: number;
+    nightIntervalMins: number;
     error: string | null;
     startTime: number | null;
 }
@@ -29,7 +36,14 @@ const initialState: SlideshowOperationState = {
     isSkippingImage: false,
     isUpdatingInterval: false,
     isFetchingInterval: false,
+    isUpdatingNightMode: false,
+    isFetchingNightMode: false,
     displayImagesIntervalMins: 15,
+    nightModeEnabled: false,
+    nightModeActiveNow: false,
+    nightStartHour: 2,
+    nightEndHour: 5,
+    nightIntervalMins: 60,
     error: null,
     startTime: null,
 };
@@ -71,6 +85,32 @@ export const slideshowOperationSlice = createSlice({
         setDisplayRefreshInterval: (state, action: PayloadAction<number>) => {
             state.displayImagesIntervalMins = action.payload;
         },
+        setUpdateNightModeStatus: (state, action: PayloadAction<{
+            isUpdatingNightMode: boolean;
+        }>) => {
+            state.isUpdatingNightMode = action.payload.isUpdatingNightMode;
+            state.startTime = action.payload.isUpdatingNightMode ? Date.now() : null;
+        },
+        setFetchNightModeStatus: (state, action: PayloadAction<{
+            isFetchingNightMode: boolean;
+        }>) => {
+            state.isFetchingNightMode = action.payload.isFetchingNightMode;
+        },
+        setNightMode: (state, action: PayloadAction<{
+            enabled: boolean;
+            startHour: number;
+            endHour: number;
+            intervalMins: number;
+            activeNow?: boolean;
+        }>) => {
+            state.nightModeEnabled = action.payload.enabled;
+            state.nightStartHour = action.payload.startHour;
+            state.nightEndHour = action.payload.endHour;
+            state.nightIntervalMins = action.payload.intervalMins;
+            if (action.payload.activeNow !== undefined) {
+                state.nightModeActiveNow = action.payload.activeNow;
+            }
+        },
         setError: (state, action: PayloadAction<string | null>) => {
             state.error = action.payload;
         },
@@ -80,6 +120,8 @@ export const slideshowOperationSlice = createSlice({
             state.isSkippingImage = false;
             state.isUpdatingInterval = false;
             state.isFetchingInterval = false;
+            state.isUpdatingNightMode = false;
+            state.isFetchingNightMode = false;
             state.error = null;
             state.startTime = null;
         }
@@ -143,7 +185,8 @@ export const updateDisplayImagesLoopInterval = (intervalMins: number) => async (
 
     // Prevent multiple simultaneous operations
     if (currentState.isToggling || currentState.isClearingDisplay ||
-        currentState.isSkippingImage || currentState.isUpdatingInterval) {
+        currentState.isSkippingImage || currentState.isUpdatingInterval ||
+        currentState.isUpdatingNightMode) {
         return;
     }
 
@@ -215,6 +258,161 @@ export const updateDisplayImagesLoopInterval = (intervalMins: number) => async (
     }
 };
 
+export const fetchNightMode = () => async (
+    dispatch: AppDispatch,
+    getState: () => RootState
+) => {
+    const currentState = getState().slideshowOperation;
+
+    if (currentState.isFetchingNightMode) {
+        return;
+    }
+
+    try {
+        dispatch(slideshowOperationSlice.actions.setFetchNightModeStatus({
+            isFetchingNightMode: true,
+        }));
+
+        // Night mode ships as part of the slideshow status payload.
+        const response = await fetchWithTimeout(getSlideshowStatusUrl());
+        const payload: IServerResponse & {
+            data: {
+                night_mode: {
+                    enabled: boolean;
+                    start_hour: number;
+                    end_hour: number;
+                    interval_seconds: number;
+                    active_now: boolean;
+                }
+            }
+        } = await response.json();
+
+        if (payload.success && payload.data?.night_mode) {
+            const night = payload.data.night_mode;
+            dispatch(slideshowOperationSlice.actions.setNightMode({
+                enabled: night.enabled,
+                startHour: night.start_hour,
+                endHour: night.end_hour,
+                intervalMins: Math.round(night.interval_seconds / 60),
+                activeNow: night.active_now,
+            }));
+        } else {
+            throw new Error('Failed to fetch night mode');
+        }
+
+        dispatch(slideshowOperationSlice.actions.setFetchNightModeStatus({
+            isFetchingNightMode: false,
+        }));
+
+    } catch (error) {
+        dispatch(slideshowOperationSlice.actions.setFetchNightModeStatus({
+            isFetchingNightMode: false,
+        }));
+
+        dispatch(slideshowOperationSlice.actions.setError(
+            error instanceof Error ? error.message : 'Unbekannter Fehler'
+        ));
+
+        dispatch(addAlertSnackbar(
+            uuid(),
+            'Abrufen des Nachtmodus fehlgeschlagen',
+            'error'
+        ));
+    }
+};
+
+export const updateNightMode = (
+    enabled: boolean,
+    startHour: number,
+    endHour: number,
+    intervalMins: number
+) => async (
+    dispatch: AppDispatch,
+    getState: () => RootState
+) => {
+    const currentState = getState().slideshowOperation;
+
+    // Prevent multiple simultaneous operations
+    if (currentState.isToggling || currentState.isClearingDisplay ||
+        currentState.isSkippingImage || currentState.isUpdatingInterval ||
+        currentState.isUpdatingNightMode) {
+        return;
+    }
+
+    const actionId = uuid();
+
+    try {
+        dispatch(slideshowOperationSlice.actions.setUpdateNightModeStatus({
+            isUpdatingNightMode: true,
+        }));
+
+        dispatch(addLoadingSnackbar(
+            actionId,
+            'Nachtmodus wird aktualisiert'
+        ));
+
+        const response = await fetchWithTimeout(getSlideshowNightModeUrl(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                enabled,
+                start_hour: startHour,
+                end_hour: endHour,
+                interval_seconds: intervalMins * 60,
+            })
+        });
+
+        const payload: IServerResponse = await response.json();
+
+        if (payload.success) {
+            dispatch(slideshowOperationSlice.actions.setNightMode({
+                enabled,
+                startHour,
+                endHour,
+                intervalMins,
+            }));
+
+            dispatch(addAlertSnackbar(
+                uuid(),
+                enabled
+                    ? `Nachtmodus aktiv von ${startHour}:00 bis ${endHour}:00 Uhr mit ${intervalMins} Minuten Intervall`
+                    : 'Nachtmodus deaktiviert',
+                'success'
+            ));
+
+            dispatch(resetTimer('slideshow-actions-timer'));
+            dispatch(startTimer('slideshow-actions-timer'));
+        } else {
+            throw new Error(payload.message || 'Failed to update night mode');
+        }
+
+        dispatch(slideshowOperationSlice.actions.setUpdateNightModeStatus({
+            isUpdatingNightMode: false,
+        }));
+
+        dispatch(removeLoadingSnackbar(actionId));
+
+    } catch (error) {
+        dispatch(slideshowOperationSlice.actions.setUpdateNightModeStatus({
+            isUpdatingNightMode: false,
+        }));
+
+        dispatch(slideshowOperationSlice.actions.setError(
+            error instanceof Error ? error.message : 'Unbekannter Fehler'
+        ));
+
+        dispatch(addAlertSnackbar(
+            uuid(),
+            'Aktualisierung des Nachtmodus fehlgeschlagen',
+            'error'
+        ));
+
+        dispatch(removeLoadingSnackbar(actionId));
+    }
+};
+
 export const skipImageThunk = () => async (
     dispatch: AppDispatch,
     getState: () => RootState
@@ -223,7 +421,8 @@ export const skipImageThunk = () => async (
 
     // Prevent multiple simultaneous operations
     if (currentState.isToggling || currentState.isClearingDisplay ||
-        currentState.isSkippingImage || currentState.isUpdatingInterval) {
+        currentState.isSkippingImage || currentState.isUpdatingInterval ||
+        currentState.isUpdatingNightMode) {
         return;
     }
 
@@ -293,7 +492,8 @@ export const clearDisplayThunk = () => async (
 
     // Prevent multiple simultaneous operations
     if (currentState.isToggling || currentState.isClearingDisplay ||
-        currentState.isSkippingImage || currentState.isUpdatingInterval) {
+        currentState.isSkippingImage || currentState.isUpdatingInterval ||
+        currentState.isUpdatingNightMode) {
         return;
     }
 
@@ -370,7 +570,8 @@ export const toggleSlideshowThunk = () => async (
 
     // Prevent multiple simultaneous operations
     if (currentState.isToggling || currentState.isClearingDisplay ||
-        currentState.isSkippingImage || currentState.isUpdatingInterval) {
+        currentState.isSkippingImage || currentState.isUpdatingInterval ||
+        currentState.isUpdatingNightMode) {
         return;
     }
 
@@ -509,9 +710,16 @@ export const selectSlideshowOperation = (state: RootState) => state.slideshowOpe
 export const selectDisplayRefreshInterval = (state: RootState) => state.slideshowOperation.displayImagesIntervalMins;
 export const selectIsUpdatingInterval = (state: RootState) => state.slideshowOperation.isUpdatingInterval;
 export const selectIsFetchingInterval = (state: RootState) => state.slideshowOperation.isFetchingInterval;
+export const selectNightModeEnabled = (state: RootState) => state.slideshowOperation.nightModeEnabled;
+export const selectNightModeActiveNow = (state: RootState) => state.slideshowOperation.nightModeActiveNow;
+export const selectNightStartHour = (state: RootState) => state.slideshowOperation.nightStartHour;
+export const selectNightEndHour = (state: RootState) => state.slideshowOperation.nightEndHour;
+export const selectNightIntervalMins = (state: RootState) => state.slideshowOperation.nightIntervalMins;
+export const selectIsUpdatingNightMode = (state: RootState) => state.slideshowOperation.isUpdatingNightMode;
+export const selectIsFetchingNightMode = (state: RootState) => state.slideshowOperation.isFetchingNightMode;
 export const selectIsAnyOperationActive = (state: RootState) => {
     const ops = state.slideshowOperation;
-    return ops.isToggling || ops.isClearingDisplay || ops.isSkippingImage || ops.isUpdatingInterval;
+    return ops.isToggling || ops.isClearingDisplay || ops.isSkippingImage || ops.isUpdatingInterval || ops.isUpdatingNightMode;
 };
 
 export const {
@@ -521,6 +729,9 @@ export const {
     setUpdateIntervalStatus,
     setFetchIntervalStatus,
     setDisplayRefreshInterval,
+    setUpdateNightModeStatus,
+    setFetchNightModeStatus,
+    setNightMode,
     setError,
     resetOperation
 } = slideshowOperationSlice.actions;
