@@ -48,12 +48,15 @@ target_link_libraries(external INTERFACE spdlog::spdlog)
 
 # IXWebSocket
 set(USE_TLS ON CACHE BOOL "Enable TLS support in IXWebSocket" FORCE)
+# Outbound address family. AF_UNSPEC lets the resolver pick (AI_ADDRCONFIG + RFC 6724);
+# AF_INET restores IPv4-only if the server's IPv6 breaks.
+set(SHAREFRAME_IP_FAMILY "AF_UNSPEC" CACHE STRING "AF_UNSPEC | AF_INET | AF_INET6")
 FetchContent_Declare(ixwebsocket
         GIT_REPOSITORY https://github.com/machinezone/IXWebSocket.git
         GIT_TAG v11.4.5
         GIT_SHALLOW TRUE
-        # Force IPv4-only DNS resolution (server's IPv6 is unreachable).
-        PATCH_COMMAND sed -i "s/hints.ai_family = AF_UNSPEC/hints.ai_family = AF_INET/" ixwebsocket/IXDNSLookup.cpp
+        # Baked in at fetch time: changing SHAREFRAME_IP_FAMILY needs a fresh build dir.
+        PATCH_COMMAND sed -i "s/hints.ai_family = AF_UNSPEC/hints.ai_family = ${SHAREFRAME_IP_FAMILY}/" ixwebsocket/IXDNSLookup.cpp
         EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(ixwebsocket)
 target_link_libraries(external INTERFACE ixwebsocket)
