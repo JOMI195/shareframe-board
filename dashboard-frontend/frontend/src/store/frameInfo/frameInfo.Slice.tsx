@@ -32,8 +32,8 @@ export interface FrameInfo {
     wlan_connected?: boolean;
     boot_count?: number;
     host_model?: string;
-    fw_version?: string;
-    build_sha?: string;
+    os_sha?: string;
+    app_sha?: string;
     boot_slot?: string;
     slot_trial?: boolean;
     health_state?: string;

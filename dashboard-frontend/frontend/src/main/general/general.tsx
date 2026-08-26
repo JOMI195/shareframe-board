@@ -52,11 +52,10 @@ const fmtTime = (iso?: string): string => {
 };
 const orDash = (v?: string): string => (v && v.length ? v : DASH);
 
-// build_sha can coerce to a number server-side when the hex happens to be all digits.
-const fmtFirmware = (version?: string, sha?: string | number): string => {
-    if (!version) return DASH;
-    return sha ? `${version} (${String(sha).slice(0, 7)})` : version;
-};
+// Both shas are already short (--short / --abbrev=7, plus a -dirty suffix), so no
+// truncation. String(): os_sha coerces to a number server-side when the hex
+// happens to be all digits.
+const fmtSha = (sha?: string | number): string => (sha ? String(sha) : DASH);
 const fmtSlot = (slot?: string, trial?: boolean): string =>
     slot ? `${slot}${trial ? ' (Trial, nicht bestätigt)' : ''}` : DASH;
 const fmtFreq = (mhz?: number): string => (mhz === undefined ? DASH : `${mhz} MHz`);
@@ -86,7 +85,8 @@ const General = () => {
                         { label: "Modell", content: orDash(info?.host_model) },
                         { label: "Hostname", content: orDash(info?.hostname) },
                         { label: "Version", content: orDash(info?.version) },
-                        { label: "Firmware", content: fmtFirmware(info?.fw_version, info?.build_sha) },
+                        { label: "System", content: fmtSha(info?.os_sha) },
+                        { label: "Anwendung", content: fmtSha(info?.app_sha) },
                         { label: "Boot-Slot", content: fmtSlot(info?.boot_slot, info?.slot_trial) },
                         { label: "Kernel", content: orDash(info?.kernel) },
                         { label: "Systemzeit", content: fmtTime(info?.time_iso) },

@@ -5,13 +5,14 @@
 #include "net/HTTPClient.hpp"
 #include "repository/TokenRepository.hpp"
 #include "update/UpdateManager.hpp"
+#include "Version.hpp"
 #include <spdlog/spdlog.h>
 
 int main(int argc, char* argv[])
 {
     auto [cfg, profile] = bootstrap(argc, argv);
     initLogging(cfg, cfg.updateApplication.logFile);
-    spdlog::info("shareframe-update v{} starting [profile: {}]", cfg.version, profileName(profile));
+    spdlog::info("shareframe-update v{} ({}) starting [profile: {}]", cfg.version, shareframe::kAppSha, profileName(profile));
 
     // Database (for AuthTokenManager)
     Database db;

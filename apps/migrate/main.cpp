@@ -1,5 +1,6 @@
 #include "app/Bootstrap.hpp"
 #include "db/Database.hpp"
+#include "Version.hpp"
 #include <spdlog/spdlog.h>
 #include <exception>
 
@@ -10,7 +11,7 @@ int main(int argc, char* argv[])
 {
     auto [cfg, profile] = bootstrap(argc, argv);
     initLogging(cfg, "shareframe-migrate.log");
-    spdlog::info("shareframe-migrate v{} starting [profile: {}]", cfg.version, profileName(profile));
+    spdlog::info("shareframe-migrate v{} ({}) starting [profile: {}]", cfg.version, shareframe::kAppSha, profileName(profile));
 
     try
     {

@@ -14,6 +14,7 @@
 #include "task/ExpiredImageCleanup.hpp"
 #include "task/ImageUpdate.hpp"
 #include "task/MissingImageCheck.hpp"
+#include "Version.hpp"
 #include <spdlog/spdlog.h>
 
 // Owns network + image ingest. WebsocketClient parses server messages into the
@@ -23,7 +24,7 @@ int main(int argc, char* argv[])
 {
     auto [cfg, profile] = bootstrap(argc, argv);
     initLogging(cfg, cfg.websocketApplication.logFile);
-    spdlog::info("shareframe-websocket v{} starting [profile: {}]", cfg.version, profileName(profile));
+    spdlog::info("shareframe-websocket v{} ({}) starting [profile: {}]", cfg.version, shareframe::kAppSha, profileName(profile));
 
     // Does NOT migrate: the shareframe-migrate oneshot runs migrations first.
     Database database;

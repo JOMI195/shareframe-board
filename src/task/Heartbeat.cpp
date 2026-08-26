@@ -6,6 +6,7 @@
 #include "ipc/IpcClient.hpp"
 #include "net/HTTPClient.hpp"
 #include "util/Subprocess.hpp"
+#include "Version.hpp"
 #include <arpa/inet.h>
 #include <sstream>
 #include <sys/socket.h>
@@ -42,6 +43,7 @@ void Heartbeat::execute()
         {"serial_number", cfg_.frameId},
         {"local_ip_address", localIp},
         {"version", cfg_.version},
+        {"app_sha", shareframe::kAppSha},
         // Service health
         {"websocket_running", wsRunning},
         {"display_running", displayRunning},
@@ -53,7 +55,7 @@ void Heartbeat::execute()
     static const std::vector<std::string> sysInfoKeys = {
         // System state
         "health_state", "uptime_seconds", "boot_count", "boot_slot",
-        "time_iso", "kernel", "fw_version",
+        "time_iso", "kernel", "os_sha",
         // CPU
         "cpu_temp_celsius", "cpu_usage_percent", "cpu_freq_mhz",
         "load_1", "load_5", "load_15",

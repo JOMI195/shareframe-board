@@ -10,13 +10,14 @@
 #include "net/HTTPClient.hpp"
 #include "repository/SettingsRepository.hpp"
 #include "repository/TokenRepository.hpp"
+#include "Version.hpp"
 #include <spdlog/spdlog.h>
 
 int main(int argc, char* argv[])
 {
     auto [cfg, profile] = bootstrap(argc, argv);
     initLogging(cfg, cfg.dashboardApplication.logFile);
-    spdlog::info("shareframe-dashboard v{} starting [profile: {}]", cfg.version, profileName(profile));
+    spdlog::info("shareframe-dashboard v{} ({}) starting [profile: {}]", cfg.version, shareframe::kAppSha, profileName(profile));
 
     // Database (for AuthTokenManager)
     Database db;

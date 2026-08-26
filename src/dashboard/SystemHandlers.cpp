@@ -2,6 +2,7 @@
 #include "dashboard/ResponseUtil.hpp"
 #include "dashboard/Validation.hpp"
 #include "util/Subprocess.hpp"
+#include "Version.hpp"
 
 #include <sstream>
 
@@ -58,6 +59,10 @@ ix::HttpResponsePtr SystemHandlers::handleInfo(const ix::HttpRequestPtr& /*req*/
     {
         logger_->warn("shareframe-sysinfo failed: {}", info.stdErr);
     }
+
+    // Compiled in, so it wins over the sysinfo key and skips coerceScalar (an
+    // all-digit sha would otherwise come back as a JSON number).
+    data["app_sha"] = shareframe::kAppSha;
 
     // SSID can contain spaces, so take it from the wifi parser, not key=value.
     auto wifi = wifi_.getCurrentConnection();

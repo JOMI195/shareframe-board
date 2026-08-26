@@ -1,0 +1,8 @@
+#pragma once
+
+namespace shareframe
+{
+// Git sha of this repo at build time; -DSHAREFRAME_APP_SHA from the Buildroot
+// package, else resolved by CMake from the working tree.
+inline constexpr const char* kAppSha = "@SHAREFRAME_APP_SHA@";
+}

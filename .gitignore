@@ -41,6 +41,7 @@ build/
 
 # AI
 .claude/
+CLAUDE.md
 
 # Secrets/ settings — never commit the real file, only the example
 .env.secrets.toml

@@ -133,8 +133,27 @@ set(COMMON_SOURCES
         src/ipc/EventPublisher.cpp
         src/ipc/EventSubscriber.cpp
 )
+# App identity baked into every binary. -DSHAREFRAME_APP_SHA comes from the
+# Buildroot package (which reads the sibling checkout's .git); a host build
+# resolves it here. --exclude keeps it a sha once tags exist.
+if (NOT SHAREFRAME_APP_SHA)
+    execute_process(
+            COMMAND git -C ${CMAKE_SOURCE_DIR} describe --always --abbrev=7 --dirty --exclude=*
+            OUTPUT_VARIABLE SHAREFRAME_APP_SHA
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET)
+endif ()
+if (NOT SHAREFRAME_APP_SHA)
+    set(SHAREFRAME_APP_SHA "unknown")
+endif ()
+configure_file(${CMAKE_SOURCE_DIR}/include/Version.hpp.in
+        ${CMAKE_BINARY_DIR}/generated/Version.hpp @ONLY)
+message(STATUS "shareframe app sha: ${SHAREFRAME_APP_SHA}")
+
 add_library(shareframe-common STATIC ${COMMON_SOURCES})
-target_include_directories(shareframe-common PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(shareframe-common PUBLIC
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_BINARY_DIR}/generated)
 target_link_libraries(shareframe-common PUBLIC external)
 
 # --- shareframe-websocket: network + image ingest ---
