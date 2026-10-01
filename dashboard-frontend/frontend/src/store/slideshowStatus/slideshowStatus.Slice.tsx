@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { AppDispatch, RootState } from '..';
 import { fetchWithTimeout } from '@/common/utils/fetch';
+import { getSlideshowStatusUrl } from '@/assets/endpoints/api/frame';
 
 
 // Types for Slideshow Status State
@@ -30,7 +31,7 @@ export const checkSlideshowStatusThunk = createAsyncThunk(
     'slideshowStatus/checkStatus',
     async (_, { rejectWithValue }) => {
         try {
-            const response = await fetchWithTimeout('/api/frame/slideshow/status');
+            const response = await fetchWithTimeout(getSlideshowStatusUrl());
             const payload = await response.json();
 
             if (!payload.success) {

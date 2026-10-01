@@ -1,6 +1,13 @@
 const apiBaseUrl = () => "/api";
 const frameBaseUrl = () => `${apiBaseUrl()}/frame`;
 const systemBaseUrl = () => `${apiBaseUrl()}/system`;
+const authBaseUrl = () => `${apiBaseUrl()}/auth`;
+
+// Auth
+export const getAuthStatusUrl = () => `${authBaseUrl()}/status`;
+export const getLoginUrl = () => `${authBaseUrl()}/login`;
+export const getLogoutUrl = () => `${authBaseUrl()}/logout`;
+export const getChangePasswordUrl = () => `${authBaseUrl()}/change-password`;
 
 // Connection (WiFi)
 export const getConnectionBaseUrl = () => `${apiBaseUrl()}/connection`;
@@ -8,6 +15,8 @@ export const getConnectionStatusUrl = () => `${getConnectionBaseUrl()}/status`;
 export const getConnectionSavedNetworksUrl = () => `${getConnectionBaseUrl()}/saved-networks`;
 export const getConnectionConnectUrl = () => `${getConnectionBaseUrl()}/connect`;
 export const getConnectionForgetUrl = () => `${getConnectionBaseUrl()}/forget`;
+export const getConnectionModeUrl = () => `${getConnectionBaseUrl()}/mode`;
+export const getApPasswordUrl = () => `${getConnectionBaseUrl()}/ap-password`;
 
 // Frame / slideshow
 export const getSlideshowUrl = () => `${frameBaseUrl()}/slideshow`;
@@ -16,6 +25,7 @@ export const getSlideshowIntervalUrl = () => `${frameBaseUrl()}/slideshow/interv
 export const getSlideshowNightModeUrl = () => `${frameBaseUrl()}/slideshow/night-mode`;
 export const getSkipSlideshowImageUrl = () => `${frameBaseUrl()}/slideshow/skip`;
 export const getClearDisplayUrl = () => `${frameBaseUrl()}/clear`;
+export const getDisplayStatsUrl = () => `${frameBaseUrl()}/display/stats`;
 
 // Service management
 const servicesBaseUrl = () => `${apiBaseUrl()}/services`;

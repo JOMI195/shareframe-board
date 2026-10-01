@@ -4,6 +4,7 @@ import uuid from 'react-uuid';
 import { addAlertSnackbar } from '@/store/snackbars/snackbars.Slice';
 import { IServerResponse } from '@/types';
 import { fetchWithTimeout } from '@/common/utils/fetch';
+import { getDisplayStatsUrl } from '@/assets/endpoints/api/frame';
 
 // Mirrors GET /api/frame/display/stats `data` (DisplayManager::healthSnapshot).
 // Counter keys are absent until the panel has been used at least once; the
@@ -44,7 +45,7 @@ export const fetchDisplayStats = createAsyncThunk(
     'displayStats/fetchDisplayStats',
     async (_, { dispatch, rejectWithValue }) => {
         try {
-            const response = await fetchWithTimeout('/api/frame/display/stats');
+            const response = await fetchWithTimeout(getDisplayStatsUrl());
             const payload: IServerResponse & { data: DisplayStats } = await response.json();
 
             if (payload.success && payload.data) {

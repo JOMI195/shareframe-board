@@ -1,4 +1,5 @@
 import { fetchWithTimeout } from '@/common/utils/fetch';
+import { getSystemHealthUrl } from '@/assets/endpoints/api/frame';
 import React, { useState, useEffect, useCallback } from 'react';
 import { PiConnectionContext } from './piConnectionContextValue';
 
@@ -7,7 +8,7 @@ export const PiConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     // The dashboard *is* the board, so "reachable" == the server answered.
     const checkPiConnection = useCallback(() =>
-        fetchWithTimeout('/api/system/health')
+        fetchWithTimeout(getSystemHealthUrl())
             .then((response) => response.json())
             .then((payload) => setIsConnected(!!payload?.data?.running))
             .catch((error) => {
