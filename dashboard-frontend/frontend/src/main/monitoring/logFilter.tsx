@@ -42,6 +42,7 @@ const LogFilter: React.FC<LogFilterProps> = ({ onChange, onRefresh, loading, def
         () => new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
     );
     const [linesParam, setLinesParam] = useState<number>(defaultLines);
+    const [linesInput, setLinesInput] = useState<string>(String(defaultLines));
 
     // Backend expects "YYYY-MM-DD HH:MM:SS".
     const getTimestamp = (): string => {
@@ -96,11 +97,13 @@ const LogFilter: React.FC<LogFilterProps> = ({ onChange, onRefresh, loading, def
                             label="Anzahl Zeilen"
                             type="number"
                             fullWidth
-                            value={linesParam}
+                            value={linesInput}
                             onChange={(e) => {
+                                setLinesInput(e.target.value);
                                 const value = parseInt(e.target.value);
                                 if (!isNaN(value) && value > 0) setLinesParam(value);
                             }}
+                            onBlur={() => setLinesInput(String(linesParam))}
                             helperText="Maximale Anzahl anzuzeigender Protokollzeilen"
                             slotProps={{
                                 htmlInput: { min: 1, max: 5000 }
