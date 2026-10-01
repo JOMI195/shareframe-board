@@ -67,16 +67,13 @@ export const useTimer = ({ id, duration = 180, autoStart = false, shouldCreate =
         };
     }, [id, dispatch]);
 
+    // Unguarded: the timer may have been added in this same effect pass, after this render.
     const start = () => {
-        if (timer && !timer.isActive) {
-            dispatch(startTimer(id));
-        }
+        dispatch(startTimer(id));
     };
 
     const stop = () => {
-        if (timer?.isActive) {
-            dispatch(stopTimer(id));
-        }
+        dispatch(stopTimer(id));
     };
 
     const reset = () => {
