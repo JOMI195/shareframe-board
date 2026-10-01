@@ -74,7 +74,7 @@ export const loginThunk = createAsyncThunk(
         ));
         return rejectWithValue(data.message || 'Authentication failed');
       }
-    } catch (error) {
+    } catch {
       // Remove loading snackbar
       dispatch(removeLoadingSnackbar(snackbarId));
 
@@ -134,7 +134,7 @@ export const changePasswordThunk = createAsyncThunk(
         ));
         return rejectWithValue(data.message || 'Password change failed');
       }
-    } catch (error) {
+    } catch {
       dispatch(removeLoadingSnackbar(snackbarId));
 
       dispatch(addAlertSnackbar(

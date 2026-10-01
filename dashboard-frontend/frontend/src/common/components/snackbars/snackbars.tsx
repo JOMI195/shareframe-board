@@ -37,7 +37,7 @@ export const Snackbars = () => {
 
     useEffect(() => {
         dispatch(removeAllLoadingSnackbars());
-    }, []);
+    }, [dispatch]);
 
     return (
         <Box>

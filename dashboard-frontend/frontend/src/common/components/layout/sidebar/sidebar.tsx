@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useEffectEvent } from 'react';
 import {
     Drawer,
     List,
@@ -23,6 +23,7 @@ import { sidebarSections } from '@/assets/sidebarMenu/sideBarMenu';
 import { getHomeUrl } from '@/assets/endpoints/app/appEndpoints';
 import { Link as RouterLink, useLocation } from 'react-router';
 import { getAuthenticationUrl, getSignOutUrl } from '@/assets/endpoints/app/authEndpoints';
+import { IAppBarMenuItem } from '@/types';
 
 const Sidebar: React.FC = () => {
     const dispatch = useAppDispatch();
@@ -37,10 +38,14 @@ const Sidebar: React.FC = () => {
     const shouldShowIconsOnly = isDesktop && !open;
     const currentWidth = shouldShowIconsOnly ? iconOnlyWidth : fullWidth;
 
-    useEffect(() => {
+    const openOnDesktop = useEffectEvent(() => {
         if (isDesktop) {
             dispatch(openSidedbar());
         }
+    });
+
+    useEffect(() => {
+        openOnDesktop();
     }, []);
 
     const handleSidebarClose = (event: MouseEvent | TouchEvent | React.MouseEvent) => {
@@ -62,7 +67,7 @@ const Sidebar: React.FC = () => {
         { name: 'Abmelden', icon: LogoutIcon, url: getAuthenticationUrl() + getSignOutUrl() },
     ];
 
-    const renderListItem = (item: any, isBottomItem = false) => {
+    const renderListItem = (item: IAppBarMenuItem, isBottomItem = false) => {
         const homeUrl = getHomeUrl();
         const itemUrl = !isBottomItem && location.pathname === homeUrl ? item.url : `/${item.url}`;
         const isActive = !isBottomItem && location.pathname === itemUrl;

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useEffectEvent } from "react";
 import { Paper, Typography, Box, IconButton } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
 import { AlertSnackbarItem } from "@/store/snackbars/snackbars.Slice";
@@ -24,18 +24,16 @@ const AlertSnackbar = ({ snackbar, closeSnackbar }: IAlertSnackbarProps) => {
         }
     };
 
-    // Auto-close snackbar after the autoHideDuration (default to 6000ms if not provided)
-    useEffect(() => {
-        if (!snackbar) return;
+    const autoHideDuration = snackbar.autoHideDuration || 10000;
+    const onAutoHide = useEffectEvent(closeSnackbar);
 
-        const timer = setTimeout(() => {
-            closeSnackbar();
-        }, snackbar.autoHideDuration || 10000);
+    useEffect(() => {
+        const timer = setTimeout(() => onAutoHide(), autoHideDuration);
 
         return () => {
             clearTimeout(timer);
         };
-    }, []);
+    }, [autoHideDuration]);
 
 
     return (
