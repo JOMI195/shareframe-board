@@ -13,7 +13,7 @@ const SignOut = () => {
 
   const handleSignOut = async () => {
     await dispatch(logoutThunk());
-    navigate(getAuthenticationUrl() + getSignInUrl(), { replace: true });
+    navigate(getAuthenticationUrl() + getSignInUrl(), { replace: true, state: { signedOut: true } });
   };
 
   const handleCancel = () => {
