@@ -12,7 +12,7 @@ interface UseTimerOptions {
 export const useTimer = ({ id, duration = 180, autoStart = false, shouldCreate = true }: UseTimerOptions) => {
     const dispatch = useAppDispatch();
     const timer = useAppSelector((state: RootState) => selectTimer(state, id));
-    const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     // This ensures the timer is properly initialized
     useEffect(() => {
@@ -27,7 +27,7 @@ export const useTimer = ({ id, duration = 180, autoStart = false, shouldCreate =
             // If timer exists but was created elsewhere, sync it immediately
             dispatch(syncSpecificTimer(id));
         }
-    }, [id, duration, autoStart, timer, dispatch]);
+    }, [id, duration, autoStart, shouldCreate, timer, dispatch]);
 
     // Set up the interval for active timers with improved cleanup
     useEffect(() => {

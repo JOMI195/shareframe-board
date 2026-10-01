@@ -47,12 +47,20 @@ const ShareframeInfoCard: React.FC<ShareframeInfoCardProps> = ({
                 flexDirection: 'column'
             }}>
                 {title && (
-                    <Typography variant="h6" color="text.secondary" gutterBottom>
+                    <Typography variant="h6" gutterBottom sx={{
+                        color: "text.secondary"
+                    }}>
                         {title}
                     </Typography>
                 )}
 
-                <Box display="flex" flexDirection="column" justifyContent="space-between" sx={{ flex: 1 }}>
+                <Box
+                    sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                        flex: 1
+                    }}>
                     {sections.map((section, index) => {
                         const { label, content } = section;
 

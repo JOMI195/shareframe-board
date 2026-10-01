@@ -12,10 +12,10 @@ const NetworkStatusBanner = () => {
     if (!loaded) return null;
     if (mode === 'connected' && internet) return null;
 
-    let bgcolor = 'warning.main';
+    let bgcolor: string;
     let Icon = SignalWifiStatusbarConnectedNoInternet4Icon;
-    let title = '';
-    let detail = '';
+    let title: string;
+    let detail: string;
 
     if (mode === 'ap') {
         bgcolor = 'error.main';
@@ -51,7 +51,12 @@ const NetworkStatusBanner = () => {
         >
             <Icon fontSize="small" />
             <Box sx={{ minWidth: 0 }}>
-                <Typography variant="body2" fontWeight={600} lineHeight={1.2}>
+                <Typography
+                    variant="body2"
+                    sx={{
+                        fontWeight: 600,
+                        lineHeight: 1.2
+                    }}>
                     {title}
                 </Typography>
                 <Typography variant="caption" sx={{ opacity: 0.95 }}>

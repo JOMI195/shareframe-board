@@ -7,7 +7,7 @@ import {
 import Logo from './common/components/logo';
 import { hideLoadingWall, selectLoadingWallState } from './store/loadingWall/loadingWall.Slice';
 import LoadingWall from './main/loadingWall/loadingWall';
-import { usePiConnection } from './context/piConnection/piConnectionContext';
+import { usePiConnection } from './context/piConnection/piConnectionContextValue';
 import { RouterProvider } from 'react-router';
 import Routing from './routes/routing';
 
@@ -93,12 +93,13 @@ const App = () => {
   if (initialLoad) {
     return (
       <Box
-        display="flex"
-        flexDirection={"column"}
-        justifyContent="center"
-        alignItems="center"
-        height={"100vh"}
-      >
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh"
+        }}>
         <Logo
           darkLogoSrc="/logo-dark-full-shareframe.svg"
           lightLogoSrc="/logo-light-full-shareframe.svg"

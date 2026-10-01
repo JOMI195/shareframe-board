@@ -13,7 +13,7 @@ import { selectFrameInfoState } from '@/store/frameInfo/frameInfo.Slice';
 import { selectUpdatesState, fetchUpdateStatus, fetchLatestRelease } from '@/store/updates/updates.Slice';
 import { openUpdatesConfirmUpdateDialog } from '@/store/dialogs/dialogs.Slice';
 import { addLoadingSnackbar, removeLoadingSnackbar } from '@/store/snackbars/snackbars.Slice';
-import { usePiConnection } from '@/context/piConnection/piConnectionContext';
+import { usePiConnection } from '@/context/piConnection/piConnectionContextValue';
 import { isVersionNewer } from '@/common/utils/version';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import UpdateIcon from '@mui/icons-material/Update';
@@ -68,7 +68,9 @@ const Updates = () => {
 
     return (
         <>
-            <Stack width={"100%"} spacing={3}>
+            <Stack spacing={3} sx={{
+                width: "100%"
+            }}>
                 <ShareframeInfoCard
                     title="Übersicht"
                     sections={[
@@ -87,7 +89,14 @@ const Updates = () => {
                                     type: 'reactNode',
                                     value: (
                                         <Box>
-                                            <Typography variant="h6" color="text.secondary" gutterBottom sx={{ display: "flex", alignItems: "center" }}>
+                                            <Typography
+                                                variant="h6"
+                                                gutterBottom
+                                                sx={{
+                                                    color: "text.secondary",
+                                                    display: "flex",
+                                                    alignItems: "center"
+                                                }}>
                                                 <CircularProgress size={21} sx={{ mr: 1 }} />
                                                 {phaseLabel(update_status!.phase)}
                                                 {update_status!.target_version ? ` (${update_status!.target_version})` : ''}
@@ -112,7 +121,14 @@ const Updates = () => {
                                 content: {
                                     type: 'reactNode',
                                     value: (
-                                        <Typography variant="h6" color="text.secondary" gutterBottom sx={{ display: "flex", alignItems: "center" }}>
+                                        <Typography
+                                            variant="h6"
+                                            gutterBottom
+                                            sx={{
+                                                color: "text.secondary",
+                                                display: "flex",
+                                                alignItems: "center"
+                                            }}>
                                             <HourglassTopIcon color="warning" sx={{ mr: 1 }} />Update wird bestätigt
                                         </Typography>
                                     )
@@ -132,7 +148,14 @@ const Updates = () => {
                                 content: {
                                     type: 'reactNode',
                                     value: (
-                                        <Typography variant="h6" color="text.secondary" gutterBottom sx={{ display: "flex", alignItems: "center" }}>
+                                        <Typography
+                                            variant="h6"
+                                            gutterBottom
+                                            sx={{
+                                                color: "text.secondary",
+                                                display: "flex",
+                                                alignItems: "center"
+                                            }}>
                                             <ErrorIcon color="error" sx={{ mr: 1 }} />Update fehlgeschlagen
                                         </Typography>
                                     )
@@ -152,7 +175,14 @@ const Updates = () => {
                                 content: {
                                     type: 'reactNode',
                                     value: (
-                                        <Typography variant="h6" color="text.secondary" gutterBottom sx={{ display: "flex", alignItems: "center" }}>
+                                        <Typography
+                                            variant="h6"
+                                            gutterBottom
+                                            sx={{
+                                                color: "text.secondary",
+                                                display: "flex",
+                                                alignItems: "center"
+                                            }}>
                                             <ErrorIcon color="error" sx={{ mr: 1 }} />Letztes Update zurückgerollt
                                         </Typography>
                                     )
@@ -174,7 +204,14 @@ const Updates = () => {
                                         type: 'reactNode',
                                         value: (
                                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                <Typography variant="h6" color="text.secondary" gutterBottom sx={{ display: "flex", alignItems: "center" }}>
+                                                <Typography
+                                                    variant="h6"
+                                                    gutterBottom
+                                                    sx={{
+                                                        color: "text.secondary",
+                                                        display: "flex",
+                                                        alignItems: "center"
+                                                    }}>
                                                     <CircularProgress size={21} sx={{ mr: 1 }} />Suche nach Updates
                                                 </Typography>
                                             </Box>
@@ -191,7 +228,14 @@ const Updates = () => {
                                         content: {
                                             type: 'reactNode',
                                             value: (
-                                                <Typography variant="h6" color="text.secondary" gutterBottom sx={{ display: "flex", alignItems: "center" }}>
+                                                <Typography
+                                                    variant="h6"
+                                                    gutterBottom
+                                                    sx={{
+                                                        color: "text.secondary",
+                                                        display: "flex",
+                                                        alignItems: "center"
+                                                    }}>
                                                     <UpdateIcon color='error' sx={{ mr: 1 }} />Neue Version verfügbar
                                                 </Typography>
                                             )
@@ -225,7 +269,14 @@ const Updates = () => {
                                         content: {
                                             type: 'reactNode',
                                             value: (
-                                                <Typography variant="h6" color="text.secondary" gutterBottom sx={{ display: "flex", alignItems: "center" }}>
+                                                <Typography
+                                                    variant="h6"
+                                                    gutterBottom
+                                                    sx={{
+                                                        color: "text.secondary",
+                                                        display: "flex",
+                                                        alignItems: "center"
+                                                    }}>
                                                     <CheckCircleIcon color='success' sx={{ mr: 1 }} />Keine Updates verfügbar
                                                 </Typography>
                                             )

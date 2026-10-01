@@ -50,10 +50,12 @@ const ShareframeDialog: React.FC<ShareframeDialogProps> = ({
         <Dialog
             fullScreen={isSmallScreen}
             open={open}
-            TransitionComponent={isSmallScreen ? SlideTransition : ZoomTransition}
             onClose={onClose}
             maxWidth={maxWidth}
             fullWidth={fullWidth}
+            slots={{
+                transition: isSmallScreen ? SlideTransition : ZoomTransition
+            }}
         >
             {isSmallScreen ? (
                 <AppBar sx={{ position: 'relative' }} color='inherit'>
@@ -81,11 +83,15 @@ const ShareframeDialog: React.FC<ShareframeDialogProps> = ({
                     {showActions && (
                         <Grid
                             container
-                            display={"flex"} justifyContent={"flex-end"} alignItems={"center"} width={"100%"}
-                            sx={{ mt: 2 }}
                             spacing={1}
-                        >
-                            <Grid item xs={6} >
+                            sx={{
+                                display: "flex",
+                                justifyContent: "flex-end",
+                                alignItems: "center",
+                                width: "100%",
+                                mt: 2
+                            }}>
+                            <Grid size={6}>
                                 <Button
                                     variant="outlined"
                                     color="secondary"
@@ -97,7 +103,7 @@ const ShareframeDialog: React.FC<ShareframeDialogProps> = ({
                                 </Button>
                             </Grid>
                             {onConfirm && (
-                                <Grid item xs={6} >
+                                <Grid size={6}>
                                     <Button
                                         variant="contained"
                                         onClick={onConfirm}

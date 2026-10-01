@@ -11,7 +11,7 @@ import { useAppDispatch, useAppSelector } from '@/store';
 import { loginThunk, selectAuth } from '@/store/auth/auth.Slice';
 import { selectConnectionMode } from '@/store/connectionMode/connectionMode.Slice';
 import { removeAllSnackbars } from '@/store/snackbars/snackbars.Slice';
-import { usePiConnection } from '@/context/piConnection/piConnectionContext';
+import { usePiConnection } from '@/context/piConnection/piConnectionContextValue';
 import { useNavigate } from 'react-router';
 import { getHomeUrl, getSetupUrl } from '@/assets/endpoints/app/appEndpoints';
 
@@ -30,7 +30,7 @@ const SignIn = () => {
 
   useEffect(() => {
     dispatch(removeAllSnackbars());
-  }, []);
+  }, [dispatch]);
 
   // Without internet the OTP cannot be verified upstream — default to the
   // offline password once, without ever overriding a manual toggle.
@@ -56,7 +56,7 @@ const SignIn = () => {
     if (isAuthenticated) {
       navigate(getHomeUrl());
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, navigate]);
 
   const handleToggleMethod = () => {
     setMethod((m) => (m === 'otp' ? 'password' : 'otp'));
@@ -86,7 +86,9 @@ const SignIn = () => {
         {"Willkommen bei deinem Bilderrahmen"}
       </Typography>
 
-      <Typography textAlign={"center"}>
+      <Typography sx={{
+        textAlign: "center"
+      }}>
         {method === 'otp'
           ? "Nutze ein OTP um dich bei deinem Bilderrahmen anzumelden. Dieses erhälst du in der ShareFrame Website Bilderrahmen Übersicht"
           : "Melde dich mit dem Geräte-Passwort an."}
@@ -119,19 +121,21 @@ const SignIn = () => {
           autoComplete="current-password"
           value={secret}
           onChange={(e) => setSecret(e.target.value)}
-          InputProps={{
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton
-                  aria-label="toggle current password visibility"
-                  onClick={() => handleClickShowPassword()}
-                  onMouseDown={handleMouseDownPassword}
-                  edge="end"
-                >
-                  {showPassword ? <VisibilityOff /> : <Visibility />}
-                </IconButton>
-              </InputAdornment>
-            ),
+          slotProps={{
+            input: {
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="toggle current password visibility"
+                    onClick={() => handleClickShowPassword()}
+                    onMouseDown={handleMouseDownPassword}
+                    edge="end"
+                  >
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }
           }}
         />
         <Button

@@ -66,7 +66,9 @@ const DisplayHealthPage = () => {
     const wear = stats?.wear_percent ?? 0;
 
     return (
-        <Stack width={'100%'} spacing={3}>
+        <Stack spacing={3} sx={{
+            width: '100%'
+        }}>
             <ShareframeInfoCard
                 title="Zustand"
                 sections={[

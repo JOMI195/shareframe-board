@@ -3,7 +3,7 @@ import { IconButton, InputAdornment, TextField, Typography } from '@mui/material
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import ShareframeDialog from '@/common/components/shareframeDialog';
-import { usePiConnection } from '@/context/piConnection/piConnectionContext';
+import { usePiConnection } from '@/context/piConnection/piConnectionContextValue';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { closeGeneralChangePasswordDialog, getDialogs } from '@/store/dialogs/dialogs.Slice';
 import { changePasswordThunk } from '@/store/auth/auth.Slice';
@@ -49,7 +49,7 @@ const ChangePasswordDialog: React.FC = () => {
             await dispatch(changePasswordThunk({ currentPassword, newPassword })).unwrap();
             dispatch(closeGeneralChangePasswordDialog());
             resetFields();
-        } catch (error) {
+        } catch {
             // Error handling is done in the thunk
         } finally {
             setSubmitting(false);
@@ -81,7 +81,9 @@ const ChangePasswordDialog: React.FC = () => {
             fullWidth={true}
             showActions={true}
         >
-            <Typography variant="body2" color="text.secondary" gutterBottom>
+            <Typography variant="body2" gutterBottom sx={{
+                color: "text.secondary"
+            }}>
                 Mit diesem Passwort kannst du dich auch ohne Internetverbindung am Dashboard anmelden.
             </Typography>
             <TextField
@@ -93,7 +95,9 @@ const ChangePasswordDialog: React.FC = () => {
                 variant="outlined"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                InputProps={{ endAdornment: visibilityAdornment }}
+                slotProps={{
+                    input: { endAdornment: visibilityAdornment }
+                }}
             />
             <TextField
                 margin="dense"

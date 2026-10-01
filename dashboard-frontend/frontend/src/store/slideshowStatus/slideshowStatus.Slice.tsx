@@ -55,8 +55,6 @@ export const checkSlideshowStatusThunk = createAsyncThunk(
 
 // Continuous status checking thunk
 export const startContinuousStatusCheck = () => (dispatch: AppDispatch) => {
-    let intervalId: NodeJS.Timeout;
-
     const performCheck = () => {
         dispatch(checkSlideshowStatusThunk());
     };
@@ -65,7 +63,7 @@ export const startContinuousStatusCheck = () => (dispatch: AppDispatch) => {
     performCheck();
 
     // Set up continuous interval
-    intervalId = setInterval(performCheck, 5000); // Check every 5 seconds
+    const intervalId = setInterval(performCheck, 5000); // Check every 5 seconds
 
     // Return a function to stop the interval
     return () => {

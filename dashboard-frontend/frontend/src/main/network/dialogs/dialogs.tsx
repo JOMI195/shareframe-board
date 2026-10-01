@@ -5,7 +5,7 @@ import {
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import ShareframeDialog from '@/common/components/shareframeDialog';
-import { usePiConnection } from '@/context/piConnection/piConnectionContext';
+import { usePiConnection } from '@/context/piConnection/piConnectionContextValue';
 import { useAppDispatch, useAppSelector } from '@/store';
 import {
     closeNetworkAddNetworkDialog,
@@ -56,7 +56,7 @@ const Dialogs: React.FC = () => {
             await dispatch(addNetwork(newNetwork)).unwrap();
             dispatch(closeNetworkAddNetworkDialog());
             setNewNetwork({ ssid: '', password: '' });
-        } catch (error) {
+        } catch {
             // Error handling is done in the thunk
         } finally {
             setSubmitting(false);
@@ -68,7 +68,7 @@ const Dialogs: React.FC = () => {
         try {
             await dispatch(forgetNetwork(dialogs.forgetNetwork.ssid)).unwrap();
             dispatch(closeNetworkForgetNetworkDialog());
-        } catch (error) {
+        } catch {
             // Error handling is done in the thunk
         } finally {
             setSubmitting(false);
@@ -91,7 +91,7 @@ const Dialogs: React.FC = () => {
         try {
             await dispatch(changeApPassword(apPassword)).unwrap();
             handleCloseApPasswordDialog();
-        } catch (error) {
+        } catch {
             // Error handling is done in the thunk
         } finally {
             setSubmitting(false);
@@ -142,19 +142,21 @@ const Dialogs: React.FC = () => {
                     variant="outlined"
                     value={newNetwork.password}
                     onChange={(e) => setNewNetwork({ ...newNetwork, password: e.target.value })}
-                    InputProps={{
-                        endAdornment: (
-                            <InputAdornment position="end">
-                                <IconButton
-                                    aria-label="toggle current password visibility"
-                                    onClick={handleClickShowPassword}
-                                    onMouseDown={handleMouseDownPassword}
-                                    edge="end"
-                                >
-                                    {showPassword ? <VisibilityOff /> : <Visibility />}
-                                </IconButton>
-                            </InputAdornment>
-                        ),
+                    slotProps={{
+                        input: {
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        aria-label="toggle current password visibility"
+                                        onClick={handleClickShowPassword}
+                                        onMouseDown={handleMouseDownPassword}
+                                        edge="end"
+                                    >
+                                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                                    </IconButton>
+                                </InputAdornment>
+                            ),
+                        }
                     }}
                 />
             </ShareframeDialog>
@@ -172,7 +174,9 @@ const Dialogs: React.FC = () => {
                 <Typography variant="body1" gutterBottom>
                     Möchtest du das Netzwerk <Typography color='primary' component="b">{dialogs.forgetNetwork.ssid}</Typography> wirklich aus den gespeicherten Netzwerken entfernen?
                 </Typography>
-                <Typography variant="body1" color="text.secondary">
+                <Typography variant="body1" sx={{
+                    color: "text.secondary"
+                }}>
                     Du kannst das Netzwerk jederzeit erneut hinzufügen.
                 </Typography>
             </ShareframeDialog>
@@ -189,7 +193,9 @@ const Dialogs: React.FC = () => {
                 fullWidth={true}
                 showActions={true}
             >
-                <Typography variant="body2" color="text.secondary" gutterBottom>
+                <Typography variant="body2" gutterBottom sx={{
+                    color: "text.secondary"
+                }}>
                     Passwort des WLAN-Hotspots, den der Bilderrahmen öffnet, wenn er kein
                     bekanntes Netzwerk findet.
                 </Typography>
@@ -212,19 +218,21 @@ const Dialogs: React.FC = () => {
                     helperText={apPasswordInvalidChars
                         ? "Nur ASCII-Zeichen erlaubt (keine Umlaute)"
                         : "8–63 Zeichen, nur ASCII"}
-                    InputProps={{
-                        endAdornment: (
-                            <InputAdornment position="end">
-                                <IconButton
-                                    aria-label="Passwort anzeigen"
-                                    onClick={handleClickShowPassword}
-                                    onMouseDown={handleMouseDownPassword}
-                                    edge="end"
-                                >
-                                    {showPassword ? <VisibilityOff /> : <Visibility />}
-                                </IconButton>
-                            </InputAdornment>
-                        ),
+                    slotProps={{
+                        input: {
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        aria-label="Passwort anzeigen"
+                                        onClick={handleClickShowPassword}
+                                        onMouseDown={handleMouseDownPassword}
+                                        edge="end"
+                                    >
+                                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                                    </IconButton>
+                                </InputAdornment>
+                            ),
+                        }
                     }}
                 />
                 <TextField

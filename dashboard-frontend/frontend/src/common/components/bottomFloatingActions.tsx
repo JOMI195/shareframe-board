@@ -126,14 +126,13 @@ const BottomFloatingActions: React.FC<BottomMainFloatingActionsProps> = ({
                         <SpeedDialAction
                             key={`${action.label}-${index}`}
                             icon={action.icon}
-                            tooltipTitle={action.label}
-                            tooltipOpen
                             onClick={() => {
                                 setSpeedDialOpen(false);
                                 action.onClick();
                             }}
-                            FabProps={{
-                                disabled: disabled || action.disabled,
+                            slotProps={{
+                                tooltip: { title: action.label, open: true },
+                                fab: { disabled: disabled || action.disabled },
                             }}
                             sx={{
                                 '& .MuiFab-root': {

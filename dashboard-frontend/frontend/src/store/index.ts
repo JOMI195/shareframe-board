@@ -15,12 +15,12 @@ import {
   createMigrate,
   PersistedState,
 } from 'redux-persist';
-import storage from 'redux-persist/lib/storage';
+import storage from 'redux-persist/es/storage';
 import rootReducer from './rootReducer';
 import autoMergeLevel2 from 'redux-persist/es/stateReconciler/autoMergeLevel2';
 import migrations from './migrations';
 
-const persistConfig: PersistConfig<any> = {
+const persistConfig: PersistConfig<ReturnType<typeof rootReducer>> = {
   key: 'shareframe-dashboard-data',
   version: 3,
   storage,
@@ -28,7 +28,7 @@ const persistConfig: PersistConfig<any> = {
   migrate: createMigrate(migrations, { debug: import.meta.env.VITE_APP_PRODUCTION === "False" ? true : false }),
 };
 
-const persistedReducer = persistReducer(persistConfig, rootReducer as any);
+const persistedReducer = persistReducer(persistConfig, rootReducer);
 
 export const store = configureStore({
   reducer: persistedReducer,
@@ -44,7 +44,7 @@ export const persistor = persistStore(store);
 
 export type RootState = ReturnType<typeof rootReducer> & PersistedState;
 
-export type AppDispatch = typeof store.dispatch & ThunkDispatch<RootState, undefined, Action>;;
+export type AppDispatch = typeof store.dispatch & ThunkDispatch<RootState, undefined, Action>;
 
 export const useAppDispatch = () => useDispatch<AppDispatch>();
 export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;

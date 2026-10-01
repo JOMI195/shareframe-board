@@ -4,16 +4,17 @@ import Typography from "@mui/material/Typography";
 import Logo from "@/common/components/logo";
 import Stack from "@mui/material/Stack";
 import { Outlet } from "react-router";
-import { useMediaQuery, useTheme } from "@mui/material";
+import { TypographyProps, useMediaQuery, useTheme } from "@mui/material";
 
-function Copyright(props: any) {
+function Copyright(props: TypographyProps) {
   return (
     <Typography
       variant="caption"
-      color="text.secondary"
       align="center"
       {...props}
-    >
+      sx={[{
+        color: "text.secondary"
+      }, ...(Array.isArray(props.sx) ? props.sx : [props.sx])]}>
       <Box>
         {"Copyright © "}
         {"shareframe.de"}
@@ -48,7 +49,15 @@ const AuthenticationLayout = () => {
           mb: 5
         }}
       >
-        <Stack spacing={0} display={"flex"} alignItems={"center"} sx={{ mt: 5, mb: 10, width: "100%" }}>
+        <Stack
+          spacing={0}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            mt: 5,
+            mb: 10,
+            width: "100%"
+          }}>
           <Logo
             darkLogoSrc="/logo-dark-full-shareframe.svg"
             lightLogoSrc="/logo-light-full-shareframe.svg"
