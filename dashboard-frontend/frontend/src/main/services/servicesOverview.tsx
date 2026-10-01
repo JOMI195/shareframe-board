@@ -6,7 +6,8 @@ import { fetchServices, selectServices } from '@/store/services/services.Slice';
 import { MANAGED_SERVICES, SERVICE_LABELS, ServiceStatus } from '@/types';
 import { getServiceDetailUrl } from '@/assets/endpoints/app/appEndpoints';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
-import { HealthChip, RestartButton, formatUptime } from './serviceUtils';
+import { HealthChip, RestartButton } from './serviceUtils';
+import { formatUptime } from './formatUptime';
 
 const POLL_MS = 10000;
 
@@ -27,7 +28,13 @@ const ServicesOverview = () => {
             {MANAGED_SERVICES.map((id) => {
                 const svc = byId(id);
                 return (
-                    <Grid item xs={12} sm={6} md={4} key={id}>
+                    <Grid
+                        key={id}
+                        size={{
+                            xs: 12,
+                            sm: 6,
+                            md: 4
+                        }}>
                         <ShareframeInfoCard
                             title={SERVICE_LABELS[id] ?? id}
                             sections={[

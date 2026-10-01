@@ -102,7 +102,7 @@ const timerSlice = createSlice({
         // Start a timer
         startTimer(state, action: PayloadAction<string>) {
             const timer = state.timers[action.payload];
-            if (timer) {
+            if (timer && !timer.isActive) {
                 // Ensure we're in sync before starting
                 state.lastSyncTime = Date.now();
                 timer.isActive = true;

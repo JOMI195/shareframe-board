@@ -43,7 +43,7 @@ import {
     updateNightMode
 } from '@/store/slideshowOperation/slideshowOperation.Slice';
 import { selectSlideshowStatus } from '@/store/slideshowStatus/slideshowStatus.Slice';
-import { usePiConnection } from '@/context/piConnection/piConnectionContext';
+import { usePiConnection } from '@/context/piConnection/piConnectionContextValue';
 import { useTimer } from '@/hooks/useTimer';
 import { syncSpecificTimer } from '@/store/timers/timers.Slice';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
@@ -74,19 +74,24 @@ const FrameActions: React.FC = () => {
     const [nightEnd, setNightEnd] = useState<number>(storedNightEnd);
     const [nightInterval, setNightInterval] = useState<number>(storedNightInterval);
 
-    useEffect(() => {
+    const storedNightKey = `${storedNightEnabled}|${storedNightStart}|${storedNightEnd}|${storedNightInterval}`;
+    const [seededNightKey, setSeededNightKey] = useState(storedNightKey);
+    if (storedNightKey !== seededNightKey) {
+        setSeededNightKey(storedNightKey);
         setNightEnabled(storedNightEnabled);
         setNightStart(storedNightStart);
         setNightEnd(storedNightEnd);
         setNightInterval(storedNightInterval);
-    }, [storedNightEnabled, storedNightStart, storedNightEnd, storedNightInterval]);
+    }
 
     // Live countdown to the next image change: seeded from the polled status
     // (every 5s) and ticked locally each second in between.
     const [remaining, setRemaining] = useState<number | null>(secondsUntilNext);
-    useEffect(() => {
+    const [seededStatus, setSeededStatus] = useState({ secondsUntilNext, lastCheckedAt });
+    if (seededStatus.secondsUntilNext !== secondsUntilNext || seededStatus.lastCheckedAt !== lastCheckedAt) {
+        setSeededStatus({ secondsUntilNext, lastCheckedAt });
         setRemaining(secondsUntilNext);
-    }, [secondsUntilNext, lastCheckedAt]);
+    }
     useEffect(() => {
         const id = setInterval(() => {
             setRemaining((prev) => (prev == null ? prev : Math.max(0, prev - 1)));
@@ -174,11 +179,12 @@ const FrameActions: React.FC = () => {
     const isLoopLoading = isActive && !loopStarted && isConnected && lastCheckedAt !== null;
     const isTimerRunning = isSlideshowActionsTimerActive || isAppIntialLoadTimerActive;
     const isButtonsDisabled = isTimerRunning || isLoopLoading || isToggling || isClearingDisplay || isSkippingImage || !isConnected || lastCheckedAt === null;
+    const isNightModeDisabled = !isConnected || lastCheckedAt === null || isUpdatingNightMode;
 
     return (
         <>
             <Grid container spacing={3} sx={{ pb: isSmallScreen ? 7 : 0 }}>
-                <Grid item xs={12}>
+                <Grid size={12}>
                     <ShareframeInfoCard
                         title="Nächster Bildwechsel"
                         minHeight="100px"
@@ -187,14 +193,29 @@ const FrameActions: React.FC = () => {
                                 content: {
                                     type: 'reactNode',
                                     value: (
-                                        <Box display="flex" alignItems="center" justifyContent="space-between">
-                                            <Box display="flex" alignItems="center" gap={1.5}>
+                                        <Box
+                                            sx={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "space-between"
+                                            }}>
+                                            <Box
+                                                sx={{
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: 1.5
+                                                }}>
                                                 <TimerOutlined color="action" />
                                                 <Typography variant="h4" sx={{ fontVariantNumeric: 'tabular-nums' }}>
                                                     {countdownText}
                                                 </Typography>
                                             </Box>
-                                            <Box display="flex" alignItems="center" gap={1}>
+                                            <Box
+                                                sx={{
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: 1
+                                                }}>
                                                 {isNightActiveNow && (
                                                     <Chip
                                                         icon={<BedtimeOutlined />}
@@ -223,7 +244,7 @@ const FrameActions: React.FC = () => {
                 </Grid>
 
                 {!isSlideshowActionsTimerActive && isAppIntialLoadTimerActive && (
-                    <Grid item xs={12}>
+                    <Grid size={12}>
                         <Alert severity="info" sx={{ display: 'flex', alignItems: 'center' }}>
                             Bitte warte einen Augenblick bis der aktuelle Status der Bildwiedergabe ermittelt wurde
                         </Alert>
@@ -231,7 +252,7 @@ const FrameActions: React.FC = () => {
                 )}
 
                 {!isTimerRunning && isLoopLoading && (
-                    <Grid item xs={12}>
+                    <Grid size={12}>
                         <Alert severity="info" sx={{ display: 'flex', alignItems: 'center' }}>
                             Der Bilderrahmen startet noch. Bitte warte einen Moment.
                         </Alert>
@@ -239,14 +260,18 @@ const FrameActions: React.FC = () => {
                 )}
 
                 {isSlideshowActionsTimerActive && (
-                    <Grid item xs={12}>
+                    <Grid size={12}>
                         <Alert severity="info" sx={{ display: 'flex', alignItems: 'center' }}>
                             Um das Display zu schonen ist die nächste Aktion erst wieder in {slideshowActionsTimerTime}min möglich
                         </Alert>
                     </Grid>
                 )}
 
-                <Grid item xs={12} sm={6}>
+                <Grid
+                    size={{
+                        xs: 12,
+                        sm: 6
+                    }}>
                     <ShareframeInfoCard
                         title="Bilderwiedergabe"
                         minHeight={INFO_CARD_HEIGHT}
@@ -255,7 +280,11 @@ const FrameActions: React.FC = () => {
                                 content: {
                                     type: 'reactNode',
                                     value: (
-                                        <Box display="flex" alignItems="center">
+                                        <Box
+                                            sx={{
+                                                display: "flex",
+                                                alignItems: "center"
+                                            }}>
                                             <PhotoLibraryOutlined sx={{ mr: 1 }} />
                                             <Typography variant="body2">
                                                 Die Bildwiedergabe auf dem Bilderrahmen starten oder stoppen.
@@ -306,7 +335,11 @@ const FrameActions: React.FC = () => {
                     />
                 </Grid>
 
-                <Grid item xs={12} sm={6}>
+                <Grid
+                    size={{
+                        xs: 12,
+                        sm: 6
+                    }}>
                     <ShareframeInfoCard
                         title="Bildwechsel-Intervall"
                         minHeight={INFO_CARD_HEIGHT}
@@ -316,7 +349,11 @@ const FrameActions: React.FC = () => {
                                     type: 'reactNode',
                                     value: (
                                         <Stack spacing={2}>
-                                            <Box display="flex" alignItems="center">
+                                            <Box
+                                                sx={{
+                                                    display: "flex",
+                                                    alignItems: "center"
+                                                }}>
                                                 <TimerOutlined sx={{ mr: 1 }} />
                                                 <Typography variant="body2">
                                                     Zeitintervall zwischen den Bildwechseln der Bildwiedergabe konfigurieren.
@@ -336,13 +373,15 @@ const FrameActions: React.FC = () => {
                                                     label="Intervall"
                                                     value={intervalValue}
                                                     onChange={(e) => setIntervalValue(Number(e.target.value))}
-                                                    inputProps={{
-                                                        min,
-                                                        max,
-                                                        step
-                                                    }}
                                                     sx={{ flex: 1 }}
                                                     disabled={isButtonsDisabled || isUpdatingInterval}
+                                                    slotProps={{
+                                                        htmlInput: {
+                                                            min,
+                                                            max,
+                                                            step
+                                                        }
+                                                    }}
                                                 />
                                                 <FormControl sx={{ minWidth: 120 }}>
                                                     <InputLabel>Einheit</InputLabel>
@@ -376,7 +415,11 @@ const FrameActions: React.FC = () => {
                     />
                 </Grid>
 
-                <Grid item xs={12} sm={6}>
+                <Grid
+                    size={{
+                        xs: 12,
+                        sm: 6
+                    }}>
                     <ShareframeInfoCard
                         title="Nachtmodus"
                         minHeight={INFO_CARD_HEIGHT}
@@ -386,7 +429,11 @@ const FrameActions: React.FC = () => {
                                     type: 'reactNode',
                                     value: (
                                         <Stack spacing={2}>
-                                            <Box display="flex" alignItems="center">
+                                            <Box
+                                                sx={{
+                                                    display: "flex",
+                                                    alignItems: "center"
+                                                }}>
                                                 <BedtimeOutlined sx={{ mr: 1 }} />
                                                 <Typography variant="body2">
                                                     In den Nachtstunden seltener wechseln, um den Bildschirm zu schonen.
@@ -397,7 +444,7 @@ const FrameActions: React.FC = () => {
                                                     <Switch
                                                         checked={nightEnabled}
                                                         onChange={(e) => setNightEnabled(e.target.checked)}
-                                                        disabled={isButtonsDisabled || isUpdatingNightMode}
+                                                        disabled={isNightModeDisabled}
                                                     />
                                                 }
                                                 label="Nachtmodus aktivieren"
@@ -409,7 +456,7 @@ const FrameActions: React.FC = () => {
                                                         value={nightStart}
                                                         label="Von"
                                                         onChange={(e) => setNightStart(Number(e.target.value))}
-                                                        disabled={isButtonsDisabled || isUpdatingNightMode || !nightEnabled}
+                                                        disabled={isNightModeDisabled || !nightEnabled}
                                                     >
                                                         {hours.map((h) => (
                                                             <MenuItem key={h} value={h}>{`${h}:00`}</MenuItem>
@@ -422,7 +469,7 @@ const FrameActions: React.FC = () => {
                                                         value={nightEnd}
                                                         label="Bis"
                                                         onChange={(e) => setNightEnd(Number(e.target.value))}
-                                                        disabled={isButtonsDisabled || isUpdatingNightMode || !nightEnabled}
+                                                        disabled={isNightModeDisabled || !nightEnabled}
                                                     >
                                                         {hours.map((h) => (
                                                             <MenuItem key={h} value={h}>{`${h}:00`}</MenuItem>
@@ -435,12 +482,14 @@ const FrameActions: React.FC = () => {
                                                 label="Intervall in der Nacht (Minuten)"
                                                 value={nightInterval}
                                                 onChange={(e) => setNightInterval(Number(e.target.value))}
-                                                inputProps={{
-                                                    min: NIGHT_MIN_MINS,
-                                                    max: NIGHT_MAX_MINS,
-                                                    step: 1
+                                                disabled={isNightModeDisabled || !nightEnabled}
+                                                slotProps={{
+                                                    htmlInput: {
+                                                        min: NIGHT_MIN_MINS,
+                                                        max: NIGHT_MAX_MINS,
+                                                        step: 1
+                                                    }
                                                 }}
-                                                disabled={isButtonsDisabled || isUpdatingNightMode || !nightEnabled}
                                             />
                                             {nightStart === nightEnd && (
                                                 <Typography variant="body2" color="error">
@@ -458,7 +507,7 @@ const FrameActions: React.FC = () => {
                                 startIcon={<SaveOutlined />}
                                 onClick={handleUpdateNightMode}
                                 fullWidth
-                                disabled={isButtonsDisabled || isUpdatingNightMode || isFetchingNightMode || isNightFormInvalid}
+                                disabled={isNightModeDisabled || isFetchingNightMode || isNightFormInvalid}
                             >
                                 Nachtmodus speichern
                             </Button>
@@ -466,7 +515,11 @@ const FrameActions: React.FC = () => {
                     />
                 </Grid>
 
-                <Grid item xs={12} sm={6}>
+                <Grid
+                    size={{
+                        xs: 12,
+                        sm: 6
+                    }}>
                     <ShareframeInfoCard
                         title="Bild überspringen"
                         minHeight={INFO_CARD_HEIGHT}
@@ -476,7 +529,11 @@ const FrameActions: React.FC = () => {
                                     type: 'reactNode',
                                     value: (
                                         <Stack spacing={2}>
-                                            <Box display="flex" alignItems="center">
+                                            <Box
+                                                sx={{
+                                                    display: "flex",
+                                                    alignItems: "center"
+                                                }}>
                                                 <SkipNextOutlined sx={{ mr: 1 }} />
                                                 <Typography variant="body2">
                                                     Aktuelles Bild in der Bildwiedergabe überspringen.
@@ -507,7 +564,11 @@ const FrameActions: React.FC = () => {
                     />
                 </Grid>
 
-                <Grid item xs={12} sm={6}>
+                <Grid
+                    size={{
+                        xs: 12,
+                        sm: 6
+                    }}>
                     <ShareframeInfoCard
                         title="Bildschirm leeren"
                         minHeight={INFO_CARD_HEIGHT}
@@ -517,7 +578,11 @@ const FrameActions: React.FC = () => {
                                     type: 'reactNode',
                                     value: (
                                         <Stack spacing={2}>
-                                            <Box display="flex" alignItems="center">
+                                            <Box
+                                                sx={{
+                                                    display: "flex",
+                                                    alignItems: "center"
+                                                }}>
                                                 <DeleteOutlined sx={{ mr: 1 }} />
                                                 <Typography variant="body2">
                                                     Die aktuelle Anzeige löschen und einen leeren Bildschirm anzeigen.

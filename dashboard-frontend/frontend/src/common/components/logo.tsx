@@ -1,5 +1,5 @@
 import React from 'react';
-import { useColorThemeContext } from '@/context/colorTheme/colorThemeContext';
+import { useColorThemeContext } from '@/context/colorTheme/colorThemeContextValue';
 
 interface LogoProps {
     darkLogoSrc: string;

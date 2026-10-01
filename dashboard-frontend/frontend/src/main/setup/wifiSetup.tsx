@@ -53,7 +53,14 @@ const WifiSetup = () => {
                 disableGutters
                 sx={{ px: isSmallScreen ? 2 : 0, py: isSmallScreen ? 2 : 5 }}
             >
-                <Stack spacing={0} alignItems="center" sx={{ mt: 4, mb: 6, width: '100%' }}>
+                <Stack
+                    spacing={0}
+                    sx={{
+                        alignItems: "center",
+                        mt: 4,
+                        mb: 6,
+                        width: '100%'
+                    }}>
                     <Logo
                         darkLogoSrc="/logo-dark-full-shareframe.svg"
                         lightLogoSrc="/logo-light-full-shareframe.svg"
@@ -65,10 +72,18 @@ const WifiSetup = () => {
                 <Card elevation={1}>
                     <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                         {submitted ? (
-                            <Stack spacing={2} alignItems="center" sx={{ py: 2, textAlign: 'center' }}>
+                            <Stack
+                                spacing={2}
+                                sx={{
+                                    alignItems: "center",
+                                    py: 2,
+                                    textAlign: 'center'
+                                }}>
                                 <CheckCircleIcon color="success" sx={{ fontSize: 48 }} />
                                 <Typography variant="h6">WLAN gespeichert</Typography>
-                                <Typography variant="body2" color="text.secondary">
+                                <Typography variant="body2" sx={{
+                                    color: "text.secondary"
+                                }}>
                                     Das Gerät versucht jetzt, sich mit „{ssid}“ zu verbinden. Dabei
                                     wird dieser „shareframe-board“-Hotspot beendet und deine Verbindung
                                     trennt sich. Klappt die Verbindung nicht, erscheint der Hotspot
@@ -80,7 +95,12 @@ const WifiSetup = () => {
                                 <Typography variant="h6" gutterBottom>
                                     WLAN einrichten
                                 </Typography>
-                                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                <Typography
+                                    variant="body2"
+                                    sx={{
+                                        color: "text.secondary",
+                                        mb: 1
+                                    }}>
                                     Der Bilderrahmen konnte kein bekanntes WLAN finden. Gib hier deine
                                     Zugangsdaten ein, damit er sich wieder mit dem Internet verbinden kann.
                                 </Typography>
@@ -104,19 +124,21 @@ const WifiSetup = () => {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     helperText="Mindestens 8 Zeichen"
-                                    InputProps={{
-                                        endAdornment: (
-                                            <InputAdornment position="end">
-                                                <IconButton
-                                                    aria-label="Passwort anzeigen"
-                                                    onClick={() => setShowPassword((s) => !s)}
-                                                    onMouseDown={(e) => e.preventDefault()}
-                                                    edge="end"
-                                                >
-                                                    {showPassword ? <VisibilityOff /> : <Visibility />}
-                                                </IconButton>
-                                            </InputAdornment>
-                                        ),
+                                    slotProps={{
+                                        input: {
+                                            endAdornment: (
+                                                <InputAdornment position="end">
+                                                    <IconButton
+                                                        aria-label="Passwort anzeigen"
+                                                        onClick={() => setShowPassword((s) => !s)}
+                                                        onMouseDown={(e) => e.preventDefault()}
+                                                        edge="end"
+                                                    >
+                                                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                                                    </IconButton>
+                                                </InputAdornment>
+                                            ),
+                                        }
                                     }}
                                 />
 

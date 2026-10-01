@@ -46,7 +46,9 @@ const EntryAccordion = ({ entry }: { entry: UpdateHistoryEntry }) => {
                     <Typography variant="body1">
                         {(entry.from_version || DASH) + ' → ' + (entry.to_version || DASH)}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" sx={{
+                        color: "text.secondary"
+                    }}>
                         {fmtTimestamp(entry.timestamp)}
                     </Typography>
                 </Box>
@@ -71,7 +73,9 @@ const UpdateHistory = () => {
     }, [dispatch]);
 
     return (
-        <Stack width={"100%"} spacing={3}>
+        <Stack spacing={3} sx={{
+            width: "100%"
+        }}>
             <ShareframeInfoCard
                 title="Update-Verlauf"
                 sections={

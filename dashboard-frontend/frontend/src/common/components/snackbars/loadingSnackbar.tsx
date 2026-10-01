@@ -1,5 +1,5 @@
 import { CircularProgress, Paper, Theme, Typography, Box } from "@mui/material";
-import { useColorThemeContext } from "@/context/colorTheme/colorThemeContext";
+import { useColorThemeContext } from "@/context/colorTheme/colorThemeContextValue";
 import { SnackbarItem } from "@/store/snackbars/snackbars.Slice";
 
 interface ILoadingSnackbarProps {

@@ -9,7 +9,8 @@ import { ServiceType, SERVICE_LABELS } from '@/types';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import LogsContent from '@/main/monitoring/logsContent';
 import LogFilter, { LogFilterParams } from '@/main/monitoring/logFilter';
-import { HealthChip, RestartButton, formatUptime } from './serviceUtils';
+import { HealthChip, RestartButton } from './serviceUtils';
+import { formatUptime } from './formatUptime';
 
 const POLL_MS = 10000;
 
@@ -52,10 +53,14 @@ const ServiceDetail: React.FC<{ serviceId: ServiceType }> = ({ serviceId }) => {
             />
 
             <Box>
-                <Typography variant="h6" color="text.secondary" gutterBottom>
+                <Typography variant="h6" gutterBottom sx={{
+                    color: "text.secondary"
+                }}>
                     Protokolle
                 </Typography>
-                <Box mb={3}>
+                <Box sx={{
+                    mb: 3
+                }}>
                     <LogFilter onChange={setParams} onRefresh={loadLogs} loading={loading} defaultLines={500} />
                 </Box>
                 <LogsContent

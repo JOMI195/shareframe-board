@@ -17,19 +17,30 @@ export interface LogsContentProps {
 const LogsContent: React.FC<LogsContentProps> = ({ loading, error, logs }) => {
     if (loading) {
         return (
-            <Box display="flex" justifyContent="center" p={3}>
+            <Box
+                sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    p: 3
+                }}>
                 <CircularProgress />
             </Box>
         );
     }
 
     if (!logs || error) {
-        return <Typography color="text.secondary">Keine Protokolle verfügbar</Typography>;
+        return (
+            <Typography sx={{
+                color: "text.secondary"
+            }}>Keine Protokolle verfügbar</Typography>
+        );
     }
 
     return (
         <Box>
-            <Box mb={2}>
+            <Box sx={{
+                mb: 2
+            }}>
                 <Typography variant="body2">
                     Dienst: <strong>{SERVICE_LABELS[logs.service] ?? logs.service}</strong>
                 </Typography>
@@ -66,7 +77,9 @@ const LogsContent: React.FC<LogsContentProps> = ({ loading, error, logs }) => {
                             </Box>
                         ))
                     ) : (
-                        <Typography color="text.secondary">Keine Einträge gefunden</Typography>
+                        <Typography sx={{
+                            color: "text.secondary"
+                        }}>Keine Einträge gefunden</Typography>
                     )}
                 </CardContent>
             </Card>

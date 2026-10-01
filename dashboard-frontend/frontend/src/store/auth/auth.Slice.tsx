@@ -4,6 +4,7 @@ import { IServerResponse } from '@/types';
 import uuid from 'react-uuid';
 import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '../snackbars/snackbars.Slice';
 import { fetchWithTimeout } from '@/common/utils/fetch';
+import { getAuthStatusUrl, getLoginUrl, getChangePasswordUrl, getLogoutUrl } from '@/assets/endpoints/api/frame';
 
 // Types for Authentication State
 interface AuthState {
@@ -23,7 +24,7 @@ const initialState: AuthState = {
 export const checkAuthStatusThunk = createAsyncThunk(
   'auth/checkStatus',
   async () => {
-    const response = await fetchWithTimeout('/api/auth/status');
+    const response = await fetchWithTimeout(getAuthStatusUrl());
     const payload = await response.json();
     return payload?.data?.authenticated ?? false;
   }
@@ -44,7 +45,7 @@ export const loginThunk = createAsyncThunk(
         'otp' in credentials ? 'Überprüfung des OTP' : 'Passwort wird überprüft',
       ));
 
-      const response = await fetchWithTimeout('/api/auth/login', {
+      const response = await fetchWithTimeout(getLoginUrl(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -74,7 +75,7 @@ export const loginThunk = createAsyncThunk(
         ));
         return rejectWithValue(data.message || 'Authentication failed');
       }
-    } catch (error) {
+    } catch {
       // Remove loading snackbar
       dispatch(removeLoadingSnackbar(snackbarId));
 
@@ -104,7 +105,7 @@ export const changePasswordThunk = createAsyncThunk(
         'Passwort wird geändert',
       ));
 
-      const response = await fetchWithTimeout('/api/auth/change-password', {
+      const response = await fetchWithTimeout(getChangePasswordUrl(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -134,7 +135,7 @@ export const changePasswordThunk = createAsyncThunk(
         ));
         return rejectWithValue(data.message || 'Password change failed');
       }
-    } catch (error) {
+    } catch {
       dispatch(removeLoadingSnackbar(snackbarId));
 
       dispatch(addAlertSnackbar(
@@ -153,7 +154,7 @@ export const logoutThunk = createAsyncThunk(
   'auth/logout',
   async (_, { dispatch }) => {
     try {
-      await fetchWithTimeout('/api/auth/logout', {
+      await fetchWithTimeout(getLogoutUrl(), {
         method: 'POST',
       });
 

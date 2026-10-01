@@ -13,7 +13,7 @@ const SignOut = () => {
 
   const handleSignOut = async () => {
     await dispatch(logoutThunk());
-    navigate(getAuthenticationUrl() + getSignInUrl(), { replace: true });
+    navigate(getAuthenticationUrl() + getSignInUrl(), { replace: true, state: { signedOut: true } });
   };
 
   const handleCancel = () => {
@@ -36,12 +36,14 @@ const SignOut = () => {
         sx={{ mt: 3 }}
       >
         <Grid container spacing={2}>
-          <Grid item xs={12}>
-            <Typography variant="body1" textAlign={"center"}>
+          <Grid size={12}>
+            <Typography variant="body1" sx={{
+              textAlign: "center"
+            }}>
               {"Bist du dir wirklich sicher, dass du dich abmelden willst?"}
             </Typography>
           </Grid>
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Button
               type="button"
               form="sign-out-form"
@@ -53,7 +55,7 @@ const SignOut = () => {
               {"Abmelden"}
             </Button>
           </Grid>
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Button
               type="button"
               fullWidth

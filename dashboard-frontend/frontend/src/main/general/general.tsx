@@ -77,7 +77,9 @@ const General = () => {
 
     return (
         <>
-            <Stack width={"100%"} spacing={3}>
+            <Stack spacing={3} sx={{
+                width: "100%"
+            }}>
                 <ShareframeInfoCard
                     title="Gerät"
                     sections={[

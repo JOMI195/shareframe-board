@@ -8,14 +8,15 @@ const LoadingWall = () => {
 
     return (
         <Box
-            display="flex"
-            flexDirection={"column"}
-            justifyContent="center"
-            alignItems="center"
-            textAlign={"center"}
-            flexGrow={1}
-            height={"100vh"}
-        >
+            sx={{
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                alignItems: "center",
+                textAlign: "center",
+                flexGrow: 1,
+                height: "100vh"
+            }}>
             <Logo
                 darkLogoSrc="/logo-dark-full-shareframe.svg"
                 lightLogoSrc="/logo-light-full-shareframe.svg"

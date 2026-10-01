@@ -39,9 +39,10 @@ const timeRangeOptions = [
 const LogFilter: React.FC<LogFilterProps> = ({ onChange, onRefresh, loading, defaultRange = '3h', defaultLines = 1000 }) => {
     const [timeRange, setTimeRange] = useState<string>(defaultRange);
     const [customDate, setCustomDate] = useState<string>(
-        new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
+        () => new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
     );
     const [linesParam, setLinesParam] = useState<number>(defaultLines);
+    const [linesInput, setLinesInput] = useState<string>(String(defaultLines));
 
     // Backend expects "YYYY-MM-DD HH:MM:SS".
     const getTimestamp = (): string => {
@@ -61,11 +62,17 @@ const LogFilter: React.FC<LogFilterProps> = ({ onChange, onRefresh, loading, def
     return (
         <Card>
             <CardContent>
-                <Typography variant="h6" color="text.secondary" gutterBottom>
+                <Typography variant="h6" gutterBottom sx={{
+                    color: "text.secondary"
+                }}>
                     Filter
                 </Typography>
                 <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
+                    <Grid
+                        size={{
+                            xs: 12,
+                            sm: 6
+                        }}>
                         <TextField
                             select
                             label="Zeitraum"
@@ -81,30 +88,40 @@ const LogFilter: React.FC<LogFilterProps> = ({ onChange, onRefresh, loading, def
                             ))}
                         </TextField>
                     </Grid>
-                    <Grid item xs={12} sm={6}>
+                    <Grid
+                        size={{
+                            xs: 12,
+                            sm: 6
+                        }}>
                         <TextField
                             label="Anzahl Zeilen"
                             type="number"
                             fullWidth
-                            value={linesParam}
+                            value={linesInput}
                             onChange={(e) => {
+                                setLinesInput(e.target.value);
                                 const value = parseInt(e.target.value);
                                 if (!isNaN(value) && value > 0) setLinesParam(value);
                             }}
-                            InputProps={{ inputProps: { min: 1, max: 5000 } }}
+                            onBlur={() => setLinesInput(String(linesParam))}
                             helperText="Maximale Anzahl anzuzeigender Protokollzeilen"
+                            slotProps={{
+                                htmlInput: { min: 1, max: 5000 }
+                            }}
                         />
                     </Grid>
                     {timeRange === 'custom' && (
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 label="Datum und Uhrzeit"
                                 type="datetime-local"
                                 fullWidth
                                 value={customDate}
                                 onChange={(e) => setCustomDate(e.target.value)}
-                                InputLabelProps={{ shrink: true }}
                                 helperText="Benutzerdefinierter Startzeitpunkt für Protokolle"
+                                slotProps={{
+                                    inputLabel: { shrink: true }
+                                }}
                             />
                         </Grid>
                     )}

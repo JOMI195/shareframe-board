@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from '@/store';
 import { fetchWithTimeout } from '@/common/utils/fetch';
+import { getConnectionModeUrl } from '@/assets/endpoints/api/frame';
 
 // Network mode published by the board's wifi-mode-manager daemon and exposed
 // (publicly) at GET /api/connection/mode. Drives the status banner and the
@@ -30,7 +31,7 @@ export const fetchConnectionMode = createAsyncThunk(
     async (_, { rejectWithValue }) => {
         try {
             // Pessimistic timeout: tolerate slow/bad links during connecting.
-            const res = await fetchWithTimeout('/api/connection/mode', {}, 60000);
+            const res = await fetchWithTimeout(getConnectionModeUrl(), {}, 60000);
             const payload = await res.json();
             if (payload?.success) {
                 return payload.data as Partial<ConnectionModeState>;

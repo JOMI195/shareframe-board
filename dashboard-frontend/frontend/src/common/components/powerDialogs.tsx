@@ -1,5 +1,5 @@
 import ShareframeDialog from "@/common/components/shareframeDialog";
-import { usePiConnection } from "@/context/piConnection/piConnectionContext";
+import { usePiConnection } from "@/context/piConnection/piConnectionContextValue";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { closeRestartDialog, closeShutdownDialog, getDialogs } from "@/store/dialogs/dialogs.Slice";
 import { restartPi, shutdownPi } from "@/store/piPower/piPower.Slice";

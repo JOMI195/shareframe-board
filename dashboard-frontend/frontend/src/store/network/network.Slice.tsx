@@ -4,6 +4,7 @@ import uuid from 'react-uuid';
 import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '@/store/snackbars/snackbars.Slice';
 import { IServerResponse } from '@/types';
 import { fetchWithTimeout } from '@/common/utils/fetch';
+import { getConnectionStatusUrl, getConnectionSavedNetworksUrl, getConnectionConnectUrl, getConnectionForgetUrl, getApPasswordUrl } from '@/assets/endpoints/api/frame';
 
 // Interfaces
 export interface NetworkCredentials {
@@ -32,11 +33,11 @@ export const fetchNetworkData = createAsyncThunk(
     async (_, { dispatch, rejectWithValue }) => {
         try {
             // Current connection
-            const connResponse = await fetchWithTimeout('/api/connection/status');
+            const connResponse = await fetchWithTimeout(getConnectionStatusUrl());
             const connPayload = await connResponse.json();
 
             // Saved networks
-            const networksResponse = await fetchWithTimeout('/api/connection/saved-networks');
+            const networksResponse = await fetchWithTimeout(getConnectionSavedNetworksUrl());
             const networksPayload = await networksResponse.json();
 
             if (connPayload.success && networksPayload.success) {
@@ -71,7 +72,7 @@ export const addNetwork = createAsyncThunk(
                 'Netzwerk hinzufügen'
             ));
 
-            const response = await fetchWithTimeout('/api/connection/connect', {
+            const response = await fetchWithTimeout(getConnectionConnectUrl(), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -109,7 +110,7 @@ export const forgetNetwork = createAsyncThunk(
                 loadingSnackbarId,
                 'Netzwerk entfernen'
             ));
-            const response = await fetchWithTimeout('/api/connection/forget', {
+            const response = await fetchWithTimeout(getConnectionForgetUrl(), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -147,7 +148,7 @@ export const changeApPassword = createAsyncThunk(
                 loadingSnackbarId,
                 'AP-Passwort wird geändert'
             ));
-            const response = await fetchWithTimeout('/api/connection/ap-password', {
+            const response = await fetchWithTimeout(getApPasswordUrl(), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

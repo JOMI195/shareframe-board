@@ -12,7 +12,7 @@ import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import uuid from 'react-uuid';
-import { usePiConnection } from '@/context/piConnection/piConnectionContext';
+import { usePiConnection } from '@/context/piConnection/piConnectionContextValue';
 import { useAppDispatch, useAppSelector } from '@/store';
 import {
     fetchNetworkData,
@@ -59,7 +59,9 @@ const Network = () => {
 
     return (
         <>
-            <Stack width={"100%"} spacing={3}>
+            <Stack spacing={3} sx={{
+                width: "100%"
+            }}>
                 <ShareframeInfoCard
                     title="Übersicht (WIFI)"
                     sections={[
@@ -160,7 +162,9 @@ const Network = () => {
                                 type: 'reactNode',
                                 value: (
                                     <Stack spacing={0.5}>
-                                        <Typography variant="body2" color="text.secondary">
+                                        <Typography variant="body2" sx={{
+                                            color: "text.secondary"
+                                        }}>
                                             Findet der Bilderrahmen kein bekanntes WLAN, öffnet er
                                             diesen Hotspot zur Einrichtung.
                                         </Typography>

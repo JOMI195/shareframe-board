@@ -4,7 +4,7 @@ import NetworkStatusBanner from "@/common/components/networkStatusBanner";
 import { Outlet } from "react-router";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { useTimer } from "@/hooks/useTimer";
-import { useEffect } from "react";
+import { useEffect, useEffectEvent } from "react";
 import { startContinuousStatusCheck } from "@/store/slideshowStatus/slideshowStatus.Slice";
 import { fetchDisplayImagesLoopInterval, fetchNightMode } from "@/store/slideshowOperation/slideshowOperation.Slice";
 import { fetchFrameInfos } from "@/store/frameInfo/frameInfo.Slice";
@@ -34,11 +34,15 @@ const MainLayout = () => {
         };
     }, [dispatch]);
 
-    useEffect(() => {
+    const restartInitialLoadTimer = useEffectEvent(() => {
         if (prevPath !== (getAuthenticationUrl() + getSignOutUrl())) {
             resetAppIntitialLoadTimer();
             startAppIntitialLoadTimer();
         }
+    });
+
+    useEffect(() => {
+        restartInitialLoadTimer();
 
         dispatch(fetchDisplayImagesLoopInterval());
         dispatch(fetchNightMode());
