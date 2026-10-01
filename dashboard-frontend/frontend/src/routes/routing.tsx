@@ -21,7 +21,8 @@ import SignOut from '@/main/authentication/signOut/signOut';
 import RouterContext from '@/common/components/routerContext';
 import WifiSetup from '@/main/setup/wifiSetup';
 
-const Routing = createBrowserRouter([
+// eslint-disable-next-line react-refresh/only-export-components
+export const routes = [
   {
     element: <RouterContext />,
     children: [
@@ -125,6 +126,8 @@ const Routing = createBrowserRouter([
       }
     ]
   },
-]);
+];
+
+const Routing = createBrowserRouter(routes);
 
 export default Routing;

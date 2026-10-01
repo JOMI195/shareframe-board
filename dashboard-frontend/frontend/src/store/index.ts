@@ -6,12 +6,6 @@ import {
   persistStore,
   persistReducer,
   PersistConfig,
-  FLUSH,
-  REHYDRATE,
-  PAUSE,
-  PERSIST,
-  PURGE,
-  REGISTER,
   createMigrate,
   PersistedState,
 } from 'redux-persist';
@@ -19,6 +13,7 @@ import storage from 'redux-persist/es/storage';
 import rootReducer from './rootReducer';
 import autoMergeLevel2 from 'redux-persist/es/stateReconciler/autoMergeLevel2';
 import migrations from './migrations';
+import { serializableCheckOptions } from './setupStore';
 
 const persistConfig: PersistConfig<ReturnType<typeof rootReducer>> = {
   key: 'shareframe-dashboard-data',
@@ -33,11 +28,7 @@ const persistedReducer = persistReducer(persistConfig, rootReducer);
 export const store = configureStore({
   reducer: persistedReducer,
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
-      serializableCheck: {
-        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
-      },
-    }),
+    getDefaultMiddleware({ serializableCheck: serializableCheckOptions }),
 });
 
 export const persistor = persistStore(store);
