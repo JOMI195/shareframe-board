@@ -89,7 +89,6 @@ export const slideshowOperationSlice = createSlice({
             isUpdatingNightMode: boolean;
         }>) => {
             state.isUpdatingNightMode = action.payload.isUpdatingNightMode;
-            state.startTime = action.payload.isUpdatingNightMode ? Date.now() : null;
         },
         setFetchNightModeStatus: (state, action: PayloadAction<{
             isFetchingNightMode: boolean;
@@ -185,8 +184,7 @@ export const updateDisplayImagesLoopInterval = (intervalMins: number) => async (
 
     // Prevent multiple simultaneous operations
     if (currentState.isToggling || currentState.isClearingDisplay ||
-        currentState.isSkippingImage || currentState.isUpdatingInterval ||
-        currentState.isUpdatingNightMode) {
+        currentState.isSkippingImage || currentState.isUpdatingInterval) {
         return;
     }
 
@@ -330,12 +328,7 @@ export const updateNightMode = (
     dispatch: AppDispatch,
     getState: () => RootState
 ) => {
-    const currentState = getState().slideshowOperation;
-
-    // Prevent multiple simultaneous operations
-    if (currentState.isToggling || currentState.isClearingDisplay ||
-        currentState.isSkippingImage || currentState.isUpdatingInterval ||
-        currentState.isUpdatingNightMode) {
+    if (getState().slideshowOperation.isUpdatingNightMode) {
         return;
     }
 
@@ -381,9 +374,6 @@ export const updateNightMode = (
                     : 'Nachtmodus deaktiviert',
                 'success'
             ));
-
-            dispatch(resetTimer('slideshow-actions-timer'));
-            dispatch(startTimer('slideshow-actions-timer'));
         } else {
             throw new Error(payload.message || 'Failed to update night mode');
         }
@@ -421,8 +411,7 @@ export const skipImageThunk = () => async (
 
     // Prevent multiple simultaneous operations
     if (currentState.isToggling || currentState.isClearingDisplay ||
-        currentState.isSkippingImage || currentState.isUpdatingInterval ||
-        currentState.isUpdatingNightMode) {
+        currentState.isSkippingImage || currentState.isUpdatingInterval) {
         return;
     }
 
@@ -492,8 +481,7 @@ export const clearDisplayThunk = () => async (
 
     // Prevent multiple simultaneous operations
     if (currentState.isToggling || currentState.isClearingDisplay ||
-        currentState.isSkippingImage || currentState.isUpdatingInterval ||
-        currentState.isUpdatingNightMode) {
+        currentState.isSkippingImage || currentState.isUpdatingInterval) {
         return;
     }
 
@@ -570,8 +558,7 @@ export const toggleSlideshowThunk = () => async (
 
     // Prevent multiple simultaneous operations
     if (currentState.isToggling || currentState.isClearingDisplay ||
-        currentState.isSkippingImage || currentState.isUpdatingInterval ||
-        currentState.isUpdatingNightMode) {
+        currentState.isSkippingImage || currentState.isUpdatingInterval) {
         return;
     }
 
@@ -719,7 +706,7 @@ export const selectIsUpdatingNightMode = (state: RootState) => state.slideshowOp
 export const selectIsFetchingNightMode = (state: RootState) => state.slideshowOperation.isFetchingNightMode;
 export const selectIsAnyOperationActive = (state: RootState) => {
     const ops = state.slideshowOperation;
-    return ops.isToggling || ops.isClearingDisplay || ops.isSkippingImage || ops.isUpdatingInterval || ops.isUpdatingNightMode;
+    return ops.isToggling || ops.isClearingDisplay || ops.isSkippingImage || ops.isUpdatingInterval;
 };
 
 export const {

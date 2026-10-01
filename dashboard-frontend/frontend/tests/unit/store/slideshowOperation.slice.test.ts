@@ -24,7 +24,6 @@ describe('slideshowOperation slice', () => {
     ['clear', setClearDisplayStatus({ isClearingDisplay: true })],
     ['skip', setSkipImageStatus({ isSkippingImage: true })],
     ['interval', setUpdateIntervalStatus({ isUpdatingInterval: true })],
-    ['night mode', setUpdateNightModeStatus({ isUpdatingNightMode: true })],
   ])('a running %s operation blocks the others and stamps its start', (_name, action) => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-01T12:00:00Z'));
@@ -38,6 +37,13 @@ describe('slideshowOperation slice', () => {
   it('fetching the interval is not an operation', () => {
     const state = reducer(initial(), setFetchIntervalStatus({ isFetchingInterval: true }));
 
+    expect(selectIsAnyOperationActive({ ...rootState(), slideshowOperation: state })).toBe(false);
+  });
+
+  it('saving night mode is not an operation', () => {
+    const state = reducer(initial(), setUpdateNightModeStatus({ isUpdatingNightMode: true }));
+
+    expect(state.startTime).toBeNull();
     expect(selectIsAnyOperationActive({ ...rootState(), slideshowOperation: state })).toBe(false);
   });
 

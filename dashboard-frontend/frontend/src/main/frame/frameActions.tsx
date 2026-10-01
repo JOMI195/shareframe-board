@@ -179,6 +179,7 @@ const FrameActions: React.FC = () => {
     const isLoopLoading = isActive && !loopStarted && isConnected && lastCheckedAt !== null;
     const isTimerRunning = isSlideshowActionsTimerActive || isAppIntialLoadTimerActive;
     const isButtonsDisabled = isTimerRunning || isLoopLoading || isToggling || isClearingDisplay || isSkippingImage || !isConnected || lastCheckedAt === null;
+    const isNightModeDisabled = !isConnected || lastCheckedAt === null || isUpdatingNightMode;
 
     return (
         <>
@@ -443,7 +444,7 @@ const FrameActions: React.FC = () => {
                                                     <Switch
                                                         checked={nightEnabled}
                                                         onChange={(e) => setNightEnabled(e.target.checked)}
-                                                        disabled={isButtonsDisabled || isUpdatingNightMode}
+                                                        disabled={isNightModeDisabled}
                                                     />
                                                 }
                                                 label="Nachtmodus aktivieren"
@@ -455,7 +456,7 @@ const FrameActions: React.FC = () => {
                                                         value={nightStart}
                                                         label="Von"
                                                         onChange={(e) => setNightStart(Number(e.target.value))}
-                                                        disabled={isButtonsDisabled || isUpdatingNightMode || !nightEnabled}
+                                                        disabled={isNightModeDisabled || !nightEnabled}
                                                     >
                                                         {hours.map((h) => (
                                                             <MenuItem key={h} value={h}>{`${h}:00`}</MenuItem>
@@ -468,7 +469,7 @@ const FrameActions: React.FC = () => {
                                                         value={nightEnd}
                                                         label="Bis"
                                                         onChange={(e) => setNightEnd(Number(e.target.value))}
-                                                        disabled={isButtonsDisabled || isUpdatingNightMode || !nightEnabled}
+                                                        disabled={isNightModeDisabled || !nightEnabled}
                                                     >
                                                         {hours.map((h) => (
                                                             <MenuItem key={h} value={h}>{`${h}:00`}</MenuItem>
@@ -481,7 +482,7 @@ const FrameActions: React.FC = () => {
                                                 label="Intervall in der Nacht (Minuten)"
                                                 value={nightInterval}
                                                 onChange={(e) => setNightInterval(Number(e.target.value))}
-                                                disabled={isButtonsDisabled || isUpdatingNightMode || !nightEnabled}
+                                                disabled={isNightModeDisabled || !nightEnabled}
                                                 slotProps={{
                                                     htmlInput: {
                                                         min: NIGHT_MIN_MINS,
@@ -506,7 +507,7 @@ const FrameActions: React.FC = () => {
                                 startIcon={<SaveOutlined />}
                                 onClick={handleUpdateNightMode}
                                 fullWidth
-                                disabled={isButtonsDisabled || isUpdatingNightMode || isFetchingNightMode || isNightFormInvalid}
+                                disabled={isNightModeDisabled || isFetchingNightMode || isNightFormInvalid}
                             >
                                 Nachtmodus speichern
                             </Button>

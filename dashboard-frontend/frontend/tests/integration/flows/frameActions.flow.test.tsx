@@ -138,6 +138,41 @@ describe('frame actions', () => {
     expect(await night.calls[0].json()).toEqual({ enabled: true, start_hour: 2, end_hour: 5, interval_seconds: 3600 });
   });
 
+  it('saving night mode does not lock the display actions', async () => {
+    const { user } = await openHome();
+
+    await user.click(screen.getByLabelText('Nachtmodus aktivieren'));
+    await user.click(screen.getByRole('button', { name: 'Nachtmodus speichern' }));
+
+    expect(await screen.findByText('Nachtmodus aktiv von 2:00 bis 5:00 Uhr mit 60 Minuten Intervall')).toBeInTheDocument();
+    expect(screen.queryByText(/nächste Aktion erst wieder/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bild überspringen' })).toBeEnabled();
+  });
+
+  it('keeps night mode editable while the display actions are locked', async () => {
+    const { user } = await openHome();
+
+    await user.click(screen.getByRole('button', { name: 'Bild überspringen' }));
+    expect(await screen.findByText(/nächste Aktion erst wieder/)).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText('Nachtmodus aktivieren'));
+    await user.click(screen.getByRole('button', { name: 'Nachtmodus speichern' }));
+
+    expect(await screen.findByText('Nachtmodus aktiv von 2:00 bis 5:00 Uhr mit 60 Minuten Intervall')).toBeInTheDocument();
+  });
+
+  it('keeps night mode editable during the initial status lock', async () => {
+    renderRoute('/', { preloadedState: signedInState() });
+
+    expect(
+      await screen.findByText('Bitte warte einen Augenblick bis der aktuelle Status der Bildwiedergabe ermittelt wurde'),
+    ).toBeInTheDocument();
+    await advance(5_000);
+
+    expect(screen.getByRole('button', { name: 'Stoppen' })).toBeDisabled();
+    expect(screen.getByLabelText('Nachtmodus aktivieren')).toBeEnabled();
+  });
+
   it('marks night mode while it is active', async () => {
     server.use(
       ...withSlideshowStatus({
