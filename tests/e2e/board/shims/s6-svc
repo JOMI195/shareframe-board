@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+/opt/shims/_log "s6-svc $*"
+dir="${@: -1}"
+if [[ "$1" == "-r" && -f "$dir/pid" ]]; then
+    kill "$(cat "$dir/pid")"
+fi

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+dir="$1"
+if [[ -f "$dir/pid" ]] && kill -0 "$(cat "$dir/pid")" 2>/dev/null; then
+    echo "up (pid $(cat "$dir/pid")) $(( $(date +%s) - $(cat "$dir/started") )) seconds"
+else
+    echo "down (exitcode 0) 0 seconds"
+fi
