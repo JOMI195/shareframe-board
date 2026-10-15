@@ -5,6 +5,7 @@ export interface ReleaseFixture {
   release_notes: string;
   release_date: string;
   criticality: string;
+  is_newer: boolean;
 }
 
 export const makeRelease = (over: Partial<ReleaseFixture> = {}): ReleaseFixture => ({
@@ -12,6 +13,7 @@ export const makeRelease = (over: Partial<ReleaseFixture> = {}): ReleaseFixture 
   release_notes: 'Bugfixes',
   release_date: '2026-09-01T10:00:00Z',
   criticality: 'normal',
+  is_newer: true,
   ...over,
 });
 

@@ -44,15 +44,14 @@ AppConfig ConfigLoader::load(Profile profile)
                     {"/data/shareframe/.env.secrets.toml",
                      "/etc/shareframe/.env.secrets.toml",
                      ".env.secrets.toml"}),
-        resolveFile("SHAREFRAME_VERSION_FILE",
-                    {"/etc/shareframe/VERSION.toml", "VERSION.toml"}));
+        resolveFile("SHAREFRAME_RELEASE_FILE", {"/etc/shareframe-release"}));
 }
 
 AppConfig ConfigLoader::load(
     Profile profile,
     const std::string& configFilePath,
     const std::string& secretsFilePath,
-    const std::string& versionFilePath
+    const std::string& releaseFilePath
 ) {
     AppConfig cfg;
 
@@ -93,21 +92,21 @@ AppConfig ConfigLoader::load(
     if (!cfg.secrets.ed25519PrivateKey.empty())
         cfg.frameId = FrameIdentity::fingerprint(cfg.secrets.ed25519PrivateKey);
 
-    if (std::filesystem::exists(versionFilePath)) {
-        VersionConfig ver;
-        auto verr = readTomlFile(ver, versionFilePath);
-        if (verr)
-            throw std::runtime_error(
-                std::string("Failed to load version '") + versionFilePath
-                + "': " + glz::format_error(verr, ""));
-        cfg.version = ver.version;
-    } else {
-        cfg.version = "dev";
-    }
+    cfg.version = readVersion(releaseFilePath);
 
     resolvePaths(cfg);
     validate(cfg);
     return cfg;
+}
+
+std::string ConfigLoader::readVersion(const std::string& releaseFilePath)
+{
+    std::ifstream f(releaseFilePath);
+    std::string line;
+    while (std::getline(f, line))
+        if (line.rfind("VERSION=", 0) == 0 && line.size() > 8)
+            return line.substr(8);
+    return "dev";
 }
 
 void ConfigLoader::validate(const AppConfig& cfg)

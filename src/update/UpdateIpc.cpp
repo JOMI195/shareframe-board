@@ -16,7 +16,13 @@ nlohmann::json UpdateIpc::handle(const IpcMessage& msg)
             return {{"ok", false}, {"error", resp.errorMsg}, {"status_code", resp.statusCode}};
         try
         {
-            return {{"ok", true}, {"release", nlohmann::json::parse(resp.body)}};
+            auto release = nlohmann::json::parse(resp.body);
+            if (release.is_object())
+            {
+                const auto version = release.value("version", "");
+                release["is_newer"] = updates_.isNewerThanInstalled(version);
+            }
+            return {{"ok", true}, {"release", release}};
         }
         catch (...)
         {

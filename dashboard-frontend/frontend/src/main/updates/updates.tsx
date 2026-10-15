@@ -14,7 +14,6 @@ import { selectUpdatesState, fetchUpdateStatus, fetchLatestRelease } from '@/sto
 import { openUpdatesConfirmUpdateDialog } from '@/store/dialogs/dialogs.Slice';
 import { addLoadingSnackbar, removeLoadingSnackbar } from '@/store/snackbars/snackbars.Slice';
 import { usePiConnection } from '@/context/piConnection/piConnectionContextValue';
-import { isVersionNewer } from '@/common/utils/version';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import UpdateIcon from '@mui/icons-material/Update';
 import ErrorIcon from '@mui/icons-material/Error';
@@ -40,7 +39,7 @@ const Updates = () => {
     const { frameInfo } = useAppSelector(selectFrameInfoState);
     const { isConnected } = usePiConnection();
 
-    const isNewVersion = (latest_release && frameInfo && isVersionNewer(latest_release.version, frameInfo.version)) ?? false;
+    const isNewVersion = latest_release?.is_newer ?? false;
     const updateActive = update_status != null
         && ['checking', 'downloading', 'installing', 'awaiting-reboot'].includes(update_status.phase);
     const awaitingConfirm = update_status != null

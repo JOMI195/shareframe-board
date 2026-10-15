@@ -20,8 +20,6 @@ import SignalWifiStatusbarConnectedNoInternet4Icon from '@mui/icons-material/Sig
 import SignalWifiStatusbar4BarIcon from '@mui/icons-material/SignalWifiStatusbar4Bar';
 import InfoIcon from '@mui/icons-material/Info';
 import { selectUpdatesState } from '@/store/updates/updates.Slice';
-import { selectFrameInfoState } from '@/store/frameInfo/frameInfo.Slice';
-import { isVersionNewer } from '@/common/utils/version';
 import UpdateIcon from '@mui/icons-material/Update';
 import { getBadgeNumber } from '@/common/utils/badge';
 import { closeSidebar, getSidebar, openSidedbar } from '@/store/navigation/navigation.Slice';
@@ -40,9 +38,8 @@ const TopAppBar = () => {
     const { isAuthenticated } = useAppSelector(selectAuth);
 
     const { latest_release } = useAppSelector(selectUpdatesState);
-    const { frameInfo } = useAppSelector(selectFrameInfoState);
 
-    const isNewVersion = (latest_release && frameInfo && isVersionNewer(latest_release.version, frameInfo.version)) ?? false;
+    const isNewVersion = latest_release?.is_newer ?? false;
 
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('md'));

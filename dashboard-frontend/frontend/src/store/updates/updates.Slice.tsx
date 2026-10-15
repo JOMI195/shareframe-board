@@ -13,6 +13,7 @@ interface Release {
     release_notes: string;
     release_date: string;
     criticality: string;
+    is_newer: boolean;
 }
 
 export interface UpdateHistoryEntry {

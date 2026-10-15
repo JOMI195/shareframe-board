@@ -51,6 +51,16 @@ TEST_F(DashboardUpdateTest, LatestReleaseIsFetchedWithTheFrameToken)
     EXPECT_EQ(backend.requests(kLatest)[0].headers.at("Authorization"), "Frame-Access-Token test-token");
 }
 
+TEST_F(DashboardUpdateTest, LatestReleaseCarriesTheNewerVerdict)
+{
+    cfg.version = "1.2.0";
+    backend.on(std::string("GET ") + kLatest, 200, R"({"version":"1.10.0"})");
+    EXPECT_EQ(result(handlers.handleLatest(httpRequest("GET", "/"))).body["data"]["is_newer"], true);
+
+    backend.on(std::string("GET ") + kLatest, 200, R"({"version":"1.2.0"})");
+    EXPECT_EQ(result(handlers.handleLatest(httpRequest("GET", "/"))).body["data"]["is_newer"], false);
+}
+
 TEST_F(DashboardUpdateTest, NoReleaseOnTheServerIsNotAnError)
 {
     const auto [status, body] = result(handlers.handleLatest(httpRequest("GET", "/")));

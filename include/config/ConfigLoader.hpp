@@ -77,20 +77,6 @@ struct glz::meta<ImageConfig>
     );
 };
 
-struct VersionConfig
-{
-    std::string version;
-};
-
-template <>
-struct glz::meta<VersionConfig>
-{
-    using T = VersionConfig;
-    static constexpr auto value = glz::object(
-        "version", &T::version
-    );
-};
-
 template <>
 struct glz::meta<HeartbeatApplicationConfig>
 {
@@ -247,13 +233,14 @@ public:
         Profile profile,
         const std::string& configFilePath,
         const std::string& secretsFilePath,
-        const std::string& versionFilePath
+        const std::string& releaseFilePath
     );
 
 private:
     // Fail-fast check for required-no-default fields and out-of-range values.
     // Throws std::runtime_error listing every problem found. Called after merge.
     static void validate(const AppConfig& cfg);
+    static std::string readVersion(const std::string& releaseFilePath);
     static void resolvePaths(AppConfig& cfg);
     static void resolveField(std::string& field, const std::filesystem::path& base);
     static std::string resolveFile(const char* envVar,

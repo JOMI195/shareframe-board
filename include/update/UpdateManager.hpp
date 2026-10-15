@@ -42,7 +42,7 @@ public:
     [[nodiscard]] nlohmann::json status() const;
     [[nodiscard]] nlohmann::json history() const;
 
-    [[nodiscard]] static std::string currentVersion();
+    [[nodiscard]] bool isNewerThanInstalled(const std::string& candidate) const;
     [[nodiscard]] static bool isVersionNewer(const std::string& candidate, const std::string& current);
 
 private:
