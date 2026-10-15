@@ -91,6 +91,32 @@ describe('service detail', () => {
     expect(query.get('since_timestamp')).toMatch(/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/);
   });
 
+  it('switches the display to 4 gray levels and back', async () => {
+    const update = spyOnRequests('post', api.getDisplayQualityUrl());
+    server.use(update.handler);
+    const { user } = renderRoute('/services/display', { preloadedState: signedInState() });
+
+    const toggle = within(await findCard('Bildqualität')).getByRole('switch', { name: '4 Graustufen (Test)' });
+    await waitFor(() => expect(toggle).toBeEnabled());
+    expect(toggle).not.toBeChecked();
+
+    await user.click(toggle);
+    expect(await screen.findByText('4 Graustufen ab dem nächsten Bild')).toBeInTheDocument();
+    await waitFor(() => expect(toggle).toBeChecked());
+
+    await user.click(toggle);
+    await waitFor(() => expect(toggle).not.toBeChecked());
+    expect(await update.calls[0].json()).toEqual({ quality: 'gray4' });
+    expect(await update.calls[1].json()).toEqual({ quality: 'mono' });
+  });
+
+  it('offers the image quality only on the display page', async () => {
+    renderRoute('/services/websocket', { preloadedState: signedInState() });
+
+    await findCard('WebSocket');
+    expect(screen.queryByRole('heading', { name: 'Bildqualität' })).not.toBeInTheDocument();
+  });
+
   it('says so when the service logged nothing', async () => {
     server.use(...withLogs([]));
     renderRoute('/services/websocket', { preloadedState: signedInState() });

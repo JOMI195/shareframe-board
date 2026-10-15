@@ -26,6 +26,7 @@ export const getSlideshowNightModeUrl = () => `${frameBaseUrl()}/slideshow/night
 export const getSkipSlideshowImageUrl = () => `${frameBaseUrl()}/slideshow/skip`;
 export const getClearDisplayUrl = () => `${frameBaseUrl()}/clear`;
 export const getDisplayStatsUrl = () => `${frameBaseUrl()}/display/stats`;
+export const getDisplayQualityUrl = () => `${frameBaseUrl()}/display/quality`;
 
 // Service management
 const servicesBaseUrl = () => `${apiBaseUrl()}/services`;

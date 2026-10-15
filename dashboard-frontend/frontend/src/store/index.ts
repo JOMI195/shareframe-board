@@ -20,6 +20,7 @@ const persistConfig: PersistConfig<ReturnType<typeof rootReducer>> = {
   version: 3,
   storage,
   stateReconciler: autoMergeLevel2,
+  blacklist: ['displayQuality'],
   migrate: createMigrate(migrations, { debug: import.meta.env.VITE_APP_PRODUCTION === "False" ? true : false }),
 };
 
