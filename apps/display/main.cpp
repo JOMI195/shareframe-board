@@ -1,11 +1,9 @@
 #include "app/Bootstrap.hpp"
 #include "db/Database.hpp"
+#include "display/DisplayIpc.hpp"
 #include "display/DisplayManager.hpp"
 #include "events/EventBus.hpp"
-#include "events/Messages.hpp"
 #include "ipc/EventSubscriber.hpp"
-#include "ipc/EventTopics.hpp"
-#include "ipc/IpcProtocol.hpp"
 #include "ipc/NngRepServer.hpp"
 #include "repository/DisplayMetricsRepository.hpp"
 #include "repository/ImageRepository.hpp"
@@ -51,111 +49,16 @@ int main(int argc, char* argv[])
 
     eventBus.start();
 
-    // REP handler: commands publish to the bus and ack with {}; queries return
-    // data. Every request gets a reply (REQ/REP is lockstep).
-    NngRepServer repServer(cfg.ipc.displayRep, [&](const IpcMessage& msg) -> nlohmann::json
-    {
-        switch (msg.type)
-        {
-        case IpcMessageType::SkipImage:
-            spdlog::info("IPC: skip image");
-            eventBus.publish<Topic::SKIP_IMAGE>(SkipImageEvent{});
-            return nlohmann::json::object();
+    DisplayIpc displayIpc(eventBus, runtimeSettings, displayImageLoop, imageRepo, displayManager);
 
-        case IpcMessageType::UpdateDisplayInterval:
-        {
-            const int secs = msg.data.value("interval_secs", 0);
-            if (secs <= 0)
-            {
-                spdlog::warn("IPC: invalid interval_secs in update_display_interval");
-                return nlohmann::json::object();
-            }
-            spdlog::info("IPC: update display interval to {}s", secs);
-            eventBus.publish<Topic::UPDATE_DISPLAY_INTERVAL>(UpdateDisplayIntervalEvent{secs});
-            return nlohmann::json::object();
-        }
-
-        case IpcMessageType::GetDisplayInterval:
-            return {{"interval_secs", runtimeSettings.getDisplayInterval()}};
-
-        case IpcMessageType::UpdateNightMode:
-        {
-            const bool enabled = msg.data.value("enabled", false);
-            const int startHour = msg.data.value("start_hour", -1);
-            const int endHour = msg.data.value("end_hour", -1);
-            const int secs = msg.data.value("interval_secs", 0);
-            if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23
-                || startHour == endHour || secs <= 0)
-            {
-                spdlog::warn("IPC: invalid payload in update_night_mode");
-                return nlohmann::json::object();
-            }
-            spdlog::info("IPC: update night mode to enabled={}, window={}-{}, interval={}s",
-                         enabled, startHour, endHour, secs);
-            eventBus.publish<Topic::UPDATE_NIGHT_MODE>(
-                UpdateNightModeEvent{enabled, startHour, endHour, secs});
-            return nlohmann::json::object();
-        }
-
-        case IpcMessageType::GetNightMode:
-            return {
-                {"enabled", runtimeSettings.isNightModeEnabled()},
-                {"start_hour", runtimeSettings.getNightStartHour()},
-                {"end_hour", runtimeSettings.getNightEndHour()},
-                {"interval_secs", runtimeSettings.getNightInterval()},
-                {"active_now", runtimeSettings.isNightNow()}
-            };
-
-        case IpcMessageType::ClearDisplay:
-            spdlog::info("IPC: clear display");
-            eventBus.publish<Topic::CLEAR_DISPLAY>(nlohmann::json{});
-            return nlohmann::json::object();
-
-        case IpcMessageType::SetSlideshowActive:
-        {
-            const bool active = msg.data.value("active", true);
-            spdlog::info("IPC: set slideshow active -> {}", active);
-            eventBus.publish<Topic::SET_SLIDESHOW_ACTIVE>(SetSlideshowActiveEvent{active});
-            return nlohmann::json::object();
-        }
-
-        case IpcMessageType::GetSlideshowActive:
-            return {
-                {"active", runtimeSettings.isSlideshowActive()},
-                {"loop_started", displayImageLoop.isReady()},
-                {"image_count", static_cast<int64_t>(imageRepo.getAllIds().size())}
-            };
-
-        case IpcMessageType::GetSecondsUntilNext:
-            return {{"seconds_until_next", displayImageLoop.secondsUntilNext()}};
-
-        case IpcMessageType::GetHealth:
-            return {{"running", true}};
-
-        case IpcMessageType::GetDisplayStats:
-            return displayManager.healthSnapshot();
-        }
-        return nlohmann::json::object();
-    });
+    // REP: commands and queries from the dashboard.
+    NngRepServer repServer(cfg.ipc.displayRep, [&](const IpcMessage& msg) { return displayIpc.handle(msg); });
     repServer.start();
 
-    // SUB: broadcast events from the websocket service → internal bus.
+    // SUB: broadcast events from the websocket service.
     EventSubscriber subscriber(cfg.ipc.wsPub, [&](const std::string& topic, const nlohmann::json& payload)
     {
-        if (topic == event_topics::DisplayClear)
-        {
-            eventBus.publish<Topic::CLEAR_DISPLAY>(payload);
-        }
-        else if (topic == event_topics::ImageRemoved)
-        {
-            eventBus.publish<Topic::IMAGE_REMOVED>(payload.value("ids", std::vector<int64_t>{}));
-        }
-        else if (topic == event_topics::ImageNew)
-        {
-            // Wake the loop so defaults yield to a freshly arrived image.
-            spdlog::debug("Event: new image {}", payload.value("id", int64_t{0}));
-            eventBus.publish<Topic::IMAGE_NEW>(payload.value("id", int64_t{0}));
-        }
+        displayIpc.onEvent(topic, payload);
     });
     subscriber.start();
 

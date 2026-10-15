@@ -5,6 +5,19 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+option(SHAREFRAME_BUILD_TESTS "Build the GoogleTest suites" OFF)
+option(SHAREFRAME_SANITIZE "Instrument with AddressSanitizer + UBSan" OFF)
+option(SHAREFRAME_COVERAGE "Instrument with gcov coverage" OFF)
+
+if (SHAREFRAME_SANITIZE)
+    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address,undefined)
+endif ()
+if (SHAREFRAME_COVERAGE)
+    add_compile_options(--coverage -O0)
+    add_link_options(--coverage)
+endif ()
+
 include(FetchContent)
 find_package(Threads REQUIRED)
 add_library(external INTERFACE)
@@ -158,7 +171,6 @@ target_link_libraries(shareframe-common PUBLIC external)
 
 # --- shareframe-websocket: network + image ingest ---
 set(WEBSOCKET_SOURCES
-        apps/websocket/main.cpp
         src/net/WebsocketClient.cpp
         src/image/ImageManager.cpp
         src/task/ImageUpdate.cpp
@@ -166,24 +178,27 @@ set(WEBSOCKET_SOURCES
         src/task/ExpiredImageCleanup.cpp
         src/ipc/EventBridge.cpp
 )
-add_executable(shareframe-websocket ${WEBSOCKET_SOURCES})
-target_link_libraries(shareframe-websocket PRIVATE shareframe-common)
+add_library(shareframe-websocket-lib STATIC ${WEBSOCKET_SOURCES})
+target_link_libraries(shareframe-websocket-lib PUBLIC shareframe-common)
+add_executable(shareframe-websocket apps/websocket/main.cpp)
+target_link_libraries(shareframe-websocket PRIVATE shareframe-websocket-lib)
 
 # --- shareframe-display: e-paper rendering + slideshow ---
 set(DISPLAY_SOURCES
-        apps/display/main.cpp
+        src/display/DisplayIpc.cpp
         src/display/DisplayManager.cpp
         src/display/stb_impl.cpp
         src/task/DisplayImageLoop.cpp
         src/task/DisplayClear.cpp
         src/settings/RuntimeSettings.cpp
 )
-add_executable(shareframe-display ${DISPLAY_SOURCES})
-target_link_libraries(shareframe-display PRIVATE shareframe-common waveshare_epd stb)
+add_library(shareframe-display-lib STATIC ${DISPLAY_SOURCES})
+target_link_libraries(shareframe-display-lib PUBLIC shareframe-common waveshare_epd stb)
+add_executable(shareframe-display apps/display/main.cpp)
+target_link_libraries(shareframe-display PRIVATE shareframe-display-lib)
 
 # --- shareframe-dashboard: dashboard process ---
 set(DASHBOARD_SOURCES
-        apps/dashboard/main.cpp
         src/dashboard/DashboardServer.cpp
         src/dashboard/SessionManager.cpp
         src/dashboard/WifiManager.cpp
@@ -193,24 +208,22 @@ set(DASHBOARD_SOURCES
         src/dashboard/ServiceHandlers.cpp
         src/dashboard/UpdateHandlers.cpp
 )
-add_executable(shareframe-dashboard ${DASHBOARD_SOURCES})
-target_link_libraries(shareframe-dashboard PRIVATE shareframe-common)
+add_library(shareframe-dashboard-lib STATIC ${DASHBOARD_SOURCES})
+target_link_libraries(shareframe-dashboard-lib PUBLIC shareframe-common)
+add_executable(shareframe-dashboard apps/dashboard/main.cpp)
+target_link_libraries(shareframe-dashboard PRIVATE shareframe-dashboard-lib)
 
 # --- shareframe-heartbeat: heartbeat process ---
-set(HEARTBEAT_SOURCES
-        apps/heartbeat/main.cpp
-        src/task/Heartbeat.cpp
-)
-add_executable(shareframe-heartbeat ${HEARTBEAT_SOURCES})
-target_link_libraries(shareframe-heartbeat PRIVATE shareframe-common)
+add_library(shareframe-heartbeat-lib STATIC src/task/Heartbeat.cpp)
+target_link_libraries(shareframe-heartbeat-lib PUBLIC shareframe-common)
+add_executable(shareframe-heartbeat apps/heartbeat/main.cpp)
+target_link_libraries(shareframe-heartbeat PRIVATE shareframe-heartbeat-lib)
 
 # --- shareframe-update: A/B image update service (RAUC + tryboot) ---
-set(UPDATE_SOURCES
-        apps/update/main.cpp
-        src/update/UpdateManager.cpp
-)
-add_executable(shareframe-update ${UPDATE_SOURCES})
-target_link_libraries(shareframe-update PRIVATE shareframe-common)
+add_library(shareframe-update-lib STATIC src/update/UpdateManager.cpp src/update/UpdateIpc.cpp)
+target_link_libraries(shareframe-update-lib PUBLIC shareframe-common)
+add_executable(shareframe-update apps/update/main.cpp)
+target_link_libraries(shareframe-update PRIVATE shareframe-update-lib)
 
 # --- shareframe-migrate: standalone DB migration oneshot entrypoint ---
 # Thin wrapper over Database::init(cfg, true) (logic lives in shareframe-common).
@@ -219,9 +232,12 @@ target_link_libraries(shareframe-update PRIVATE shareframe-common)
 add_executable(shareframe-migrate apps/migrate/main.cpp)
 target_link_libraries(shareframe-migrate PRIVATE shareframe-common)
 
+# Local-only files are gitignored, so a fresh clone (CI, Docker) lacks them.
 set(CONFIG_FILES config.toml .env.secrets.toml config.dev.toml config.prod.toml)
 foreach (f ${CONFIG_FILES})
-    configure_file(${CMAKE_SOURCE_DIR}/${f} ${CMAKE_BINARY_DIR}/${f} COPYONLY)
+    if (EXISTS ${CMAKE_SOURCE_DIR}/${f})
+        configure_file(${CMAKE_SOURCE_DIR}/${f} ${CMAKE_BINARY_DIR}/${f} COPYONLY)
+    endif ()
 endforeach ()
 
 file(GLOB_RECURSE ASSET_IMAGE_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/assets/image/*)
@@ -260,7 +276,7 @@ install(TARGETS shareframe-websocket shareframe-display shareframe-dashboard sha
 if (NOT SHAREFRAME_PROFILE)
     set(SHAREFRAME_PROFILE prod)
 endif ()
-if (NOT EXISTS ${CMAKE_SOURCE_DIR}/config.${SHAREFRAME_PROFILE}.toml)
+if (NOT SHAREFRAME_BUILD_TESTS AND NOT EXISTS ${CMAKE_SOURCE_DIR}/config.${SHAREFRAME_PROFILE}.toml)
     message(FATAL_ERROR "SHAREFRAME_PROFILE='${SHAREFRAME_PROFILE}' but config.${SHAREFRAME_PROFILE}.toml does not exist")
 endif ()
 
@@ -276,3 +292,17 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/migrations/
         FILES_MATCHING PATTERN "*.sql")
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/
         DESTINATION ${CMAKE_INSTALL_DATADIR}/shareframe/assets)
+
+if (SHAREFRAME_BUILD_TESTS)
+    FetchContent_Declare(
+            googletest
+            GIT_REPOSITORY https://github.com/google/googletest.git
+            GIT_TAG v1.17.0
+            GIT_SHALLOW TRUE
+            EXCLUDE_FROM_ALL
+    )
+    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+    enable_testing()
+    add_subdirectory(tests)
+endif ()
