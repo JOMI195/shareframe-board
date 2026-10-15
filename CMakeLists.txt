@@ -114,6 +114,17 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(nng)
 target_link_libraries(external INTERFACE nng)
 
+# QR Code generator (Nayuki, MIT) — Wi-Fi setup screen. Ships no CMakeLists.
+FetchContent_Declare(
+        qrcodegen
+        GIT_REPOSITORY https://github.com/nayuki/QR-Code-generator.git
+        GIT_TAG v1.8.0
+        GIT_SHALLOW TRUE
+        EXCLUDE_FROM_ALL
+)
+FetchContent_MakeAvailable(qrcodegen)
+add_library(qrcodegen STATIC ${qrcodegen_SOURCE_DIR}/cpp/qrcodegen.cpp)
+target_include_directories(qrcodegen PUBLIC ${qrcodegen_SOURCE_DIR}/cpp)
 
 add_subdirectory(external/waveshare)
 add_subdirectory(external/stb)
@@ -133,6 +144,7 @@ set(COMMON_SOURCES
         src/auth/TokenAuth.cpp
         src/util/Base64.cpp
         src/util/FileHash.cpp
+        src/util/WifiMode.cpp
         src/repository/TokenRepository.cpp
         src/repository/ImageRepository.cpp
         src/repository/SettingsRepository.cpp
@@ -187,13 +199,18 @@ target_link_libraries(shareframe-websocket PRIVATE shareframe-websocket-lib)
 set(DISPLAY_SOURCES
         src/display/DisplayIpc.cpp
         src/display/DisplayManager.cpp
+        src/display/PhotoRenderer.cpp
         src/display/stb_impl.cpp
+        src/display/ApNetworkSetupScreenRenderer.cpp
         src/task/DisplayImageLoop.cpp
         src/task/DisplayClear.cpp
+        src/task/ApNetworkSetupScreen.cpp
+        src/task/DisplayTaskManager.cpp
+        src/task/WifiModeWatcher.cpp
         src/settings/RuntimeSettings.cpp
 )
 add_library(shareframe-display-lib STATIC ${DISPLAY_SOURCES})
-target_link_libraries(shareframe-display-lib PUBLIC shareframe-common waveshare_epd stb)
+target_link_libraries(shareframe-display-lib PUBLIC shareframe-common waveshare_epd stb qrcodegen)
 add_executable(shareframe-display apps/display/main.cpp)
 target_link_libraries(shareframe-display PRIVATE shareframe-display-lib)
 
@@ -240,8 +257,8 @@ foreach (f ${CONFIG_FILES})
     endif ()
 endforeach ()
 
-file(GLOB_RECURSE ASSET_IMAGE_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/assets/image/*)
-foreach (ASSET_FILE ${ASSET_IMAGE_FILES})
+file(GLOB_RECURSE ASSET_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/assets/*)
+foreach (ASSET_FILE ${ASSET_FILES})
     file(RELATIVE_PATH REL_PATH ${CMAKE_SOURCE_DIR} ${ASSET_FILE})
     configure_file(
             ${ASSET_FILE}

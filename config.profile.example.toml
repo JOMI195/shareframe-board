@@ -12,3 +12,8 @@ migrations_path = "migrations"
 
 [image]
 image_save_path = "images"
+
+[display]
+mock_display = true
+mock_output_dir = "panel"
+wifi_mode_path = "wifi-mode.dev.json"

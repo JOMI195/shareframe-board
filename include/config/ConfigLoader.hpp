@@ -131,7 +131,10 @@ struct glz::meta<DisplayConfig>
         "night_mode_enabled", &T::nightModeEnabled,
         "night_start_hour", &T::nightStartHour,
         "night_end_hour", &T::nightEndHour,
-        "night_interval_secs", &T::nightIntervalSecs
+        "night_interval_secs", &T::nightIntervalSecs,
+        "wifi_mode_path", &T::wifiModePath,
+        "setup_url", &T::setupUrl,
+        "setup_font_path", &T::setupFontPath
     );
 };
 

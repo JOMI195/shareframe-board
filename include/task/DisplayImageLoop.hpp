@@ -17,6 +17,9 @@ public:
                      ImageRepository& repo, DisplayManager& display,
                      RuntimeSettings& settings);
 
+    /// Bus handlers stay registered across stop/start; call once before the bus starts.
+    void subscribe();
+
     void start() override;
 
     /// Seconds until the next scheduled image change, or -1 when the slideshow
@@ -31,6 +34,7 @@ protected:
 
 private:
     void _armNextChange(); // schedule next change = now + interval
+    [[nodiscard]] bool _paint(const std::filesystem::path& path, const std::stop_token& st) const;
     void _onImageRemoved(const std::vector<int64_t>& removedIds);
     void _onImageNew();
     void _onSkipImage();

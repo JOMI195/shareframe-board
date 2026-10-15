@@ -30,6 +30,7 @@ interval_secs = 900
 min_refresh_secs = 1
 loading_image_path = "/usr/share/shareframe/assets/image/loading"
 default_images_path = "/usr/share/shareframe/assets/image/default"
+setup_font_path = "/usr/share/shareframe/assets/font/DejaVuSans.ttf"
 clear_target_hour = 3
 night_mode_enabled = false
 night_start_hour = 2

@@ -35,6 +35,9 @@ night_mode_enabled = true
 night_start_hour = 2
 night_end_hour = 5
 night_interval_secs = 3600
+wifi_mode_path = "/run/shareframe/wifi-mode.json"
+setup_url = "http://192.168.4.1"
+setup_font_path = "assets/font/DejaVuSans.ttf"
 
 [update]
 http_latest_url = "/api/frame-updates/latest/"

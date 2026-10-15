@@ -1,6 +1,7 @@
 #pragma once
 #include "events/Topic.hpp"
 #include <nlohmann/json.hpp>
+#include <string>
 #include <vector>
 
 // --- Topic → Message type mapping ---
@@ -37,3 +38,13 @@ template <> struct TopicMessage<Topic::SKIP_IMAGE>                { using type =
 template <> struct TopicMessage<Topic::UPDATE_DISPLAY_INTERVAL>   { using type = UpdateDisplayIntervalEvent; };
 template <> struct TopicMessage<Topic::UPDATE_NIGHT_MODE>         { using type = UpdateNightModeEvent; };
 template <> struct TopicMessage<Topic::SET_SLIDESHOW_ACTIVE>      { using type = SetSlideshowActiveEvent; };
+
+// Wi-Fi setup screen: whether the panel should show it, and the AP to join
+struct ApSetupStateEvent
+{
+    bool required = false;
+    std::string ssid;
+    std::string password;
+    bool operator==(const ApSetupStateEvent&) const = default;
+};
+template <> struct TopicMessage<Topic::AP_SETUP_STATE> { using type = ApSetupStateEvent; };

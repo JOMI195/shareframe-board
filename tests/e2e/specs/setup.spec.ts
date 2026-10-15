@@ -1,4 +1,4 @@
-import { expectShimCall, setWifiMode } from '../support/board';
+import { attachPanel, expectShimCall, Frame, setWifiMode, showsApSetup, showsDefault, waitForPanel } from '../support/board';
 import { expect, test } from '../support/fixtures';
 
 // The hotspot fallback: no internet, the owner joins the board's AP and sets up Wi-Fi
@@ -33,4 +33,22 @@ test('the hotspot password is only shown to hotspot clients and signed-in owners
 
   await setWifiMode('ap');
   expect((await mode()).ap_password).toBe('hotspot123');
+});
+
+test('a frame booting without Wi-Fi shows the setup QR until it connects', async ({ board }, testInfo) => {
+  await setWifiMode('ap');
+  await board.restartService('display');
+  await waitForPanel(showsApSetup, 'Wi-Fi setup screen');
+
+  const frame = await Frame.read();
+  await attachPanel(testInfo, 'wifi-setup');
+  // Only this area shows through the passepartout; see ApNetworkSetupScreenRenderer::SAFE_AREA.
+  const safe = { x0: 82, y0: 44, x1: 718, y1: 436 };
+  expect(frame.blackRatio(safe.x0, safe.y0, 382, safe.y1), 'QR code').toBeGreaterThan(0.2);
+  expect(frame.blackRatio(402, safe.y0, safe.x1, safe.y1), 'instructions').toBeGreaterThan(0);
+  for (const [x0, y0, x1, y1] of [[0, 0, 800, safe.y0], [0, safe.y1, 800, 480], [0, 0, safe.x0, 480], [safe.x1, 0, 800, 480]])
+    expect(frame.blackRatio(x0, y0, x1, y1), `ink behind the passepartout at ${x0},${y0}`).toBe(0);
+
+  await setWifiMode('connected');
+  await waitForPanel(showsDefault, 'slideshow back after connecting');
 });

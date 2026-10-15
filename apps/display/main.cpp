@@ -10,7 +10,10 @@
 #include "repository/SettingsRepository.hpp"
 #include "settings/RuntimeSettings.hpp"
 #include "task/DisplayClear.hpp"
+#include "task/ApNetworkSetupScreen.hpp"
 #include "task/DisplayImageLoop.hpp"
+#include "task/DisplayTaskManager.hpp"
+#include "task/WifiModeWatcher.hpp"
 #include <spdlog/spdlog.h>
 
 // Owns all display behavior. Commands/queries arrive over nng REP, broadcast
@@ -39,13 +42,21 @@ int main(int argc, char* argv[])
     DisplayManager displayManager(cfg, displayMetrics);
     if (!cfg.display.mockDisplay)
         displayMetrics.increment("app_boot_total");
-    displayManager.init();
 
-    // Display tasks subscribe to the bus — wire them before eventBus.start().
+    // Display tasks subscribe to the bus — wire them before eventBus.start(). The
+    // manager boots the panel and starts/stops the content tasks itself.
     DisplayImageLoop displayImageLoop(eventBus, cfg, imageRepo, displayManager, runtimeSettings);
-    displayImageLoop.start();
+    ApNetworkSetupScreen apNetworkSetupScreen(eventBus, cfg, displayManager);
+    DisplayTaskManager displayTaskManager(eventBus, cfg, displayManager, displayImageLoop,
+                                          apNetworkSetupScreen, runtimeSettings);
+    WifiModeWatcher wifiModeWatcher(eventBus, cfg);
     DisplayClear displayClear(eventBus, cfg, displayManager);
+    displayImageLoop.subscribe();
+    displayTaskManager.subscribe();
+    displayClear.subscribe();
     displayClear.start();
+    displayTaskManager.start();
+    wifiModeWatcher.start();
 
     eventBus.start();
 
@@ -68,9 +79,10 @@ int main(int argc, char* argv[])
     displayManager.requestShutdown();
     subscriber.stop();
     repServer.stop();
+    wifiModeWatcher.stop();
     eventBus.stop();
+    displayTaskManager.stop();
     displayClear.stop();
-    displayImageLoop.stop();
 
     // Tasks stopped; leave a blank white screen (e-paper is bistable). No-op if
     // already cleared.

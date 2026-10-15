@@ -1,4 +1,5 @@
 #include "task/DisplayImageLoop.hpp"
+#include "display/PhotoRenderer.hpp"
 #include "events/Messages.hpp"
 #include "settings/RuntimeSettings.hpp"
 #include <algorithm>
@@ -22,7 +23,7 @@ DisplayImageLoop::DisplayImageLoop(EventBus& bus, const AppConfig& cfg,
 {
 }
 
-void DisplayImageLoop::start()
+void DisplayImageLoop::subscribe()
 {
     bus_.subscribe<Topic::IMAGE_REMOVED>(
         [this](const std::vector<int64_t>& ids) { _onImageRemoved(ids); });
@@ -36,7 +37,10 @@ void DisplayImageLoop::start()
         [this](const UpdateNightModeEvent& evt) { _onUpdateNightMode(evt); });
     bus_.subscribe<Topic::SET_SLIDESHOW_ACTIVE>(
         [this](const SetSlideshowActiveEvent& evt) { _onSetSlideshowActive(evt); });
+}
 
+void DisplayImageLoop::start()
+{
     logger_->info("Starting DisplayImageLoop (interval={}s, minRefresh={}s, active={})",
                   settings_.getDisplayInterval(), cfg_.display.minRefreshSecs,
                   settings_.isSlideshowActive());
@@ -160,11 +164,13 @@ void DisplayImageLoop::_run(const std::stop_token st)
                     if (defaultImageIdx_ >= defaultImages.size())
                         defaultImageIdx_ = 0;
 
-                    if (const auto& path = defaultImages[defaultImageIdx_]; display_.displayImage(path))
+                    if (const auto& path = defaultImages[defaultImageIdx_]; _paint(path, st))
                     {
                         ready_.store(true);
                         logger_->info("Displaying default image ({})", path.string());
                     }
+                    else if (st.stop_requested())
+                        break;
                     else
                         logger_->error("Failed to display default image: {}", path.string());
 
@@ -203,11 +209,13 @@ void DisplayImageLoop::_run(const std::stop_token st)
             }
 
             // Display the image (DisplayManager enforces min refresh)
-            if (display_.displayImage(image.imagePath))
+            if (_paint(image.imagePath, st))
             {
                 ready_.store(true);
                 logger_->info("Displaying image {} ({})", nextId, image.imagePath.string());
             }
+            else if (st.stop_requested())
+                break;
             else
                 logger_->error("Failed to display image {}", nextId);
 
@@ -237,6 +245,12 @@ void DisplayImageLoop::_run(const std::stop_token st)
                          [&st] { return st.stop_requested(); });
         }
     }
+    nextChangeAtMs_.store(0);
+}
+
+bool DisplayImageLoop::_paint(const std::filesystem::path& path, const std::stop_token& st) const
+{
+    return display_.displayBuffer(PhotoRenderer::render(path), path.string(), st);
 }
 
 void DisplayImageLoop::_onImageNew()

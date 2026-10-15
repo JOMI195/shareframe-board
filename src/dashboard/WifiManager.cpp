@@ -1,13 +1,14 @@
 #include "dashboard/WifiManager.hpp"
 #include "util/Subprocess.hpp"
+#include "util/WifiMode.hpp"
 #include <algorithm>
 #include <fstream>
 #include <sstream>
 
 const std::vector<std::string> WifiManager::protectedNetworks_ = {"preconfigured", "Jomi"};
 
-WifiManager::WifiManager()
-    : logger_(spdlog::default_logger()->clone("WifiManager"))
+WifiManager::WifiManager(std::string wifiModePath)
+    : logger_(spdlog::default_logger()->clone("WifiManager")), wifiModePath_(std::move(wifiModePath))
 {
 }
 
@@ -121,26 +122,7 @@ nlohmann::json WifiManager::connect(const std::string& ssid, const std::string& 
 
 nlohmann::json WifiManager::getWifiMode() const
 {
-    std::ifstream f("/run/shareframe/wifi-mode.json");
-    if (f)
-    {
-        try
-        {
-            nlohmann::json j;
-            f >> j;
-            return j;
-        }
-        catch (const std::exception& e)
-        {
-            logger_->warn("failed to parse wifi-mode.json: {}", e.what());
-        }
-    }
-
-    // Daemon hasn't published yet (early boot) — report a benign default.
-    return {
-        {"mode", "connecting"}, {"ssid", ""}, {"internet", false},
-        {"ap_ssid", ""}, {"ap_password", ""}
-    };
+    return WifiMode::read(wifiModePath_);
 }
 
 nlohmann::json WifiManager::forget(const std::string& ssid) const
