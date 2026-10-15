@@ -59,8 +59,8 @@ describe('updates', () => {
     expect(store.getState().loadingWall.isLoadingWallVisible).toBe(true);
   });
 
-  it('does not offer an older release', async () => {
-    server.use(...withRelease(makeRelease({ version: '1.1.0' })));
+  it('does not offer a release the board reports as not newer', async () => {
+    server.use(...withRelease(makeRelease({ version: '1.1.0', is_newer: false })));
     openUpdates();
 
     expect(await screen.findByText('Keine Updates verfügbar')).toBeInTheDocument();
