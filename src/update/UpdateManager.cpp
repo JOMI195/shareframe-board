@@ -12,7 +12,6 @@ namespace fs = std::filesystem;
 
 namespace
 {
-constexpr auto kReleaseFile = "/etc/shareframe-release";
 constexpr auto kPendingFile = "/data/rauc/pending";
 constexpr auto kPendingMeta = "/data/rauc/pending-meta.json";
 constexpr auto kHistoryFile = "/data/shareframe/update-history.jsonl";
@@ -51,14 +50,9 @@ UpdateManager::UpdateManager(const AppConfig& cfg, HTTPClient& http, AuthTokenMa
 
 UpdateManager::~UpdateManager() = default;
 
-std::string UpdateManager::currentVersion()
+bool UpdateManager::isNewerThanInstalled(const std::string& candidate) const
 {
-    std::ifstream f(kReleaseFile);
-    std::string line;
-    while (std::getline(f, line))
-        if (line.rfind("VERSION=", 0) == 0)
-            return line.substr(8);
-    return "";
+    return isVersionNewer(candidate, cfg_.version);
 }
 
 bool UpdateManager::isVersionNewer(const std::string& candidate, const std::string& current)
@@ -171,7 +165,7 @@ bool UpdateManager::startUpdate(std::string& error)
         return false;
     }
     const std::string version = release->value("version", "");
-    if (!isVersionNewer(version, currentVersion()))
+    if (!isNewerThanInstalled(version))
     {
         error = "No newer version available";
         return false;
@@ -210,7 +204,7 @@ void UpdateManager::_worker(nlohmann::json release)
     fs::create_directories("/data/rauc", ec);
     {
         std::ofstream meta(kPendingMeta);
-        meta << nlohmann::json{{"from_version", currentVersion()}, {"to_version", version}}.dump() << "\n";
+        meta << nlohmann::json{{"from_version", cfg_.version}, {"to_version", version}}.dump() << "\n";
     }
 
     fs::create_directories(kCacheDir, ec);
@@ -313,7 +307,7 @@ void UpdateManager::startPeriodicCheck()
                     continue;
                 const std::string version = release->value("version", "");
                 const std::string criticality = release->value("criticality", "");
-                if (!isVersionNewer(version, currentVersion()))
+                if (!isNewerThanInstalled(version))
                     continue;
                 logger_->info("Update available: {} ({})", version, criticality);
                 if (criticality == cfg_.update.autoInstallCriticality)
@@ -333,7 +327,7 @@ nlohmann::json UpdateManager::status() const
         {"phase", phaseName(phase_)},
         {"error", error_},
         {"target_version", targetVersion_},
-        {"current_version", currentVersion()},
+        {"current_version", cfg_.version},
         {"booted_slot", _bootedSlot()},
         {"committed_slot", _committedSlot()},
         {"pending_slot", _pendingSlot()},

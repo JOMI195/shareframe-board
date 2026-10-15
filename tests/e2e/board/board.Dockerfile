@@ -24,8 +24,7 @@ COPY tests/e2e/board/config.toml /etc/shareframe/config.toml
 COPY tests/e2e/board/secrets.toml /etc/shareframe/.env.secrets.toml
 COPY tests/e2e/board/shims/ /opt/shims/
 COPY tests/e2e/board/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN echo "VERSION=1.2.0" > /etc/shareframe-release \
-    && echo 'version = "1.2.0"' > /etc/shareframe/VERSION.toml
+RUN echo "VERSION=1.2.0" > /etc/shareframe-release
 ENV PATH=/opt/shims:$PATH \
     SHAREFRAME_PROFILE=dev
 HEALTHCHECK --interval=1s --timeout=2s --retries=60 \

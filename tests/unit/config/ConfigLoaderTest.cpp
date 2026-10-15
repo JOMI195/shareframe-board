@@ -31,7 +31,7 @@ database_path = "db"
     AppConfig load(Profile p = Profile::Dev)
     {
         return ConfigLoader::load(p, (dir / "config.toml").string(), (dir / "secrets.toml").string(),
-                                  (dir / "VERSION.toml").string());
+                                  (dir / "shareframe-release").string());
     }
 
     TempDir dir;
@@ -69,10 +69,16 @@ TEST_F(ConfigLoaderTest, RelativePathsResolveAgainstBaseDir)
     EXPECT_EQ(cfg.image.imageSavePath, "/base/images");
 }
 
-TEST_F(ConfigLoaderTest, VersionFileIsRead)
+TEST_F(ConfigLoaderTest, VersionIsReadFromReleaseFile)
 {
-    write(dir / "VERSION.toml", "version = \"1.4.2\"\n");
+    write(dir / "shareframe-release", "OS_SHA=abc1234\nVERSION=1.4.2\nAPP_SHA=def5678\n");
     EXPECT_EQ(load().version, "1.4.2");
+}
+
+TEST_F(ConfigLoaderTest, ReleaseFileWithoutVersionFallsBackToDev)
+{
+    write(dir / "shareframe-release", "OS_SHA=abc1234\nVERSION=\n");
+    EXPECT_EQ(load().version, "dev");
 }
 
 TEST_F(ConfigLoaderTest, ValidationListsEveryProblem)
