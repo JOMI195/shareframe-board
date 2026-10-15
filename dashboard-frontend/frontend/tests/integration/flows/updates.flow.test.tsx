@@ -43,6 +43,22 @@ describe('updates', () => {
     expect(await screen.findByText('Suche nach neuster Version fehlgeschlagen')).toBeInTheDocument();
   });
 
+  it('lists the bullet points of the release notes', async () => {
+    server.use(...withRelease(makeRelease({ version: '1.3.0', release_notes: '- Neue Bildeffekte\n\n- Bugfixes' })));
+    openUpdates();
+
+    const items = await screen.findAllByRole('listitem');
+    expect(items.map((item) => item.textContent)).toEqual(['Neue Bildeffekte', 'Bugfixes']);
+  });
+
+  it('hides the notes section for a release without notes', async () => {
+    server.use(...withRelease(makeRelease({ version: '1.3.0', release_notes: '' })));
+    openUpdates();
+
+    expect(await screen.findByText('Neue Version verfügbar')).toBeInTheDocument();
+    expect(screen.queryByText('Umfang')).not.toBeInTheDocument();
+  });
+
   it('offers a newer version and installs it after confirmation', async () => {
     const perform = spyOnRequests('post', api.getPerformUpdateUrl());
     server.use(...withRelease(makeRelease({ version: '1.3.0', release_notes: 'Neue Bildeffekte' })), perform.handler);
