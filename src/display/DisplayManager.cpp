@@ -46,7 +46,8 @@ DisplayManager::~DisplayManager()
 #ifdef EPD_HARDWARE_ENABLED
     if (_initialized && !_cfg.display.mockDisplay)
     {
-        EPD_7IN5_V2_Sleep();
+        if (_panelPowered)
+            _hwSleep();
         DEV_Module_Exit();
         _logger->info("Display hardware cleaned up");
     }
@@ -256,7 +257,11 @@ void DisplayManager::_hwSleep()
 {
 #ifdef EPD_HARDWARE_ENABLED
     EPD_7IN5_V2_Sleep();
-    _logger->debug("Panel powered down (deep sleep)");
+    DEV_Digital_Write(EPD_RST_PIN, 0);
+    DEV_Digital_Write(EPD_DC_PIN, 0);
+    DEV_Digital_Write(EPD_PWR_PIN, 0);
+    _panelPowered = false;
+    _logger->debug("Panel deep sleep + power cut");
 #endif
 }
 
@@ -298,6 +303,8 @@ bool DisplayManager::_hwInit(const bool gray4)
         }
         _initialized = true;
     }
+    DEV_Digital_Write(EPD_PWR_PIN, 1);
+    _panelPowered = true;
     const auto t0 = std::chrono::steady_clock::now();
     if ((gray4 ? EPD_7IN5_V2_Init_4Gray() : EPD_7IN5_V2_Init()) != 0)
     {
