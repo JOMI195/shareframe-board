@@ -135,7 +135,21 @@ describe('frame actions', () => {
     await user.click(screen.getByRole('button', { name: 'Nachtmodus speichern' }));
 
     expect(await screen.findByText('Nachtmodus aktiv von 2:00 bis 5:00 Uhr mit 60 Minuten Intervall')).toBeInTheDocument();
-    expect(await night.calls[0].json()).toEqual({ enabled: true, start_hour: 2, end_hour: 5, interval_seconds: 3600 });
+    expect(await night.calls[0].json()).toEqual({ enabled: true, start_hour: 2, end_hour: 5, interval_seconds: 3600, blank: false });
+  });
+
+  it('blanks the panel at night instead of slowing down', async () => {
+    const night = spyOnRequests('post', api.getSlideshowNightModeUrl());
+    server.use(night.handler);
+    const { user } = await openHome();
+
+    await user.click(screen.getByLabelText('Nachtmodus aktivieren'));
+    await user.click(screen.getByLabelText('Bildschirm nachts ausschalten'));
+    expect(within(card('Nachtmodus')).getByLabelText('Intervall in der Nacht (Minuten)')).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Nachtmodus speichern' }));
+
+    expect(await screen.findByText('Nachtmodus aktiv von 2:00 bis 5:00 Uhr mit ausgeschaltetem Bildschirm')).toBeInTheDocument();
+    expect(await night.calls[0].json()).toMatchObject({ enabled: true, blank: true });
   });
 
   it('saving night mode does not lock the display actions', async () => {
@@ -176,7 +190,7 @@ describe('frame actions', () => {
   it('marks night mode while it is active', async () => {
     server.use(
       ...withSlideshowStatus({
-        night_mode: { enabled: true, start_hour: 22, end_hour: 6, interval_seconds: 7200, active_now: true },
+        night_mode: { enabled: true, start_hour: 22, end_hour: 6, interval_seconds: 7200, blank: false, active_now: true },
       }),
     );
     await openHome();

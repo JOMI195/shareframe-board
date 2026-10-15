@@ -10,6 +10,7 @@ export interface SlideshowStatusPayload {
     start_hour: number;
     end_hour: number;
     interval_seconds: number;
+    blank: boolean;
     active_now: boolean;
   };
 }
@@ -20,6 +21,6 @@ export const makeSlideshowStatus = (over: Partial<SlideshowStatusPayload> = {}):
   image_count: 12,
   interval_seconds: 900,
   seconds_until_next: 300,
-  night_mode: { enabled: false, start_hour: 2, end_hour: 5, interval_seconds: 3600, active_now: false },
+  night_mode: { enabled: false, start_hour: 2, end_hour: 5, interval_seconds: 3600, blank: false, active_now: false },
   ...over,
 });
