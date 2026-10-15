@@ -56,11 +56,13 @@ struct DisplayConfig
     std::string loadingImagePath = "assets/image/loading";
     std::string defaultImagesPath = "assets/image/default";
     int clearTargetHour = 2;
-    // Quiet hours: the rotation slows to a longer interval to save panel wear.
-    bool nightModeEnabled = false;
-    int nightStartHour = 2;
-    int nightEndHour = 5;
+    // Quiet hours: the rotation slows to a longer interval to save panel wear,
+    // or with blank the panel stays white until the window ends.
+    bool nightModeEnabled = true;
+    int nightStartHour = 1;
+    int nightEndHour = 6;
     int nightIntervalSecs = 3600;
+    bool nightBlank = true;
     std::string wifiModePath = "/run/shareframe/wifi-mode.json";
     std::string setupUrl = "http://192.168.4.1";
     std::string setupFontPath = "assets/font/DejaVuSans.ttf";

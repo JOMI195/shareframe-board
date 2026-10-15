@@ -1,3 +1,4 @@
+import { DASHBOARD_PASSWORD } from '../support/board';
 import { expect, signIn, test } from '../support/fixtures';
 
 test('protected pages redirect to sign-in', async ({ page }) => {
@@ -12,6 +13,15 @@ test('a wrong password is rejected', async ({ page }) => {
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(page.getByText('Passwort ungültig')).toBeVisible();
   await expect(page).toHaveURL(/\/auth\/sign-in/);
+});
+
+test('a valid password signs in', async ({ page }) => {
+  await page.goto('/auth/sign-in');
+  await page.getByRole('button', { name: 'Mit Passwort anmelden' }).click();
+  await page.getByLabel(/Passwort/).fill(DASHBOARD_PASSWORD);
+  await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByText('Bilderwiedergabe').first()).toBeVisible();
 });
 
 test('an OTP is verified against the server', async ({ page }) => {

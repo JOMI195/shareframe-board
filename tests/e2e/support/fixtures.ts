@@ -25,12 +25,14 @@ export const test = base.extend<Fixtures>({
     async ({ server, board }, use) => {
       await resetBoardState();
       await server.reset();
+      // The migrated database blanks the panel from 1 to 6, so tests at night would see no pictures.
+      await board.post('/api/frame/slideshow/night-mode', { enabled: false, start_hour: 1, end_hour: 6, interval_seconds: 3600, blank: false });
       await expect.poll(async () => (await board.slideshowStatus()).image_count, { message: 'user images cleared' }).toBe(0);
       if (!(await board.slideshowStatus()).active) await board.post('/api/frame/slideshow', { action: 'start' });
       // nng PUB/SUB drops the removal event while a restarted service reconnects,
       // which leaves a deleted picture on the panel until the next change.
       const panel = await readPanel();
-      if (panel && !showsDefault(panel)) await board.post('/api/frame/slideshow/skip');
+      if (panel && !showsDefault(panel)) await board.skip();
       await waitForPanel(showsDefault, 'board back on default images');
       await use();
     },

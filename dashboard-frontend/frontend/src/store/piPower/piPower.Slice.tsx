@@ -4,7 +4,7 @@ import uuid from 'react-uuid';
 import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '@/store/snackbars/snackbars.Slice';
 import { IServerResponse } from '@/types';
 import { fetchWithTimeout } from '@/common/utils/fetch';
-import { getClearDisplayUrl, getRestartPiUrl, getShutdownPiUrl, getSystemHealthUrl } from '@/assets/endpoints/api/frame';
+import { getClearDisplayUrl, getFactoryResetUrl, getRestartPiUrl, getShutdownPiUrl, getSystemHealthUrl } from '@/assets/endpoints/api/frame';
 import { showLoadingWall } from '../loadingWall/loadingWall.Slice';
 import { getHomeUrl } from '@/assets/endpoints/app/appEndpoints';
 
@@ -122,6 +122,36 @@ export const shutdownPi = createAsyncThunk<void, (path: string) => void, { state
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             dispatch(addAlertSnackbar(uuid(), "Herunterfahrprozess fehlgeschlagen", "error"));
+            return rejectWithValue(errorMessage);
+        } finally {
+            dispatch(removeLoadingSnackbar(snackbarId));
+        }
+    }
+);
+
+export const factoryResetPi = createAsyncThunk<void, (path: string) => void, { state: RootState, dispatch: AppDispatch }>(
+    'piPower/factoryResetPi',
+    async (navigate, { dispatch, rejectWithValue }) => {
+        const snackbarId = uuid();
+        try {
+            dispatch(addLoadingSnackbar(snackbarId, "Setze Bilderrahmen zurück"));
+
+            const result = await sendPowerCommand(getFactoryResetUrl());
+            if (result === 'rejected') {
+                dispatch(addAlertSnackbar(uuid(), "Zurücksetzen fehlgeschlagen", "error"));
+                return rejectWithValue('Zurücksetzen fehlgeschlagen');
+            }
+
+            navigate(getHomeUrl());
+            dispatch(showLoadingWall("Der Bilderrahmen wird auf Werkseinstellungen zurückgesetzt …"));
+
+            // The reset wipes Wi-Fi, password and sessions, so the board never comes
+            // back to this dashboard; don't wait for it.
+            await pollHealth('down', { maxWaitMs: 120000, consecutive: 2 });
+            dispatch(showLoadingWall("Der Bilderrahmen wurde auf Werkseinstellungen zurückgesetzt und startet im Einrichtungsmodus. Verbinde dich mit seinem WLAN, um ihn neu einzurichten."));
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            dispatch(addAlertSnackbar(uuid(), "Zurücksetzen fehlgeschlagen", "error"));
             return rejectWithValue(errorMessage);
         } finally {
             dispatch(removeLoadingSnackbar(snackbarId));

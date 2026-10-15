@@ -4,6 +4,7 @@ import { expect, signIn, test, trackApiErrors } from '../support/fixtures';
 // which catches a renamed route or field on either side.
 const pages: [string, string | RegExp][] = [
   ['/', 'Bilderwiedergabe'],
+  ['/slideshow/', 'Wiedergabereihenfolge'],
   ['/network/', 'Aktuelles Netzwerk'],
   ['/updates/', 'Keine Updates verfügbar'],
   ['/update-history/', 'Update-Verlauf'],

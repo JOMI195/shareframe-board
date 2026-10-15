@@ -32,7 +32,8 @@ DisplayManager::~DisplayManager()
 #ifdef EPD_HARDWARE_ENABLED
     if (_initialized && !_cfg.display.mockDisplay)
     {
-        EPD_7IN5_V2_Sleep();
+        if (_panelPowered)
+            _hwSleep();
         DEV_Module_Exit();
         _logger->info("Display hardware cleaned up");
     }
@@ -66,10 +67,12 @@ void DisplayManager::init()
         std::this_thread::sleep_for(std::chrono::seconds(FIRST_START_SETTLE_SECS));
 }
 
-void DisplayManager::clear()
+void DisplayManager::clear(const std::stop_token st)
 {
     std::lock_guard lock(_hwMutex);
-    _waitMinRefresh();
+    _waitMinRefresh(st);
+    if (st.stop_requested())
+        return;
     _clearHw();
 }
 
@@ -103,6 +106,7 @@ void DisplayManager::_clearHw()
         _logger->info("[mock] Display clear");
         if (!_cfg.display.mockOutputDir.empty())
             _writeMockPanel(std::vector<uint8_t>(BUFFER_SIZE, 0xFF), "cleared", {});
+        _recordScreen("cleared", {});
         _lastDisplayTime.store(std::chrono::steady_clock::now());
         _isCleared = true;
         return;
@@ -134,6 +138,7 @@ void DisplayManager::_clearHw()
         _metrics.setIfUnset("epd_first_use_at", nowUnix());
         _consecutiveFailures = 0;
         _isCleared = true;
+        _recordScreen("cleared", {});
         _logger->info("Display cleared (panel refresh {} ms)", ms);
     }
 #else
@@ -182,6 +187,7 @@ bool DisplayManager::_sendBufferHw(const std::vector<uint8_t>& buffer, const std
         _logger->info("[mock] Display: {}", source);
         if (!_cfg.display.mockOutputDir.empty())
             _writeMockPanel(buffer, "image", source);
+        _recordScreen("image", source);
         _lastDisplayTime.store(std::chrono::steady_clock::now());
         _isCleared = false;
         return true;
@@ -213,6 +219,7 @@ bool DisplayManager::_sendBufferHw(const std::vector<uint8_t>& buffer, const std
     _metrics.setIfUnset("epd_first_use_at", nowUnix());
     _consecutiveFailures = 0;
     _isCleared = false;
+    _recordScreen("image", source);
     _logger->info("Displayed {} (panel refresh {} ms)", source, refreshMs);
     return true;
 #else
@@ -237,7 +244,11 @@ void DisplayManager::_hwSleep()
 {
 #ifdef EPD_HARDWARE_ENABLED
     EPD_7IN5_V2_Sleep();
-    _logger->debug("Panel powered down (deep sleep)");
+    DEV_Digital_Write(EPD_RST_PIN, 0);
+    DEV_Digital_Write(EPD_DC_PIN, 0);
+    DEV_Digital_Write(EPD_PWR_PIN, 0);
+    _panelPowered = false;
+    _logger->debug("Panel deep sleep + power cut");
 #endif
 }
 
@@ -279,6 +290,8 @@ bool DisplayManager::_hwInit()
         }
         _initialized = true;
     }
+    DEV_Digital_Write(EPD_PWR_PIN, 1);
+    _panelPowered = true;
     const auto t0 = std::chrono::steady_clock::now();
     if (EPD_7IN5_V2_Init() != 0)
     {
@@ -328,6 +341,18 @@ void DisplayManager::_waitMinRefresh(const std::stop_token& st) const
     });
     std::unique_lock lk(_waitMtx);
     _waitCv.wait_for(lk, remaining, [this, &st] { return _shuttingDown.load() || st.stop_requested(); });
+}
+
+ScreenSnapshot DisplayManager::screenSnapshot() const
+{
+    std::lock_guard lk(_screenMtx);
+    return _screen;
+}
+
+void DisplayManager::_recordScreen(const std::string& state, const std::string& source)
+{
+    std::lock_guard lk(_screenMtx);
+    _screen = {state, source, _screen.seq + 1, nowUnix()};
 }
 
 void DisplayManager::_writeMockPanel(const std::vector<uint8_t>& buffer, const std::string& state,

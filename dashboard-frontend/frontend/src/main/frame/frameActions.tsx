@@ -40,6 +40,7 @@ import {
     selectNightStartHour,
     selectNightEndHour,
     selectNightIntervalMins,
+    selectNightBlank,
     updateNightMode
 } from '@/store/slideshowOperation/slideshowOperation.Slice';
 import { selectSlideshowStatus } from '@/store/slideshowStatus/slideshowStatus.Slice';
@@ -47,6 +48,7 @@ import { usePiConnection } from '@/context/piConnection/piConnectionContextValue
 import { useTimer } from '@/hooks/useTimer';
 import { syncSpecificTimer } from '@/store/timers/timers.Slice';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
+import NowShowingCard from './nowShowingCard';
 
 const INFO_CARD_HEIGHT = "250px";
 
@@ -56,7 +58,7 @@ const FrameActions: React.FC = () => {
 
     const { isConnected } = usePiConnection();
     const { isToggling, isClearingDisplay, isSkippingImage, isFetchingInterval, isUpdatingInterval, isFetchingNightMode, isUpdatingNightMode } = useAppSelector(selectSlideshowOperation);
-    const { isActive, loopStarted, imageCount, lastCheckedAt, secondsUntilNext } = useAppSelector(selectSlideshowStatus);
+    const { isActive, loopStarted, isRefreshing, imageCount, lastCheckedAt, secondsUntilNext, nowShowing } = useAppSelector(selectSlideshowStatus);
 
     // Interval form state
     const [intervalValue, setIntervalValue] = useState<number>(useAppSelector(selectDisplayRefreshInterval));
@@ -67,14 +69,16 @@ const FrameActions: React.FC = () => {
     const storedNightStart = useAppSelector(selectNightStartHour);
     const storedNightEnd = useAppSelector(selectNightEndHour);
     const storedNightInterval = useAppSelector(selectNightIntervalMins);
+    const storedNightBlank = useAppSelector(selectNightBlank);
     const isNightActiveNow = useAppSelector(selectNightModeActiveNow);
 
     const [nightEnabled, setNightEnabled] = useState<boolean>(storedNightEnabled);
     const [nightStart, setNightStart] = useState<number>(storedNightStart);
     const [nightEnd, setNightEnd] = useState<number>(storedNightEnd);
     const [nightInterval, setNightInterval] = useState<number>(storedNightInterval);
+    const [nightBlank, setNightBlank] = useState<boolean>(storedNightBlank);
 
-    const storedNightKey = `${storedNightEnabled}|${storedNightStart}|${storedNightEnd}|${storedNightInterval}`;
+    const storedNightKey = `${storedNightEnabled}|${storedNightStart}|${storedNightEnd}|${storedNightInterval}|${storedNightBlank}`;
     const [seededNightKey, setSeededNightKey] = useState(storedNightKey);
     if (storedNightKey !== seededNightKey) {
         setSeededNightKey(storedNightKey);
@@ -82,6 +86,7 @@ const FrameActions: React.FC = () => {
         setNightStart(storedNightStart);
         setNightEnd(storedNightEnd);
         setNightInterval(storedNightInterval);
+        setNightBlank(storedNightBlank);
     }
 
     // Live countdown to the next image change: seeded from the polled status
@@ -103,6 +108,7 @@ const FrameActions: React.FC = () => {
     const countdownText =
         !(isConnected && lastCheckedAt !== null) ? 'Unbekannt'
             : !isActive ? 'Pausiert'
+                : isRefreshing ? 'Wird aktualisiert…'
                 : remaining != null ? formatCountdown(remaining) : '—';
 
     const {
@@ -169,7 +175,7 @@ const FrameActions: React.FC = () => {
     const hours = Array.from({ length: 24 }, (_, h) => h);
 
     const handleUpdateNightMode = () => {
-        dispatch(updateNightMode(nightEnabled, nightStart, nightEnd, nightInterval));
+        dispatch(updateNightMode(nightEnabled, nightStart, nightEnd, nightInterval, nightBlank));
     };
 
     const isNightFormInvalid = nightStart === nightEnd
@@ -178,7 +184,7 @@ const FrameActions: React.FC = () => {
 
     const isLoopLoading = isActive && !loopStarted && isConnected && lastCheckedAt !== null;
     const isTimerRunning = isSlideshowActionsTimerActive || isAppIntialLoadTimerActive;
-    const isButtonsDisabled = isTimerRunning || isLoopLoading || isToggling || isClearingDisplay || isSkippingImage || !isConnected || lastCheckedAt === null;
+    const isButtonsDisabled = isTimerRunning || isLoopLoading || isToggling || isClearingDisplay || isSkippingImage || isRefreshing || !isConnected || lastCheckedAt === null;
     const isNightModeDisabled = !isConnected || lastCheckedAt === null || isUpdatingNightMode;
 
     return (
@@ -241,6 +247,10 @@ const FrameActions: React.FC = () => {
                             }
                         ]}
                     />
+                </Grid>
+
+                <Grid size={12}>
+                    <NowShowingCard nowShowing={nowShowing} />
                 </Grid>
 
                 {!isSlideshowActionsTimerActive && isAppIntialLoadTimerActive && (
@@ -436,7 +446,7 @@ const FrameActions: React.FC = () => {
                                                 }}>
                                                 <BedtimeOutlined sx={{ mr: 1 }} />
                                                 <Typography variant="body2">
-                                                    In den Nachtstunden seltener wechseln, um den Bildschirm zu schonen.
+                                                    In den Nachtstunden den Bildschirm ausschalten oder seltener wechseln, um ihn zu schonen.
                                                 </Typography>
                                             </Box>
                                             <FormControlLabel
@@ -448,6 +458,16 @@ const FrameActions: React.FC = () => {
                                                     />
                                                 }
                                                 label="Nachtmodus aktivieren"
+                                            />
+                                            <FormControlLabel
+                                                control={
+                                                    <Switch
+                                                        checked={nightBlank}
+                                                        onChange={(e) => setNightBlank(e.target.checked)}
+                                                        disabled={isNightModeDisabled || !nightEnabled}
+                                                    />
+                                                }
+                                                label="Bildschirm nachts ausschalten"
                                             />
                                             <Box sx={{ display: 'flex', gap: 1 }}>
                                                 <FormControl sx={{ flex: 1 }}>
@@ -482,7 +502,7 @@ const FrameActions: React.FC = () => {
                                                 label="Intervall in der Nacht (Minuten)"
                                                 value={nightInterval}
                                                 onChange={(e) => setNightInterval(Number(e.target.value))}
-                                                disabled={isNightModeDisabled || !nightEnabled}
+                                                disabled={isNightModeDisabled || !nightEnabled || nightBlank}
                                                 slotProps={{
                                                     htmlInput: {
                                                         min: NIGHT_MIN_MINS,

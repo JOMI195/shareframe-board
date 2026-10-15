@@ -27,6 +27,7 @@ interface ShareframeDialogProps {
     fullWidth?: boolean;
     showActions?: boolean;
     confirmDisabled?: boolean;
+    confirmColor?: 'primary' | 'error';
     children: ReactNode;
 }
 
@@ -41,6 +42,7 @@ const ShareframeDialog: React.FC<ShareframeDialogProps> = ({
     fullWidth = true,
     showActions = true,
     confirmDisabled: disableConfirm = false,
+    confirmColor = 'primary',
     children
 }) => {
     const theme = useTheme();
@@ -106,6 +108,7 @@ const ShareframeDialog: React.FC<ShareframeDialogProps> = ({
                                 <Grid size={6}>
                                     <Button
                                         variant="contained"
+                                        color={confirmColor}
                                         onClick={onConfirm}
                                         disabled={disableConfirm}
                                         fullWidth

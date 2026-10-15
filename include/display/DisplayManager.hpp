@@ -19,6 +19,16 @@ enum class RefreshPolicy
     Immediate
 };
 
+/// What the panel shows: the source last painted ("image") or a white panel
+/// ("cleared"); seq 0 and state "empty" before the first refresh.
+struct ScreenSnapshot
+{
+    std::string state = "empty";
+    std::string source;
+    int64_t seq = 0;
+    int64_t updatedAt = 0;
+};
+
 class DisplayManager
 {
 public:
@@ -29,8 +39,9 @@ public:
     /// paints no content.
     void init();
 
-    /// Clear the display to white (init → clear → sleep cycle).
-    void clear();
+    /// Clear the display to white (init → clear → sleep cycle). A stop request
+    /// cancels a clear still waiting for the min refresh interval.
+    void clear(std::stop_token st = {});
 
     /// Clear before shutdown if the panel still shows content; skips the
     /// min-refresh wait (shutdown can't block) and no-ops if already cleared.
@@ -60,6 +71,9 @@ public:
     /// the hardware mutex so it answers even during a multi-second refresh.
     [[nodiscard]] nlohmann::json healthSnapshot() const;
 
+    /// Lock-free w.r.t. the hardware mutex, like healthSnapshot().
+    [[nodiscard]] ScreenSnapshot screenSnapshot() const;
+
     static constexpr int WIDTH = 800;
     static constexpr int HEIGHT = 480;
     static constexpr int BUFFER_SIZE = WIDTH * HEIGHT / 8;
@@ -75,11 +89,13 @@ private:
     [[nodiscard]] bool _sendBufferHw(const std::vector<uint8_t>& buffer, const std::string& source);
     void _writeMockPanel(const std::vector<uint8_t>& buffer, const std::string& state,
                          const std::string& source);
+    void _recordScreen(const std::string& state, const std::string& source);
 
     const AppConfig& _cfg;
     DisplayMetricsRepository& _metrics;
     std::shared_ptr<spdlog::logger> _logger;
     bool _initialized = false;
+    bool _panelPowered = false;
     /// In-memory since boot; atomic so healthSnapshot() reads it without the
     /// hw mutex. Mutated only by the hw threads (already under _hwMutex).
     std::atomic<int> _consecutiveFailures{0};
@@ -91,6 +107,8 @@ private:
     std::atomic<std::chrono::steady_clock::time_point> _lastDisplayTime{};
     std::mutex _hwMutex; ///< serializes all EPD hardware access (init/clear/display/sleep)
     int64_t _mockSeq = 0;
+    mutable std::mutex _screenMtx;
+    ScreenSnapshot _screen;
 
     /// Set by requestShutdown(): makes the min-refresh wait return early so
     /// shutdown doesn't block.

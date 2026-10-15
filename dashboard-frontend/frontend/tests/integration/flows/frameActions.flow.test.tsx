@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
+import { HttpResponse } from 'msw';
 import * as api from '@/assets/endpoints/api/frame';
 import { card } from '@tests/helpers/card';
 import { renderRoute } from '@tests/helpers/renderRoute';
@@ -31,6 +32,26 @@ describe('frame actions', () => {
     const next = card('Nächster Bildwechsel');
     expect(within(next).getByText('1 Bild')).toBeInTheDocument();
     expect(within(next).getByText(/^2:0\d$/)).toBeInTheDocument();
+  });
+
+  it('shows the picture on the panel and drops it once the panel is cleared', async () => {
+    const file = spyOnRequests('get', api.getImageFileUrl(0).split('?')[0],
+      () => new HttpResponse(new Uint8Array([0xff, 0xd8]), { headers: { 'Content-Type': 'image/jpeg' } }));
+    server.use(file.handler, ...withSlideshowStatus({
+      now_showing: { seq: 4, state: 'image', image_id: 12, sender: 'bob' },
+    }));
+    await openHome();
+
+    const shown = card('Aktuell angezeigt');
+    expect(within(shown).getByText('Bild von bob')).toBeInTheDocument();
+    expect(await within(shown).findByRole('img', { name: 'Aktuell angezeigtes Bild' })).toBeInTheDocument();
+    expect(new URL(file.calls[0].url).searchParams.get('id')).toBe('12');
+
+    server.use(...withSlideshowStatus({ now_showing: { seq: 5, state: 'cleared', image_id: 0, sender: '' } }));
+    await advance(5_000);
+
+    expect(await within(shown).findByText('Display geleert')).toBeInTheDocument();
+    expect(within(shown).queryByRole('img')).not.toBeInTheDocument();
   });
 
   it('locks the actions until the initial status is known', async () => {
@@ -102,6 +123,24 @@ describe('frame actions', () => {
     expect(screen.getByRole('button', { name: 'Bild überspringen' })).toBeEnabled();
   });
 
+  it('locks the actions while the panel refreshes', async () => {
+    server.use(...withSlideshowStatus({ refreshing: true }));
+    await openHome();
+
+    expect(screen.getByText('Wird aktualisiert…')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bild überspringen' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Stoppen' })).toBeDisabled();
+  });
+
+  it('reports a skip rejected during a refresh', async () => {
+    server.use(...failsWith('post', api.getSkipSlideshowImageUrl(), 409, 'Display is refreshing'));
+    const { user } = await openHome();
+
+    await user.click(screen.getByRole('button', { name: 'Bild überspringen' }));
+
+    expect(await screen.findByText('Display wird gerade aktualisiert, bitte gleich erneut versuchen')).toBeInTheDocument();
+  });
+
   it('saves the interval in seconds', async () => {
     const interval = spyOnRequests('post', api.getSlideshowIntervalUrl());
     server.use(interval.handler);
@@ -135,7 +174,21 @@ describe('frame actions', () => {
     await user.click(screen.getByRole('button', { name: 'Nachtmodus speichern' }));
 
     expect(await screen.findByText('Nachtmodus aktiv von 2:00 bis 5:00 Uhr mit 60 Minuten Intervall')).toBeInTheDocument();
-    expect(await night.calls[0].json()).toEqual({ enabled: true, start_hour: 2, end_hour: 5, interval_seconds: 3600 });
+    expect(await night.calls[0].json()).toEqual({ enabled: true, start_hour: 2, end_hour: 5, interval_seconds: 3600, blank: false });
+  });
+
+  it('blanks the panel at night instead of slowing down', async () => {
+    const night = spyOnRequests('post', api.getSlideshowNightModeUrl());
+    server.use(night.handler);
+    const { user } = await openHome();
+
+    await user.click(screen.getByLabelText('Nachtmodus aktivieren'));
+    await user.click(screen.getByLabelText('Bildschirm nachts ausschalten'));
+    expect(within(card('Nachtmodus')).getByLabelText('Intervall in der Nacht (Minuten)')).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Nachtmodus speichern' }));
+
+    expect(await screen.findByText('Nachtmodus aktiv von 2:00 bis 5:00 Uhr mit ausgeschaltetem Bildschirm')).toBeInTheDocument();
+    expect(await night.calls[0].json()).toMatchObject({ enabled: true, blank: true });
   });
 
   it('saving night mode does not lock the display actions', async () => {
@@ -176,7 +229,7 @@ describe('frame actions', () => {
   it('marks night mode while it is active', async () => {
     server.use(
       ...withSlideshowStatus({
-        night_mode: { enabled: true, start_hour: 22, end_hour: 6, interval_seconds: 7200, active_now: true },
+        night_mode: { enabled: true, start_hour: 22, end_hour: 6, interval_seconds: 7200, blank: false, active_now: true },
       }),
     );
     await openHome();

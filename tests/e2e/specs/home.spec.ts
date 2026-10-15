@@ -1,11 +1,11 @@
 import { attachPanel, isCleared, readPanel, showsDefault, showsImage, waitForPanel } from '../support/board';
-import { expect, signIn, skipActionLock, test } from '../support/fixtures';
+import { card, expect, signIn, skipActionLock, test } from '../support/fixtures';
 
 // The home page ("Steuerung"): slideshow status, controls and settings.
 
 test.afterEach(async ({ board }) => {
   await board.post('/api/frame/slideshow/interval', { interval_seconds: 900 });
-  await board.post('/api/frame/slideshow/night-mode', { enabled: false, start_hour: 2, end_hour: 5, interval_seconds: 3600 });
+  await board.post('/api/frame/slideshow/night-mode', { enabled: false, start_hour: 1, end_hour: 6, interval_seconds: 3600, blank: false });
 });
 
 test('the status card shows what the board reports', async ({ page, server }) => {
@@ -15,6 +15,18 @@ test('the status card shows what the board reports', async ({ page, server }) =>
   await expect(page.getByText('Wird ausgeführt')).toBeVisible();
   await expect(page.getByText('2 Bilder')).toBeVisible();
   await expect(page.getByText(/^1[45]:\d\d$/)).toBeVisible();
+});
+
+test('the now-showing card shows the picture on the panel', async ({ page, server }) => {
+  const id = await server.sendPicture('left-black.jpg', { sender: 'marta' });
+  await waitForPanel(showsImage(id), `picture ${id} on panel`);
+
+  const file = page.waitForResponse((res) => res.url().includes(`/api/frame/images/file?id=${id}`) && res.ok());
+  await signIn(page);
+  const preview = card(page, 'Aktuell angezeigt');
+  await expect(preview.getByText('Bild von marta')).toBeVisible();
+  await expect(preview.getByRole('img', { name: 'Aktuell angezeigtes Bild' })).toBeVisible();
+  expect((await file).headers()['content-type']).toBe('image/jpeg');
 });
 
 test('skipping changes the panel', async ({ page, server }, testInfo) => {
@@ -60,7 +72,7 @@ test('a stopped slideshow ignores skip requests', async ({ board }) => {
   await board.post('/api/frame/clear');
   const cleared = await waitForPanel(isCleared, 'panel cleared');
 
-  await board.post('/api/frame/slideshow/skip');
+  await board.skip();
   await new Promise((r) => setTimeout(r, 2000));
   expect((await readPanel())?.seq).toBe(cleared.seq);
 });
@@ -79,12 +91,13 @@ test('the interval reaches the display and survives a restart', async ({ page, b
 test('night mode reaches the display and survives a restart', async ({ page, board }) => {
   await signIn(page);
   await page.getByLabel('Nachtmodus aktivieren').check();
+  await page.getByLabel('Bildschirm nachts ausschalten').check();
   await page.getByRole('button', { name: 'Nachtmodus speichern' }).click();
   await expect(page.getByText(/Nachtmodus aktiv von/)).toBeVisible();
 
   await expect.poll(async () => (await board.slideshowStatus()).night_mode.enabled).toBe(true);
   await board.restartService('display');
-  expect((await board.slideshowStatus()).night_mode.enabled).toBe(true);
+  expect((await board.slideshowStatus()).night_mode).toMatchObject({ enabled: true, blank: true });
 });
 
 test('a stopped slideshow stays stopped across a display restart', async ({ board }) => {

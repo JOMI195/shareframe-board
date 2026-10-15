@@ -13,6 +13,7 @@
 #include "task/ApNetworkSetupScreen.hpp"
 #include "task/DisplayImageLoop.hpp"
 #include "task/DisplayTaskManager.hpp"
+#include "task/NightBlankScreen.hpp"
 #include "task/WifiModeWatcher.hpp"
 #include <spdlog/spdlog.h>
 
@@ -47,8 +48,9 @@ int main(int argc, char* argv[])
     // manager boots the panel and starts/stops the content tasks itself.
     DisplayImageLoop displayImageLoop(eventBus, cfg, imageRepo, displayManager, runtimeSettings);
     ApNetworkSetupScreen apNetworkSetupScreen(eventBus, cfg, displayManager);
+    NightBlankScreen nightBlankScreen(eventBus, displayManager);
     DisplayTaskManager displayTaskManager(eventBus, cfg, displayManager, displayImageLoop,
-                                          apNetworkSetupScreen, runtimeSettings);
+                                          apNetworkSetupScreen, nightBlankScreen, runtimeSettings);
     WifiModeWatcher wifiModeWatcher(eventBus, cfg);
     DisplayClear displayClear(eventBus, cfg, displayManager);
     displayImageLoop.subscribe();

@@ -1,5 +1,6 @@
 #pragma once
 #include "events/Topic.hpp"
+#include "settings/PlaybackOrder.hpp"
 #include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
@@ -31,12 +32,14 @@ template <> struct TopicMessage<Topic::IMAGE_NEW>     { using type = int64_t; };
 // Dashboard IPC events
 struct SkipImageEvent {};
 struct UpdateDisplayIntervalEvent { int intervalSecs; };
-struct UpdateNightModeEvent { bool enabled; int startHour; int endHour; int intervalSecs; };
+struct UpdateNightModeEvent { bool enabled; int startHour; int endHour; int intervalSecs; bool blank; };
+struct UpdatePlaybackOrderEvent { PlaybackMode mode; std::vector<int64_t> customOrder; };
 struct SetSlideshowActiveEvent { bool active; };
 
 template <> struct TopicMessage<Topic::SKIP_IMAGE>                { using type = SkipImageEvent; };
 template <> struct TopicMessage<Topic::UPDATE_DISPLAY_INTERVAL>   { using type = UpdateDisplayIntervalEvent; };
 template <> struct TopicMessage<Topic::UPDATE_NIGHT_MODE>         { using type = UpdateNightModeEvent; };
+template <> struct TopicMessage<Topic::UPDATE_PLAYBACK_ORDER>     { using type = UpdatePlaybackOrderEvent; };
 template <> struct TopicMessage<Topic::SET_SLIDESHOW_ACTIVE>      { using type = SetSlideshowActiveEvent; };
 
 // Wi-Fi setup screen: whether the panel should show it, and the AP to join

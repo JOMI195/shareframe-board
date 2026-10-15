@@ -3,13 +3,52 @@
 #include <spdlog/spdlog.h>
 #include <stb_image.h>
 #include <stb_image_resize2.h>
+#include <algorithm>
+#include <array>
+#include <cmath>
 
 namespace
 {
+constexpr float STRETCH_LOW_PERCENTILE = 0.01f;
+constexpr float STRETCH_HIGH_PERCENTILE = 0.99f;
+constexpr int STRETCH_MIN_SPREAD = 32;
+constexpr float GAMMA = 0.9f;
+
 const std::shared_ptr<spdlog::logger>& logger()
 {
     static const auto instance = spdlog::default_logger()->clone("PhotoRenderer");
     return instance;
+}
+
+// Stretches the 1st..99th luma percentile to full range, skipped for near-flat
+// images where it would only amplify noise, then lifts the midtones slightly.
+void applyToneCurve(std::vector<float>& gray)
+{
+    std::array<int, 256> histogram{};
+    for (const float v : gray)
+        ++histogram[std::clamp(static_cast<int>(v), 0, 255)];
+
+    const auto percentile = [&](const float p)
+    {
+        const auto target = static_cast<int>(p * static_cast<float>(gray.size()));
+        int count = 0;
+        for (int v = 0; v < 256; ++v)
+        {
+            count += histogram[v];
+            if (count > target)
+                return v;
+        }
+        return 255;
+    };
+    const int low = percentile(STRETCH_LOW_PERCENTILE);
+    const int high = percentile(STRETCH_HIGH_PERCENTILE);
+    const bool stretch = high - low >= STRETCH_MIN_SPREAD;
+
+    for (float& v : gray)
+    {
+        const float t = stretch ? (v - low) / static_cast<float>(high - low) : v / 255.0f;
+        v = std::pow(std::clamp(t, 0.0f, 1.0f), GAMMA) * 255.0f;
+    }
 }
 } // namespace
 
@@ -42,11 +81,16 @@ std::vector<uint8_t> PhotoRenderer::render(const std::filesystem::path& imagePat
         gray[i] = 0.299f * r + 0.587f * g + 0.114f * b;
     }
 
-    // Floyd-Steinberg dithering
+    applyToneCurve(gray);
+
+    // Serpentine Floyd-Steinberg: odd rows run right to left with the kernel mirrored
     for (int y = 0; y < DisplayManager::HEIGHT; ++y)
     {
-        for (int x = 0; x < DisplayManager::WIDTH; ++x)
+        const bool reverse = y % 2 == 1;
+        const int dir = reverse ? -1 : 1;
+        for (int i = 0; i < DisplayManager::WIDTH; ++i)
         {
+            const int x = reverse ? DisplayManager::WIDTH - 1 - i : i;
             const int idx = y * DisplayManager::WIDTH + x;
             const float oldPixel = gray[idx];
             const float newPixel = (oldPixel > 127.5f) ? 255.0f : 0.0f;
@@ -56,7 +100,7 @@ std::vector<uint8_t> PhotoRenderer::render(const std::filesystem::path& imagePat
             auto distribute = [&](const int dx, const int dy, const float factor)
             {
                 const int ny = y + dy;
-                if (const int nx = x + dx; nx >= 0 && nx < DisplayManager::WIDTH && ny >= 0 && ny < DisplayManager::HEIGHT)
+                if (const int nx = x + dx * dir; nx >= 0 && nx < DisplayManager::WIDTH && ny >= 0 && ny < DisplayManager::HEIGHT)
                     gray[ny * DisplayManager::WIDTH + nx] += error * factor;
             };
             distribute(1, 0, 7.0f / 16.0f);

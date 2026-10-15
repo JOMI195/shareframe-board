@@ -61,7 +61,7 @@ TEST_F(DisplayIpcTest, NightModeQueryReportsWhetherTheWindowIsActive)
     const std::time_t now = std::time(nullptr);
     std::tm local{};
     localtime_r(&now, &local);
-    settings.setNightMode(true, local.tm_hour, (local.tm_hour + 1) % 24, 3600);
+    settings.setNightMode(true, local.tm_hour, (local.tm_hour + 1) % 24, 3600, false);
 
     const auto night = ipc.handle({IpcMessageType::GetNightMode, {}});
     EXPECT_EQ(night["active_now"], true);

@@ -89,7 +89,7 @@ tests/e2e/
 frame → e2e. What the frontend does with a mocked answer belongs in its Vitest suite.
 Prefer a step in an existing spec over a new one; the stack takes about a minute to come up.
 
-- **One spec per page** (`home`, `network`, `setup`, `updates`, `general`, `monitoring`,
+- **One spec per page** (`home`, `slideshow`, `network`, `setup`, `updates`, `general`, `monitoring`,
   `services`, `auth`). Each drives the page's actions and asserts the effect on the board
   (panel, shim log, persisted state), not just the toast. `navigation.spec.ts` loads every
   page and fails on any API call that errors. `server-traffic.spec.ts` covers everything

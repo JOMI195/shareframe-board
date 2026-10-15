@@ -21,6 +21,7 @@ import HourglassTopIcon from '@mui/icons-material/HourglassTop';
 import BuildIcon from '@mui/icons-material/Build';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
+import ReleaseNotes from '@/common/components/releaseNotes';
 import Dialogs from './dialogs/dialogs';
 
 const phaseLabel = (phase: string): string => {
@@ -244,10 +245,13 @@ const Updates = () => {
                                         label: "Neue Version",
                                         content: latest_release?.version
                                     },
-                                    {
+                                    ...(latest_release?.release_notes?.trim() ? [{
                                         label: "Umfang",
-                                        content: latest_release?.release_notes
-                                    }
+                                        content: {
+                                            type: 'reactNode' as const,
+                                            value: <ReleaseNotes notes={latest_release.release_notes} />
+                                        }
+                                    }] : [])
                                 ]}
                                 actions={
                                     <Button

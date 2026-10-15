@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+/opt/shims/_log "shareframe-factory-reset $*"

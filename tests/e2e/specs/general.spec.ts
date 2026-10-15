@@ -47,3 +47,11 @@ test('shutting down blanks the panel before powering off', async ({ page }) => {
   await waitForPanel(isCleared, 'panel cleared before shutdown');
   await expectShimCall('shutdown');
 });
+
+test('factory reset from the general page schedules the wipe', async ({ page }) => {
+  await signIn(page);
+  await page.goto('/general/');
+  await page.getByRole('button', { name: 'Zurücksetzen' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Zurücksetzen' }).click();
+  await expectShimCall('shareframe-factory-reset --yes');
+});

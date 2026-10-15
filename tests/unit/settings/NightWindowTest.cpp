@@ -43,3 +43,13 @@ TEST(NightWindow, EqualStartAndEndIsAnEmptyWindow)
     for (int h = 0; h < 24; ++h)
         EXPECT_EQ(night::secsUntilEnd(at(h), 3, 3), 0) << h;
 }
+
+TEST(NightWindow, StartCountsOnlyFromOutsideTheWindow)
+{
+    EXPECT_EQ(night::secsUntilStart(at(0, 30), 1, 6), 30 * 60);
+    EXPECT_EQ(night::secsUntilStart(at(3), 1, 6), 0);
+    EXPECT_EQ(night::secsUntilStart(at(6), 1, 6), 19 * 3600);
+    EXPECT_EQ(night::secsUntilStart(at(12), 22, 6), 10 * 3600);
+    EXPECT_EQ(night::secsUntilStart(at(23), 22, 6), 0);
+    EXPECT_EQ(night::secsUntilStart(at(3), 5, 5), 0);
+}

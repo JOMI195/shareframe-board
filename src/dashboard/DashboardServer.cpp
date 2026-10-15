@@ -22,7 +22,8 @@ const std::string kNotConfiguredMsg =
 DashboardServer::DashboardServer(AppConfig& cfg, IpcClient& ipc,
                                  HTTPClient& http, SessionManager& sessions,
                                  AuthTokenManager& authTokenManager, WifiManager& wifi,
-                                 IpcClient& updateIpc, SettingsRepository& settings)
+                                 IpcClient& updateIpc, SettingsRepository& settings,
+                                 IImageRepository& images)
     : cfg_(cfg), http_(http), sessions_(sessions),
       authTokenManager_(authTokenManager),
       settings_(settings), wifi_(wifi),
@@ -30,6 +31,7 @@ DashboardServer::DashboardServer(AppConfig& cfg, IpcClient& ipc,
       logger_(spdlog::default_logger()->clone("DashboardServer")),
       wifiHandlers_(wifi),
       frameHandlers_(ipc, cfg),
+      slideshowImageHandlers_(ipc, images),
       systemHandlers_(cfg, wifi),
       serviceHandlers_(cfg),
       updateHandlers_(updateIpc)
@@ -87,6 +89,9 @@ void DashboardServer::_initRoutes()
         {"POST", "/api/frame/slideshow/skip",     [this](auto& req, auto&) { return frameHandlers_.handleSkip(req); }},
         {"POST", "/api/frame/clear",              [this](auto& req, auto&) { return frameHandlers_.handleClear(req); }},
         {"GET",  "/api/frame/display/stats",      [this](auto& req, auto&) { return frameHandlers_.handleDisplayStats(req); }},
+        {"POST", "/api/frame/slideshow/order",    [this](auto& req, auto&) { return slideshowImageHandlers_.handleUpdateOrder(req); }},
+        {"GET",  "/api/frame/slideshow/images",             [this](auto& req, auto&) { return slideshowImageHandlers_.handleList(req); }},
+        {"GET",  "/api/frame/images/file",        [this](auto& req, auto& qp) { return slideshowImageHandlers_.handleFile(req, qp); }},
 
         // WiFi / Connection
         {"GET",  "/api/connection/status",         [this](auto& req, auto&) { return wifiHandlers_.handleStatus(req); }},
@@ -100,6 +105,7 @@ void DashboardServer::_initRoutes()
         {"GET",  "/api/system/check-internet",   [this](auto& req, auto&) { return systemHandlers_.handleCheckInternet(req); }},
         {"POST", "/api/system/restart",          [this](auto& req, auto&) { return systemHandlers_.handleRestart(req); }},
         {"POST", "/api/system/shutdown",         [this](auto& req, auto&) { return systemHandlers_.handleShutdown(req); }},
+        {"POST", "/api/system/factory-reset",    [this](auto& req, auto&) { return systemHandlers_.handleFactoryReset(req); }},
         {"GET",  "/api/system/logs",             [this](auto& req, auto& qp) { return systemHandlers_.handleLogs(req, qp); }},
 
         // Updates (A/B image update via RAUC + tryboot)
@@ -127,13 +133,15 @@ ix::HttpResponsePtr DashboardServer::_handleRequest(
         if (req->method == method && path == routePath)
             return handler(req, queryParams);
 
-    // AP fallback: joining the AP is implicit auth for the wifi-setup endpoints
-    // only — explicit allowlist (ap-password stays session-gated).
+    // AP fallback: joining the AP is implicit auth for the setup endpoints only —
+    // explicit allowlist (ap-password stays session-gated). Factory reset is the
+    // recovery path for a forgotten device password.
     static const std::vector<std::string> kApBypassPaths = {
         "/api/connection/status",
         "/api/connection/saved-networks",
         "/api/connection/connect",
         "/api/connection/forget",
+        "/api/system/factory-reset",
     };
     const bool apBypass = _isApMode()
         && std::find(kApBypassPaths.begin(), kApBypassPaths.end(), path) != kApBypassPaths.end();

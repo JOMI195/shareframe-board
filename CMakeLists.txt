@@ -148,6 +148,8 @@ set(COMMON_SOURCES
         src/repository/TokenRepository.cpp
         src/repository/ImageRepository.cpp
         src/repository/SettingsRepository.cpp
+        src/settings/PlaybackOrder.cpp
+        src/util/stb_impl.cpp
         src/repository/DisplayMetricsRepository.cpp
         src/app/Bootstrap.cpp
         src/util/Subprocess.cpp
@@ -179,7 +181,7 @@ add_library(shareframe-common STATIC ${COMMON_SOURCES})
 target_include_directories(shareframe-common PUBLIC
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_BINARY_DIR}/generated)
-target_link_libraries(shareframe-common PUBLIC external)
+target_link_libraries(shareframe-common PUBLIC external stb)
 
 # --- shareframe-websocket: network + image ingest ---
 set(WEBSOCKET_SOURCES
@@ -200,11 +202,11 @@ set(DISPLAY_SOURCES
         src/display/DisplayIpc.cpp
         src/display/DisplayManager.cpp
         src/display/PhotoRenderer.cpp
-        src/display/stb_impl.cpp
         src/display/ApNetworkSetupScreenRenderer.cpp
         src/task/DisplayImageLoop.cpp
         src/task/DisplayClear.cpp
         src/task/ApNetworkSetupScreen.cpp
+        src/task/NightBlankScreen.cpp
         src/task/DisplayTaskManager.cpp
         src/task/WifiModeWatcher.cpp
         src/settings/RuntimeSettings.cpp
@@ -221,6 +223,7 @@ set(DASHBOARD_SOURCES
         src/dashboard/WifiManager.cpp
         src/dashboard/WifiHandlers.cpp
         src/dashboard/FrameHandlers.cpp
+        src/dashboard/SlideshowImageHandlers.cpp
         src/dashboard/SystemHandlers.cpp
         src/dashboard/ServiceHandlers.cpp
         src/dashboard/UpdateHandlers.cpp

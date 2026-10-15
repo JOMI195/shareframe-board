@@ -26,6 +26,16 @@ test('outside hotspot mode the Wi-Fi endpoints need a session', async ({ request
   expect((await connect()).status()).toBe(200);
 });
 
+test('in hotspot mode a visitor can reset the frame to factory defaults', async ({ page, request }) => {
+  expect((await request.post('/api/system/factory-reset')).status()).toBe(401);
+
+  await setWifiMode('ap');
+  await page.goto('/setup');
+  await page.getByRole('button', { name: 'Auf Werkseinstellungen zurücksetzen' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Zurücksetzen' }).click();
+  await expectShimCall('shareframe-factory-reset --yes');
+});
+
 test('the hotspot password is only shown to hotspot clients and signed-in owners', async ({ request, board }) => {
   const mode = async () => (await (await request.get('/api/connection/mode')).json()).data;
   expect((await mode()).ap_password).toBe('');

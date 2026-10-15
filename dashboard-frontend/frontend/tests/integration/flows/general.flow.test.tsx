@@ -166,4 +166,49 @@ describe('power', () => {
     expect(router.state.location.pathname).toBe('/general/');
     expect(store.getState().loadingWall.isLoadingWallVisible).toBe(false);
   });
+
+  const openFactoryReset = async () => {
+    const view = openGeneral();
+    await view.user.click(await screen.findByRole('button', { name: 'Zurücksetzen' }));
+    return { ...view, dialog: await screen.findByRole('dialog') };
+  };
+
+  it('resets to factory defaults and explains how to set the frame up again', async () => {
+    useBoardClock();
+    const board = boardGoesDownOn(api.getFactoryResetUrl());
+    const { user, router, store, dialog } = await openFactoryReset();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Zurücksetzen' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    expect(board.commands).toBe(1);
+    expect(store.getState().loadingWall.message).toMatch(/auf Werkseinstellungen zurückgesetzt …/);
+
+    await advance(6_000);
+
+    await waitFor(() => expect(store.getState().loadingWall.message).toMatch(/startet im Einrichtungsmodus/));
+    expect(window.location.reload).not.toHaveBeenCalled();
+  });
+
+  it('does not reset when the dialog is cancelled', async () => {
+    const reset = spyOnRequests('post', api.getFactoryResetUrl());
+    server.use(reset.handler);
+    const { user, dialog } = await openFactoryReset();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Abbrechen' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(reset.calls).toHaveLength(0);
+  });
+
+  it('stays put when the board refuses to reset', async () => {
+    server.use(...failsWith('post', api.getFactoryResetUrl(), 500, 'Factory reset failed'));
+    const { user, router, store, dialog } = await openFactoryReset();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Zurücksetzen' }));
+
+    expect(await screen.findByText('Zurücksetzen fehlgeschlagen')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/general/');
+    expect(store.getState().loadingWall.isLoadingWallVisible).toBe(false);
+  });
 });

@@ -2,14 +2,17 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { AppDispatch, RootState } from '..';
 import { fetchWithTimeout } from '@/common/utils/fetch';
 import { getSlideshowStatusUrl } from '@/assets/endpoints/api/frame';
+import { INowShowing } from '@/types';
 
 
 // Types for Slideshow Status State
 interface SlideshowStatusState {
     isActive: boolean;
     loopStarted: boolean;
+    isRefreshing: boolean;
     imageCount: number | null;
     secondsUntilNext: number | null; // remaining until next image; null = unknown/paused
+    nowShowing: INowShowing | null;
     isLoading: boolean;
     error: string | null;
     lastCheckedAt: number | null;
@@ -19,8 +22,10 @@ interface SlideshowStatusState {
 const initialState: SlideshowStatusState = {
     isActive: false,
     loopStarted: false,
+    isRefreshing: false,
     imageCount: null,
     secondsUntilNext: null,
+    nowShowing: null,
     isLoading: false,
     error: null,
     lastCheckedAt: null,
@@ -40,9 +45,17 @@ export const checkSlideshowStatusThunk = createAsyncThunk(
 
             const raw = payload.data.seconds_until_next;
             const rawCount = payload.data.image_count;
+            const shown = payload.data.now_showing;
             return {
+                nowShowing: shown ? {
+                    seq: shown.seq as number,
+                    state: shown.state as INowShowing['state'],
+                    imageId: shown.image_id > 0 ? shown.image_id as number : null,
+                    sender: shown.sender ? shown.sender as string : null,
+                } : null,
                 active: payload.data.active as boolean,
                 loopStarted: payload.data.loop_started as boolean ?? false,
+                isRefreshing: payload.data.refreshing === true,
                 imageCount: (typeof rawCount === 'number' && rawCount >= 0) ? rawCount : null,
                 secondsUntilNext: (typeof raw === 'number' && raw >= 0) ? raw : null,
             };
@@ -82,8 +95,10 @@ export const slideshowStatusSlice = createSlice({
         resetStatus: (state) => {
             state.isActive = false;
             state.loopStarted = false;
+            state.isRefreshing = false;
             state.imageCount = null;
             state.secondsUntilNext = null;
+            state.nowShowing = null;
             state.isLoading = false;
             state.error = null;
             state.lastCheckedAt = null;
@@ -97,8 +112,10 @@ export const slideshowStatusSlice = createSlice({
             .addCase(checkSlideshowStatusThunk.fulfilled, (state, action) => {
                 state.isActive = action.payload.active;
                 state.loopStarted = action.payload.loopStarted;
+                state.isRefreshing = action.payload.isRefreshing;
                 state.imageCount = action.payload.imageCount;
                 state.secondsUntilNext = action.payload.secondsUntilNext;
+                state.nowShowing = action.payload.nowShowing;
                 state.isLoading = false;
                 state.error = null;
                 state.lastCheckedAt = Date.now();
@@ -108,6 +125,7 @@ export const slideshowStatusSlice = createSlice({
                 state.error = action.payload as string;
                 state.isActive = false;
                 state.loopStarted = false;
+                state.isRefreshing = false;
                 state.imageCount = null;
                 state.secondsUntilNext = null;
             });

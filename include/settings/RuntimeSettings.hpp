@@ -1,5 +1,6 @@
 #pragma once
 #include "config/AppConfig.hpp"
+#include "settings/PlaybackOrder.hpp"
 #include "repository/SettingsRepository.hpp"
 #include <mutex>
 #include <spdlog/spdlog.h>
@@ -19,10 +20,21 @@ public:
     [[nodiscard]] int getNightStartHour() const;
     [[nodiscard]] int getNightEndHour() const;
     [[nodiscard]] int getNightInterval() const;
-    void setNightMode(bool enabled, int startHour, int endHour, int intervalSecs);
+    [[nodiscard]] bool isNightBlank() const;
+    void setNightMode(bool enabled, int startHour, int endHour, int intervalSecs, bool blank);
+
+    [[nodiscard]] PlaybackMode getPlaybackMode() const;
+    [[nodiscard]] std::vector<int64_t> getCustomOrder() const;
+    void setPlaybackOrder(PlaybackMode mode, const std::vector<int64_t>& customOrder);
 
     /// True while the wall clock sits inside an enabled quiet-hours window.
     [[nodiscard]] bool isNightNow() const;
+
+    /// True while the panel has to stay blank for the quiet-hours window.
+    [[nodiscard]] bool isNightBlankNow() const;
+
+    /// Seconds until isNightBlankNow() flips, -1 when blanking is off.
+    [[nodiscard]] int secsUntilNightBlankChange() const;
 
     /// Interval to use right now: the night one clamped to the end of the
     /// window while inside it, the day one otherwise.
@@ -31,6 +43,8 @@ public:
 private:
     /// Seconds left in the quiet-hours window, 0 when outside it. Call under lock.
     [[nodiscard]] int _secsUntilNightEnd() const;
+    /// Seconds until the quiet-hours window opens, 0 when inside it. Call under lock.
+    [[nodiscard]] int _secsUntilNightStart() const;
 
     SettingsRepository& repo_;
     std::shared_ptr<spdlog::logger> logger_;
@@ -41,4 +55,7 @@ private:
     int nightStartHour_;
     int nightEndHour_;
     int nightIntervalSecs_;
+    bool nightBlank_;
+    PlaybackMode playbackMode_ = PlaybackMode::Chronological;
+    std::vector<int64_t> customOrder_;
 };

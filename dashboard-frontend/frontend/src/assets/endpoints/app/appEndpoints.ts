@@ -5,6 +5,8 @@ export const getSetupUrl = () => "/setup";
 
 export const getNetworkUrl = () => "network/";
 
+export const getSlideshowPageUrl = () => "slideshow/";
+
 export const getUpdatesyUrl = () => "updates/";
 export const getUpdateHistoryPageUrl = () => "update-history/";
 

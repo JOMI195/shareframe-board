@@ -26,22 +26,31 @@ ix::HttpResponsePtr FrameHandlers::handleStatus(const ix::HttpRequestPtr& /*req*
     // Best-effort: don't fail the whole status if this single call misses.
     auto secondsResult = ipc_.sendAndReceive(IpcMessage{IpcMessageType::GetSecondsUntilNext, {}});
     auto nightResult = ipc_.sendAndReceive(IpcMessage{IpcMessageType::GetNightMode, {}});
+    auto screenResult = ipc_.sendAndReceive(IpcMessage{IpcMessageType::GetScreenInfo, {}});
 
     nlohmann::json nightMode = {
         {"enabled", nightResult ? nightResult->value("enabled", false) : cfg_.display.nightModeEnabled},
         {"start_hour", nightResult ? nightResult->value("start_hour", cfg_.display.nightStartHour) : cfg_.display.nightStartHour},
         {"end_hour", nightResult ? nightResult->value("end_hour", cfg_.display.nightEndHour) : cfg_.display.nightEndHour},
         {"interval_seconds", nightResult ? nightResult->value("interval_secs", cfg_.display.nightIntervalSecs) : cfg_.display.nightIntervalSecs},
+        {"blank", nightResult ? nightResult->value("blank", cfg_.display.nightBlank) : cfg_.display.nightBlank},
         {"active_now", nightResult && nightResult->value("active_now", false)}
     };
 
     return jsonResponse(200, "OK", {
         {"active", activeResult->value("active", true)},
         {"loop_started", activeResult->value("loop_started", false)},
+        {"refreshing", activeResult->value("refreshing", false)},
         {"image_count", activeResult->value("image_count", 0)},
         {"interval_seconds", intervalResult->value("interval_secs", cfg_.display.intervalSecs)},
         {"seconds_until_next", secondsResult ? secondsResult->value("seconds_until_next", -1) : -1},
-        {"night_mode", nightMode}
+        {"night_mode", nightMode},
+        {"now_showing", {
+            {"seq", screenResult ? screenResult->value("seq", int64_t{0}) : 0},
+            {"state", screenResult ? screenResult->value("state", "empty") : "empty"},
+            {"image_id", screenResult ? screenResult->value("image_id", int64_t{0}) : 0},
+            {"sender", screenResult ? screenResult->value("sender", "") : ""},
+        }}
     });
 }
 
@@ -94,6 +103,7 @@ ix::HttpResponsePtr FrameHandlers::handleUpdateNightMode(const ix::HttpRequestPt
     const int startHour = body.value("start_hour", -1);
     const int endHour = body.value("end_hour", -1);
     const int secs = body.value("interval_seconds", 0);
+    const bool blank = body.value("blank", false);
 
     if (!Validation::isValidHour(startHour) || !Validation::isValidHour(endHour))
         return errorResponse(400, "Bad Request", "start_hour and end_hour must be between 0 and 23");
@@ -106,7 +116,8 @@ ix::HttpResponsePtr FrameHandlers::handleUpdateNightMode(const ix::HttpRequestPt
             {"enabled", enabled},
             {"start_hour", startHour},
             {"end_hour", endHour},
-            {"interval_secs", secs}
+            {"interval_secs", secs},
+            {"blank", blank}
         }}))
     {
         logger_->error("Failed to send update_night_mode via IPC");
@@ -117,17 +128,21 @@ ix::HttpResponsePtr FrameHandlers::handleUpdateNightMode(const ix::HttpRequestPt
         {"enabled", enabled},
         {"start_hour", startHour},
         {"end_hour", endHour},
-        {"interval_seconds", secs}
+        {"interval_seconds", secs},
+        {"blank", blank}
     });
 }
 
 ix::HttpResponsePtr FrameHandlers::handleSkip(const ix::HttpRequestPtr& /*req*/) const
 {
-    if (!ipc_.send(IpcMessage{IpcMessageType::SkipImage, {}}))
+    const auto result = ipc_.sendAndReceive(IpcMessage{IpcMessageType::SkipImage, {}});
+    if (!result)
     {
         logger_->error("Failed to send skip_image via IPC");
         return errorResponse(500, "Internal Server Error", "IPC error");
     }
+    if (result->value("refreshing", false))
+        return errorResponse(409, "Conflict", "Display is refreshing");
     return jsonResponse(200, "OK", nlohmann::json::object());
 }
 

@@ -35,6 +35,8 @@ void DisplayImageLoop::subscribe()
         [this](const UpdateDisplayIntervalEvent& evt) { _onUpdateInterval(evt); });
     bus_.subscribe<Topic::UPDATE_NIGHT_MODE>(
         [this](const UpdateNightModeEvent& evt) { _onUpdateNightMode(evt); });
+    bus_.subscribe<Topic::UPDATE_PLAYBACK_ORDER>(
+        [this](const UpdatePlaybackOrderEvent& evt) { _onUpdatePlaybackOrder(evt); });
     bus_.subscribe<Topic::SET_SLIDESHOW_ACTIVE>(
         [this](const SetSlideshowActiveEvent& evt) { _onSetSlideshowActive(evt); });
 }
@@ -76,10 +78,11 @@ int DisplayImageLoop::secondsUntilNext() const
 
 void DisplayImageLoop::_onImageRemoved(const std::vector<int64_t>& removedIds)
 {
+    // Removed mid-paint: stays on the panel until the next change, by design.
     std::lock_guard lk(mtx_);
-    if (std::ranges::find(removedIds, currentImageId_) != removedIds.end())
+    if (const int64_t current = currentImageId_.load(); std::ranges::find(removedIds, current) != removedIds.end())
     {
-        logger_->info("Current image {} was removed, skipping", currentImageId_);
+        logger_->info("Current image {} was removed, skipping", current);
         skipCurrent_ = true;
         cv_.notify_one();
     }
@@ -123,9 +126,9 @@ void DisplayImageLoop::_run(const std::stop_token st)
 
         try
         {
-            auto ids = repo_.getAllIds();
+            const auto all = repo_.getAll();
 
-            if (ids.empty())
+            if (all.empty())
             {
                 // Show default images when no user images exist
                 auto defaultImages = _loadDefaultImages();
@@ -164,6 +167,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
                     if (defaultImageIdx_ >= defaultImages.size())
                         defaultImageIdx_ = 0;
 
+                    refreshing_ = true;
                     if (const auto& path = defaultImages[defaultImageIdx_]; _paint(path, st))
                     {
                         ready_.store(true);
@@ -180,27 +184,15 @@ void DisplayImageLoop::_run(const std::stop_token st)
                     std::unique_lock lk(mtx_);
                     skipCurrent_ = false;
                     newImage_ = false;
+                    refreshing_ = false;
                     cv_.wait_for(lk, std::chrono::seconds(settings_.getEffectiveInterval()),
                                  [&st, this] { return st.stop_requested() || (newImage_ && !settings_.isNightNow()) || skipCurrent_ || !settings_.isSlideshowActive(); });
                 }
                 continue;
             }
 
-            // Find next image ID > currentImageId_, or wrap to lowest
-            std::ranges::sort(ids);
-            auto it = std::ranges::upper_bound(ids, currentImageId_);
-            int64_t nextId = (it != ids.end()) ? *it : ids.front();
-
-            // Fetch the image to get its file path
-            auto images = repo_.getByIds({nextId});
-            if (images.empty())
-            {
-                logger_->warn("Image {} not found in repository, skipping", nextId);
-                currentImageId_ = nextId;
-                continue;
-            }
-
-            const auto& image = images.front();
+            const int64_t nextId = _pickNext(all);
+            const auto& image = *std::ranges::find(all, nextId, &Image::id);
             if (!std::filesystem::exists(image.imagePath))
             {
                 logger_->warn("Image file missing: {}, skipping", image.imagePath.string());
@@ -209,6 +201,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
             }
 
             // Display the image (DisplayManager enforces min refresh)
+            refreshing_ = true;
             if (_paint(image.imagePath, st))
             {
                 ready_.store(true);
@@ -226,6 +219,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
                 _armNextChange();
                 std::unique_lock lk(mtx_);
                 skipCurrent_ = false;
+                refreshing_ = false;
                 cv_.wait_for(lk, std::chrono::seconds(settings_.getEffectiveInterval()),
                              [&st, this] { return st.stop_requested() || skipCurrent_ || !settings_.isSlideshowActive(); });
             }
@@ -233,6 +227,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
         catch (const std::exception& e)
         {
             logger_->error("DisplayImageLoop iteration failed: {}", e.what());
+            refreshing_ = false;
             std::unique_lock lk(mtx_);
             cv_.wait_for(lk, std::chrono::seconds(5),
                          [&st] { return st.stop_requested(); });
@@ -240,11 +235,13 @@ void DisplayImageLoop::_run(const std::stop_token st)
         catch (...)
         {
             logger_->error("DisplayImageLoop iteration failed with unknown exception");
+            refreshing_ = false;
             std::unique_lock lk(mtx_);
             cv_.wait_for(lk, std::chrono::seconds(5),
                          [&st] { return st.stop_requested(); });
         }
     }
+    refreshing_ = false;
     nextChangeAtMs_.store(0);
 }
 
@@ -258,6 +255,27 @@ void DisplayImageLoop::_onImageNew()
     std::lock_guard lk(mtx_);
     newImage_ = true;
     cv_.notify_one();
+}
+
+int64_t DisplayImageLoop::_pickNext(const std::vector<Image>& images)
+{
+    if (const auto mode = settings_.getPlaybackMode(); mode != PlaybackMode::Shuffle)
+        return playback::nextAfter(playback::arrange(images, mode, settings_.getCustomOrder()),
+                                   currentImageId_.load());
+
+    std::vector<int64_t> ids;
+    ids.reserve(images.size());
+    for (const auto& img : images)
+        ids.push_back(img.id);
+    std::lock_guard lk(shuffleMtx_);
+    shuffle_.sync(ids);
+    return shuffle_.next();
+}
+
+std::vector<int64_t> DisplayImageLoop::shuffleOrder() const
+{
+    std::lock_guard lk(shuffleMtx_);
+    return shuffle_.order();
 }
 
 void DisplayImageLoop::_onSkipImage()
@@ -276,7 +294,12 @@ void DisplayImageLoop::_onUpdateInterval(const UpdateDisplayIntervalEvent& evt) 
 
 void DisplayImageLoop::_onUpdateNightMode(const UpdateNightModeEvent& evt) const
 {
-    settings_.setNightMode(evt.enabled, evt.startHour, evt.endHour, evt.intervalSecs);
+    settings_.setNightMode(evt.enabled, evt.startHour, evt.endHour, evt.intervalSecs, evt.blank);
+}
+
+void DisplayImageLoop::_onUpdatePlaybackOrder(const UpdatePlaybackOrderEvent& evt) const
+{
+    settings_.setPlaybackOrder(evt.mode, evt.customOrder);
 }
 
 void DisplayImageLoop::_onSetSlideshowActive(const SetSlideshowActiveEvent& evt)

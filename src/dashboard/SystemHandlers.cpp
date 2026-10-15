@@ -110,6 +110,20 @@ ix::HttpResponsePtr SystemHandlers::handleShutdown(const ix::HttpRequestPtr& /*r
     return jsonResponse(200, "OK", nlohmann::json::object(), "Shutting down...");
 }
 
+ix::HttpResponsePtr SystemHandlers::handleFactoryReset(const ix::HttpRequestPtr& /*req*/) const
+{
+    logger_->info("Factory reset requested");
+    auto result = Subprocess::run({"shareframe-factory-reset", "--yes"}, 5);
+
+    if (result.exitCode != 0)
+    {
+        logger_->error("Factory reset failed: {}", result.stdErr);
+        return errorResponse(500, "Internal Server Error", "Factory reset failed");
+    }
+
+    return jsonResponse(200, "OK", nlohmann::json::object(), "Resetting to factory defaults...");
+}
+
 ix::HttpResponsePtr SystemHandlers::handleLogs(
     const ix::HttpRequestPtr& /*req*/,
     const std::unordered_map<std::string, std::string>& queryParams) const

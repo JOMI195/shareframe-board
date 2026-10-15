@@ -1,4 +1,7 @@
 #pragma once
+#include "settings/PlaybackOrder.hpp"
+#include <nlohmann/json.hpp>
+#include <optional>
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -14,6 +17,9 @@ constexpr size_t MAX_NETWORK_NAME_LENGTH = 128;
 // Slideshow
 constexpr int MIN_INTERVAL_SECS = 180;
 constexpr int MAX_INTERVAL_SECS = 86400;
+
+// Slideshow images
+constexpr size_t MAX_CUSTOM_ORDER_LENGTH = 1000;
 
 // Logs
 constexpr int MAX_LOG_LINES = 10000;
@@ -75,6 +81,28 @@ inline bool isValidIntervalSecs(const int secs)
 inline bool isValidHour(const int hour)
 {
     return hour >= 0 && hour <= 23;
+}
+
+inline bool isValidPlaybackMode(const std::string& mode)
+{
+    return playbackModeFromString(mode).has_value();
+}
+
+/// Ids of a custom play order, duplicates dropped; nullopt unless `j` is an
+/// array of at most MAX_CUSTOM_ORDER_LENGTH integers.
+inline std::optional<std::vector<int64_t>> parseCustomOrder(const nlohmann::json& j)
+{
+    if (!j.is_array() || j.size() > MAX_CUSTOM_ORDER_LENGTH)
+        return std::nullopt;
+    std::vector<int64_t> ids;
+    for (const auto& v : j)
+    {
+        if (!v.is_number_integer())
+            return std::nullopt;
+        if (const auto id = v.get<int64_t>(); std::ranges::find(ids, id) == ids.end())
+            ids.push_back(id);
+    }
+    return ids;
 }
 
 } // namespace dashboard::Validation
