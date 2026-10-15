@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { AppDispatch, RootState } from '..';
 import { fetchWithTimeout } from '@/common/utils/fetch';
 import { getSlideshowStatusUrl } from '@/assets/endpoints/api/frame';
+import { INowShowing } from '@/types';
 
 
 // Types for Slideshow Status State
@@ -10,6 +11,7 @@ interface SlideshowStatusState {
     loopStarted: boolean;
     imageCount: number | null;
     secondsUntilNext: number | null; // remaining until next image; null = unknown/paused
+    nowShowing: INowShowing | null;
     isLoading: boolean;
     error: string | null;
     lastCheckedAt: number | null;
@@ -21,6 +23,7 @@ const initialState: SlideshowStatusState = {
     loopStarted: false,
     imageCount: null,
     secondsUntilNext: null,
+    nowShowing: null,
     isLoading: false,
     error: null,
     lastCheckedAt: null,
@@ -40,7 +43,14 @@ export const checkSlideshowStatusThunk = createAsyncThunk(
 
             const raw = payload.data.seconds_until_next;
             const rawCount = payload.data.image_count;
+            const shown = payload.data.now_showing;
             return {
+                nowShowing: shown ? {
+                    seq: shown.seq as number,
+                    state: shown.state as INowShowing['state'],
+                    imageId: shown.image_id > 0 ? shown.image_id as number : null,
+                    sender: shown.sender ? shown.sender as string : null,
+                } : null,
                 active: payload.data.active as boolean,
                 loopStarted: payload.data.loop_started as boolean ?? false,
                 imageCount: (typeof rawCount === 'number' && rawCount >= 0) ? rawCount : null,
@@ -84,6 +94,7 @@ export const slideshowStatusSlice = createSlice({
             state.loopStarted = false;
             state.imageCount = null;
             state.secondsUntilNext = null;
+            state.nowShowing = null;
             state.isLoading = false;
             state.error = null;
             state.lastCheckedAt = null;
@@ -99,6 +110,7 @@ export const slideshowStatusSlice = createSlice({
                 state.loopStarted = action.payload.loopStarted;
                 state.imageCount = action.payload.imageCount;
                 state.secondsUntilNext = action.payload.secondsUntilNext;
+                state.nowShowing = action.payload.nowShowing;
                 state.isLoading = false;
                 state.error = null;
                 state.lastCheckedAt = Date.now();

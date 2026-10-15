@@ -13,6 +13,12 @@ export interface SlideshowStatusPayload {
     blank: boolean;
     active_now: boolean;
   };
+  now_showing: {
+    seq: number;
+    state: 'empty' | 'image' | 'cleared';
+    image_id: number;
+    sender: string;
+  };
 }
 
 export const makeSlideshowStatus = (over: Partial<SlideshowStatusPayload> = {}): SlideshowStatusPayload => ({
@@ -22,5 +28,6 @@ export const makeSlideshowStatus = (over: Partial<SlideshowStatusPayload> = {}):
   interval_seconds: 900,
   seconds_until_next: 300,
   night_mode: { enabled: false, start_hour: 2, end_hour: 5, interval_seconds: 3600, blank: false, active_now: false },
+  now_showing: { seq: 1, state: 'image', image_id: 0, sender: '' },
   ...over,
 });

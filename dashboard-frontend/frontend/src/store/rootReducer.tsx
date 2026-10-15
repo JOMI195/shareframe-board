@@ -16,6 +16,7 @@ import frameLogsReducer from "./frameLogs/frameLogs.Slice";
 import navigationReducer from "./navigation/navigation.Slice";
 import dialogsReducer from "./dialogs/dialogs.Slice";
 import servicesReducer from "./services/services.Slice";
+import slideshowImagesReducer from "./slideshowImages/slideshowImages.Slice";
 
 const rootReducer = combineReducers({
   snackbars: snackbarsReducer,
@@ -35,6 +36,7 @@ const rootReducer = combineReducers({
   navigation: navigationReducer,
   dialogs: dialogsReducer,
   services: servicesReducer,
+  slideshowImages: slideshowImagesReducer,
 });
 
 export default rootReducer;

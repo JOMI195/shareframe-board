@@ -11,8 +11,10 @@ import SettingsEthernetIcon from '@mui/icons-material/SettingsEthernet';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
+import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import {
     getHomeUrl,
+    getSlideshowPageUrl,
     getGeneralSettingsUrl,
     getDisplayHealthUrl,
     getLogsUrl,
@@ -30,6 +32,7 @@ export const sidebarSections: ISidebarSection[] = [
         section: "Steuerung",
         items: [
             { name: "Steuerung", url: getHomeUrl(), icon: FilterFramesIcon },
+            { name: "Diashow", url: getSlideshowPageUrl(), icon: PhotoLibraryIcon },
             { name: "Netzwerk", url: getNetworkUrl(), icon: WifiIcon },
             { name: "Updates", url: getUpdatesyUrl(), icon: UpdateIcon },
         ],

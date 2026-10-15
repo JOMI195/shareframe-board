@@ -48,6 +48,7 @@ import { usePiConnection } from '@/context/piConnection/piConnectionContextValue
 import { useTimer } from '@/hooks/useTimer';
 import { syncSpecificTimer } from '@/store/timers/timers.Slice';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
+import NowShowingCard from './nowShowingCard';
 
 const INFO_CARD_HEIGHT = "250px";
 
@@ -57,7 +58,7 @@ const FrameActions: React.FC = () => {
 
     const { isConnected } = usePiConnection();
     const { isToggling, isClearingDisplay, isSkippingImage, isFetchingInterval, isUpdatingInterval, isFetchingNightMode, isUpdatingNightMode } = useAppSelector(selectSlideshowOperation);
-    const { isActive, loopStarted, imageCount, lastCheckedAt, secondsUntilNext } = useAppSelector(selectSlideshowStatus);
+    const { isActive, loopStarted, imageCount, lastCheckedAt, secondsUntilNext, nowShowing } = useAppSelector(selectSlideshowStatus);
 
     // Interval form state
     const [intervalValue, setIntervalValue] = useState<number>(useAppSelector(selectDisplayRefreshInterval));
@@ -245,6 +246,10 @@ const FrameActions: React.FC = () => {
                             }
                         ]}
                     />
+                </Grid>
+
+                <Grid size={12}>
+                    <NowShowingCard nowShowing={nowShowing} />
                 </Grid>
 
                 {!isSlideshowActionsTimerActive && isAppIntialLoadTimerActive && (

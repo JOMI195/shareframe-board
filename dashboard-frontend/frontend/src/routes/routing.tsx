@@ -1,8 +1,9 @@
 import MainLayout from '@/common/components/layout/layout';
 import Snackbars from '@/common/components/snackbars/snackbars';
 import ProtectedRoute from '@/common/components/protectedRoute';
-import { getHomeUrl, getGeneralSettingsUrl, getDisplayHealthUrl, getLogsUrl, getNetworkUrl, getUpdatesyUrl, getUpdateHistoryPageUrl, getServicesOverviewUrl, getServiceDetailUrl, getSetupUrl } from '@/assets/endpoints/app/appEndpoints';
+import { getHomeUrl, getSlideshowPageUrl, getGeneralSettingsUrl, getDisplayHealthUrl, getLogsUrl, getNetworkUrl, getUpdatesyUrl, getUpdateHistoryPageUrl, getServicesOverviewUrl, getServiceDetailUrl, getSetupUrl } from '@/assets/endpoints/app/appEndpoints';
 import FrameActions from '@/main/frame/frameActions';
+import SlideshowImages from '@/main/slideshowImages/slideshowImages';
 import Updates from '@/main/updates/updates';
 import UpdateHistory from '@/main/updateHistory/updateHistory';
 import Network from '@/main/network/network';
@@ -69,6 +70,10 @@ export const routes = [
                   {
                     path: getHomeUrl(),
                     element: <FrameActions />
+                  },
+                  {
+                    path: getSlideshowPageUrl(),
+                    element: <SlideshowImages />
                   },
                   {
                     path: getNetworkUrl(),

@@ -80,7 +80,10 @@ describe('frameLogs slice', () => {
 });
 
 describe('slideshowStatus slice', () => {
-  const payload = { active: true, loopStarted: true, imageCount: 4, secondsUntilNext: 30 };
+  const payload = {
+    active: true, loopStarted: true, imageCount: 4, secondsUntilNext: 30,
+    nowShowing: { seq: 3, state: 'image' as const, imageId: 7, sender: 'alice' },
+  };
 
   it('applies a status check', () => {
     const state = slideshowStatus(undefined, checkSlideshowStatusThunk.fulfilled(payload, 'req'));
