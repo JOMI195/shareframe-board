@@ -8,6 +8,9 @@ class DisplayClear : public Task
 public:
     DisplayClear(EventBus& bus, const AppConfig& cfg, DisplayManager& display);
 
+    /// Call once before the bus starts.
+    void subscribe();
+
     void start() override;
 
 protected:

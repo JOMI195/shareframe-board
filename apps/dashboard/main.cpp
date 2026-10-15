@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
     SettingsRepository settingsRepo(db.get());
 
     // Managers
-    WifiManager wifi;
+    WifiManager wifi(cfg.display.wifiModePath);
     SessionManager sessions;
 
     // Update endpoints proxy to the shareframe-update service over nng

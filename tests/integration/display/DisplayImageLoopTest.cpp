@@ -30,6 +30,7 @@ protected:
 
     void start()
     {
+        loop.subscribe();
         loop.start();
         bus.start();
     }

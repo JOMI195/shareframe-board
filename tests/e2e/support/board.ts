@@ -37,6 +37,7 @@ export async function waitForPanel(predicate: (p: Panel) => boolean, message: st
 export const showsImage = (id: number) => (p: Panel) => p.state === 'image' && p.source.endsWith(`_${id}.jpg`);
 export const showsDefault = (p: Panel) => p.state === 'image' && p.source.includes('/assets/image/default/');
 export const isCleared = (p: Panel) => p.state === 'cleared';
+export const showsApSetup = (p: Panel) => p.state === 'image' && p.source === 'ap-setup';
 
 /** The 1-bit frame the e-paper would get, decoded from the PBM the mock display writes. */
 export class Frame {

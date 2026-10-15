@@ -170,5 +170,7 @@ void ConfigLoader::resolvePaths(AppConfig& cfg) {
     resolveField(cfg.image.imageSavePath,       base);
     resolveField(cfg.display.loadingImagePath,  base);
     resolveField(cfg.display.defaultImagesPath, base);
+    resolveField(cfg.display.wifiModePath,      base);
+    resolveField(cfg.display.setupFontPath,     base);
     // update.backupDirName is a bare name fragment, not a path — not resolved here
 }

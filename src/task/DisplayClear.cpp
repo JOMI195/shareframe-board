@@ -9,11 +9,14 @@ DisplayClear::DisplayClear(EventBus& bus, const AppConfig& cfg, DisplayManager& 
 {
 }
 
-void DisplayClear::start()
+void DisplayClear::subscribe()
 {
     bus_.subscribe<Topic::CLEAR_DISPLAY>(
         [this](const nlohmann::json&) { _onClearDisplay(); });
+}
 
+void DisplayClear::start()
+{
     const int waitSecs = _secsUntilNextTarget();
     logger_->info("Starting {} thread (next clear in {}s, target hour={})",
                   name_, waitSecs, cfg_.display.clearTargetHour);
@@ -37,11 +40,11 @@ void DisplayClear::_run(std::stop_token st)
 
         {
             std::unique_lock lock(mtx_);
-            clearRequested_ = false;
             cv_.wait_for(lock, std::chrono::seconds(waitSecs), [&st, this]
             {
                 return st.stop_requested() || clearRequested_;
             });
+            clearRequested_ = false;
         }
 
         if (st.stop_requested())

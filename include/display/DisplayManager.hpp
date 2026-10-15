@@ -10,7 +10,14 @@
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
+#include <stop_token>
 #include <vector>
+
+enum class RefreshPolicy
+{
+    RespectMinInterval,
+    Immediate
+};
 
 class DisplayManager
 {
@@ -18,7 +25,8 @@ public:
     DisplayManager(const AppConfig& cfg, DisplayMetricsRepository& metrics);
     ~DisplayManager();
 
-    /// Initialize the e-paper hardware (DEV_Module_Init + EPD_Init).
+    /// Power the panel up and clear it (DEV_Module_Init + EPD_Init + clear + settle);
+    /// paints no content.
     void init();
 
     /// Clear the display to white (init → clear → sleep cycle).
@@ -32,9 +40,14 @@ public:
     /// so tasks unblock within the timeout-kill window instead of holding the lock.
     void requestShutdown();
 
-    /// Load image from path, resize to 800x480, convert to 1-bit,
-    /// and display on the e-paper (init → display → sleep cycle).
-    [[nodiscard]] bool displayImage(const std::filesystem::path& imagePath);
+    /// Paint a ready 1-bit panel buffer (init → display → sleep cycle); `source`
+    /// names the content for logs and the mock panel. A stop request cancels a
+    /// paint still waiting for the min refresh interval.
+    [[nodiscard]] bool displayBuffer(const std::vector<uint8_t>& buffer, const std::string& source,
+                                     std::stop_token st = {},
+                                     RefreshPolicy policy = RefreshPolicy::RespectMinInterval);
+
+    [[nodiscard]] bool isCleared() const { return _isCleared.load(); }
 
     /// Seconds until the next refresh is allowed (0 if ready). Lock-free so a
     /// caller can wait it out and re-decide what to paint with fresh state.
@@ -57,13 +70,11 @@ public:
 private:
     [[nodiscard]] bool _hwInit();
     void _hwSleep();
-    void _waitMinRefresh() const;
+    void _waitMinRefresh(const std::stop_token& st = {}) const;
     void _clearHw();
-    [[nodiscard]] bool _displayImageHw(const std::filesystem::path& imagePath);
-    [[nodiscard]] std::vector<uint8_t> _prepareImageBuffer(
-        const std::filesystem::path& imagePath) const;
+    [[nodiscard]] bool _sendBufferHw(const std::vector<uint8_t>& buffer, const std::string& source);
     void _writeMockPanel(const std::vector<uint8_t>& buffer, const std::string& state,
-                         const std::filesystem::path& source);
+                         const std::string& source);
 
     const AppConfig& _cfg;
     DisplayMetricsRepository& _metrics;

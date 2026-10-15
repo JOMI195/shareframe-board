@@ -61,6 +61,9 @@ struct DisplayConfig
     int nightStartHour = 2;
     int nightEndHour = 5;
     int nightIntervalSecs = 3600;
+    std::string wifiModePath = "/run/shareframe/wifi-mode.json";
+    std::string setupUrl = "http://192.168.4.1";
+    std::string setupFontPath = "assets/font/DejaVuSans.ttf";
 };
 
 struct UpdateConfig

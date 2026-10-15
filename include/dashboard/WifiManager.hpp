@@ -7,7 +7,7 @@
 class WifiManager
 {
 public:
-    WifiManager();
+    explicit WifiManager(std::string wifiModePath);
 
     [[nodiscard]] nlohmann::json getCurrentConnection() const;
     [[nodiscard]] nlohmann::json getSavedNetworks() const;
@@ -27,6 +27,7 @@ private:
     [[nodiscard]] std::string _aliasIfProtected(const std::string& name) const;
 
     std::shared_ptr<spdlog::logger> logger_;
+    std::string wifiModePath_;
     static const std::vector<std::string> protectedNetworks_;
     static constexpr const char* protectedAlias_ = "VOREINGESTELLT";
 };

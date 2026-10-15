@@ -1,7 +1,5 @@
 #include "display/DisplayManager.hpp"
 #include <spdlog/spdlog.h>
-#include <stb_image.h>
-#include <stb_image_resize2.h>
 #include <fstream>
 #include <thread>
 
@@ -66,9 +64,6 @@ void DisplayManager::init()
     _clearHw();
     if (!_cfg.display.mockDisplay)
         std::this_thread::sleep_for(std::chrono::seconds(FIRST_START_SETTLE_SECS));
-    if (!_displayImageHw(std::filesystem::path(_cfg.display.loadingImagePath) /
-        "logo-frame-loading-shareframe.jpg"))
-        _logger->error("Failed to display loading image");
 }
 
 void DisplayManager::clear()
@@ -146,48 +141,59 @@ void DisplayManager::_clearHw()
 #endif
 }
 
-bool DisplayManager::displayImage(const std::filesystem::path& imagePath)
+bool DisplayManager::displayBuffer(const std::vector<uint8_t>& buffer, const std::string& source,
+                                   const std::stop_token st, const RefreshPolicy policy)
 {
     std::lock_guard lock(_hwMutex);
-    _waitMinRefresh();
-    return _displayImageHw(imagePath);
+    if (policy == RefreshPolicy::Immediate)
+    {
+        if (const int wait = secondsUntilRefreshReady(); wait > 0)
+            _logger->info("Immediate refresh for {} (min interval bypassed, {}s early)", source, wait);
+    }
+    else
+        _waitMinRefresh(st);
+
+    if (st.stop_requested())
+    {
+        _logger->debug("Display of {} cancelled", source);
+        return false;
+    }
+    return _sendBufferHw(buffer, source);
 }
 
-bool DisplayManager::_displayImageHw(const std::filesystem::path& imagePath)
+bool DisplayManager::_sendBufferHw(const std::vector<uint8_t>& buffer, const std::string& source)
 {
     // Shutdown may have interrupted the wait; don't start a new refresh now.
     if (_shuttingDown.load())
     {
-        _logger->info("Shutdown in progress, skipping image display");
+        _logger->info("Shutdown in progress, skipping display of {}", source);
+        return false;
+    }
+
+    if (buffer.size() != BUFFER_SIZE)
+    {
+        _logger->error("Refusing to display {}: buffer has {} bytes, expected {}",
+                       source, buffer.size(), BUFFER_SIZE);
         return false;
     }
 
     if (_cfg.display.mockDisplay)
     {
-        _logger->info("[mock] Display image: {}", imagePath.string());
+        _logger->info("[mock] Display: {}", source);
         if (!_cfg.display.mockOutputDir.empty())
-        {
-            const auto buffer = _prepareImageBuffer(imagePath);
-            if (buffer.empty())
-                return false;
-            _writeMockPanel(buffer, "image", imagePath);
-        }
+            _writeMockPanel(buffer, "image", source);
         _lastDisplayTime.store(std::chrono::steady_clock::now());
         _isCleared = false;
         return true;
     }
 
 #ifdef EPD_HARDWARE_ENABLED
-    auto buffer = _prepareImageBuffer(imagePath);
-    if (buffer.empty())
-        return false;
-
     if (!_hwInit())
         return false;
 
-    _logger->debug("Sending image to panel ({} bytes) and refreshing", buffer.size());
+    _logger->debug("Sending buffer to panel ({} bytes) and refreshing", buffer.size());
     const auto t0 = std::chrono::steady_clock::now();
-    const UBYTE rc = EPD_7IN5_V2_Display(buffer.data());
+    const UBYTE rc = EPD_7IN5_V2_Display(const_cast<UBYTE*>(buffer.data()));
     const auto refreshMs = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - t0).count();
     _lastDisplayTime.store(std::chrono::steady_clock::now());
@@ -196,7 +202,7 @@ bool DisplayManager::_displayImageHw(const std::filesystem::path& imagePath)
     {
         _metrics.increment("epd_refresh_fail_total");
         ++_consecutiveFailures;
-        _logger->error("Panel refresh FAILED (BUSY timeout, {} ms): {}", refreshMs, imagePath.string());
+        _logger->error("Panel refresh FAILED (BUSY timeout, {} ms): {}", refreshMs, source);
         return false;
     }
     _metrics.increment("epd_refresh_total");
@@ -207,7 +213,7 @@ bool DisplayManager::_displayImageHw(const std::filesystem::path& imagePath)
     _metrics.setIfUnset("epd_first_use_at", nowUnix());
     _consecutiveFailures = 0;
     _isCleared = false;
-    _logger->info("Displayed image: {} (panel refresh {} ms)", imagePath.string(), refreshMs);
+    _logger->info("Displayed {} (panel refresh {} ms)", source, refreshMs);
     return true;
 #else
     _logger->warn("EPD hardware not available (built without ENABLE_EPD_HARDWARE)");
@@ -303,7 +309,7 @@ int DisplayManager::secondsUntilRefreshReady() const
         std::chrono::ceil<std::chrono::seconds>(minRefresh - elapsed).count());
 }
 
-void DisplayManager::_waitMinRefresh() const
+void DisplayManager::_waitMinRefresh(const std::stop_token& st) const
 {
     const auto elapsed = std::chrono::steady_clock::now() - _lastDisplayTime.load();
     const auto minRefresh = std::chrono::seconds(_cfg.display.minRefreshSecs);
@@ -313,80 +319,19 @@ void DisplayManager::_waitMinRefresh() const
     const auto remaining = minRefresh - elapsed;
     _logger->info("Waiting {}s for minimum refresh interval",
                   std::chrono::duration_cast<std::chrono::seconds>(remaining).count());
-    // Interruptible (requestShutdown wakes us): called with _hwMutex held, so a
+    // Interruptible (shutdown or the caller's stop wakes us): called with _hwMutex held, so a
     // plain sleep would pin the bus and stall shutdown.
+    std::stop_callback onStop(st, [this]
+    {
+        std::lock_guard lk(_waitMtx);
+        _waitCv.notify_all();
+    });
     std::unique_lock lk(_waitMtx);
-    _waitCv.wait_for(lk, remaining, [this] { return _shuttingDown.load(); });
-}
-
-std::vector<uint8_t> DisplayManager::_prepareImageBuffer(
-    const std::filesystem::path& imagePath) const
-{
-    int w, h, channels;
-    auto* data = stbi_load(imagePath.c_str(), &w, &h, &channels, 3);
-    if (!data)
-    {
-        _logger->error("Failed to load image: {} ({})",
-                       imagePath.string(), stbi_failure_reason());
-        return {};
-    }
-
-    // Resize to display dimensions
-    std::vector<uint8_t> resized(WIDTH * HEIGHT * 3);
-    stbir_resize_uint8_linear(
-        data, w, h, w * 3,
-        resized.data(), WIDTH, HEIGHT, WIDTH * 3,
-        STBIR_RGB);
-    stbi_image_free(data);
-
-    // Convert to grayscale
-    std::vector<float> gray(WIDTH * HEIGHT);
-    for (int i = 0; i < WIDTH * HEIGHT; ++i)
-    {
-        const float r = resized[i * 3 + 0];
-        const float g = resized[i * 3 + 1];
-        const float b = resized[i * 3 + 2];
-        gray[i] = 0.299f * r + 0.587f * g + 0.114f * b;
-    }
-
-    // Floyd-Steinberg dithering
-    for (int y = 0; y < HEIGHT; ++y)
-    {
-        for (int x = 0; x < WIDTH; ++x)
-        {
-            const int idx = y * WIDTH + x;
-            const float oldPixel = gray[idx];
-            const float newPixel = (oldPixel > 127.5f) ? 255.0f : 0.0f;
-            gray[idx] = newPixel;
-            float error = oldPixel - newPixel;
-
-            auto distribute = [&](const int dx, const int dy, const float factor)
-            {
-                const int ny = y + dy;
-                if (const int nx = x + dx; nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT)
-                    gray[ny * WIDTH + nx] += error * factor;
-            };
-            distribute(1, 0, 7.0f / 16.0f);
-            distribute(-1, 1, 3.0f / 16.0f);
-            distribute(0, 1, 5.0f / 16.0f);
-            distribute(1, 1, 1.0f / 16.0f);
-        }
-    }
-
-    // Pack into 1-bit buffer (MSB first, white=1 black=0)
-    std::vector<uint8_t> buffer(BUFFER_SIZE, 0x00);
-    for (int i = 0; i < WIDTH * HEIGHT; ++i)
-    {
-        if (gray[i] > 127.5f)
-            buffer[i / 8] |= (0x80 >> (i % 8));
-    }
-
-    _logger->debug("Image buffer prepared: {} bytes", buffer.size());
-    return buffer;
+    _waitCv.wait_for(lk, remaining, [this, &st] { return _shuttingDown.load() || st.stop_requested(); });
 }
 
 void DisplayManager::_writeMockPanel(const std::vector<uint8_t>& buffer, const std::string& state,
-                                     const std::filesystem::path& source)
+                                     const std::string& source)
 {
     const std::filesystem::path dir(_cfg.display.mockOutputDir);
     std::filesystem::create_directories(dir);
@@ -402,7 +347,7 @@ void DisplayManager::_writeMockPanel(const std::vector<uint8_t>& buffer, const s
 
     {
         std::ofstream meta(dir / "panel.json.tmp");
-        meta << nlohmann::json{{"state", state}, {"source", source.string()}, {"seq", ++_mockSeq}}.dump();
+        meta << nlohmann::json{{"state", state}, {"source", source}, {"seq", ++_mockSeq}}.dump();
     }
     std::filesystem::rename(dir / "panel.json.tmp", dir / "panel.json");
 
