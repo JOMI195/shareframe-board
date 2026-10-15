@@ -32,6 +32,7 @@ describe('API endpoints', () => {
     [api.getSystemHealthUrl(), '/api/system/health'],
     [api.getRestartPiUrl(), '/api/system/restart'],
     [api.getShutdownPiUrl(), '/api/system/shutdown'],
+    [api.getFactoryResetUrl(), '/api/system/factory-reset'],
     [api.getFrameLogsUrl(), '/api/system/logs'],
     [api.getLatestReleaseUrl(), '/api/system/updates/latest'],
     [api.getPerformUpdateUrl(), '/api/system/updates/perform-update'],

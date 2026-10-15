@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import * as api from '@/assets/endpoints/api/frame';
 import { renderRoute } from '@tests/helpers/renderRoute';
 import { buildState, signedInState } from '@tests/helpers/preloadedState';
@@ -14,8 +14,9 @@ describe('offline WiFi setup', () => {
 
     expect(await screen.findByText('WLAN einrichten', { selector: 'h6' })).toBeInTheDocument();
     await waitFor(() => expect(router.state.location.pathname).toBe('/setup'));
-    expect(screen.getByText('AP-Modus aktiv')).toBeInTheDocument();
     expect(await screen.findByText(/http:\/\/192\.168\.4\.1/)).toBeInTheDocument();
+    expect(screen.getByText('„shareframe-1234“')).toBeInTheDocument();
+    expect(screen.queryByText('AP-Modus aktiv')).not.toBeInTheDocument();
   });
 
   // The protected route redirects before the first mode poll answers, and the auth
@@ -91,5 +92,18 @@ describe('offline WiFi setup', () => {
     await user.click(await screen.findByRole('button', { name: 'Stattdessen mit Passwort anmelden' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/auth/sign-in'));
+  });
+
+  it('resets the frame to factory defaults without signing in', async () => {
+    signedOutInApMode();
+    const reset = spyOnRequests('post', api.getFactoryResetUrl());
+    server.use(reset.handler);
+    const { user, store } = renderRoute('/setup', { preloadedState: buildState() });
+
+    await user.click(await screen.findByRole('button', { name: 'Auf Werkseinstellungen zurücksetzen' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Zurücksetzen' }));
+
+    await waitFor(() => expect(reset.calls).toHaveLength(1));
+    expect(store.getState().loadingWall.message).toMatch(/auf Werkseinstellungen zurückgesetzt …/);
   });
 });

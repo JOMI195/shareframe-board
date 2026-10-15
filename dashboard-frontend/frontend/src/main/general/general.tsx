@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
 import { Button, Stack } from '@mui/material';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
+import RestoreIcon from '@mui/icons-material/Restore';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { selectFrameInfoState, fetchFrameInfos } from '@/store/frameInfo/frameInfo.Slice';
-import { openGeneralChangePasswordDialog } from '@/store/dialogs/dialogs.Slice';
+import { openGeneralChangePasswordDialog, openGeneralFactoryResetDialog } from '@/store/dialogs/dialogs.Slice';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import ChangePasswordDialog from './dialogs/changePasswordDialog';
+import FactoryResetDialog from '@/common/components/factoryResetDialog';
 
 const RESOLUTION = "800mm x 480mm";
 const SYSTEM_INFO_POLL_MS = 5000;
@@ -148,8 +150,30 @@ const General = () => {
                         </Button>
                     }
                 />
+
+                <ShareframeInfoCard
+                    title="Werkseinstellungen"
+                    minHeight="0px"
+                    sections={[
+                        {
+                            label: "Zurücksetzen",
+                            content: "Löscht alle Bilder, WLAN-Netzwerke, das Geräte-Passwort und alle Einstellungen.",
+                        },
+                    ]}
+                    actions={
+                        <Button
+                            variant="contained"
+                            color="error"
+                            startIcon={<RestoreIcon />}
+                            onClick={() => dispatch(openGeneralFactoryResetDialog())}
+                        >
+                            Zurücksetzen
+                        </Button>
+                    }
+                />
             </Stack>
             <ChangePasswordDialog />
+            <FactoryResetDialog />
         </>
     );
 };

@@ -6,6 +6,7 @@ type SliceState = {
         shutdown: { open: boolean };
         restart: { open: boolean };
         changePassword: { open: boolean };
+        factoryReset: { open: boolean };
     },
     updates: {
         confirmUpdate: { open: boolean };
@@ -22,7 +23,8 @@ const initialState: SliceState = {
     general: {
         shutdown: { open: false },
         restart: { open: false },
-        changePassword: { open: false }
+        changePassword: { open: false },
+        factoryReset: { open: false }
     },
     updates: {
         confirmUpdate: { open: false }
@@ -89,6 +91,12 @@ const dialogsSlice = createSlice({
         },
         generalChangePasswordDialogClosed: (state) => {
             state.general.changePassword.open = false;
+        },
+        generalFactoryResetDialogOpened: (state) => {
+            state.general.factoryReset.open = true;
+        },
+        generalFactoryResetDialogClosed: (state) => {
+            state.general.factoryReset.open = false;
         },
         networkChangeApPasswordDialogOpened: (state) => {
             state.network.changeApPassword.open = true;
@@ -162,6 +170,14 @@ export const closeGeneralChangePasswordDialog = () => ({
     type: dialogsSlice.actions.generalChangePasswordDialogClosed.type,
 });
 
+export const openGeneralFactoryResetDialog = () => ({
+    type: dialogsSlice.actions.generalFactoryResetDialogOpened.type,
+});
+
+export const closeGeneralFactoryResetDialog = () => ({
+    type: dialogsSlice.actions.generalFactoryResetDialogClosed.type,
+});
+
 export const openNetworkChangeApPasswordDialog = () => ({
     type: dialogsSlice.actions.networkChangeApPasswordDialogOpened.type,
 });
@@ -186,6 +202,8 @@ export const {
     networkRenameNetworkNameChanged,
     generalChangePasswordDialogOpened,
     generalChangePasswordDialogClosed,
+    generalFactoryResetDialogOpened,
+    generalFactoryResetDialogClosed,
     networkChangeApPasswordDialogOpened,
     networkChangeApPasswordDialogClosed
 } = dialogsSlice.actions;

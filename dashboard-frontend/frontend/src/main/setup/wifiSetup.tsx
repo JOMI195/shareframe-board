@@ -7,10 +7,11 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import Logo from '@/common/components/logo';
-import NetworkStatusBanner from '@/common/components/networkStatusBanner';
+import FactoryResetDialog from '@/common/components/factoryResetDialog';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { addNetwork, selectNetworkState } from '@/store/network/network.Slice';
 import { selectConnectionMode } from '@/store/connectionMode/connectionMode.Slice';
+import { openGeneralFactoryResetDialog } from '@/store/dialogs/dialogs.Slice';
 import { useNavigate } from 'react-router';
 import { getAuthenticationUrl, getSignInUrl } from '@/assets/endpoints/app/authEndpoints';
 
@@ -44,9 +45,16 @@ const WifiSetup = () => {
         }
     };
 
+    const hotspotInfo = mode === 'ap' && (
+        <Alert severity="info" sx={{ my: 1 }}>
+            Hotspot <b>„{ap_ssid || 'shareframe-board'}“</b>
+            {ap_password ? <> · Passwort: <b>{ap_password}</b></> : null}. Falls sich diese
+            Seite schließt, verbinde dich erneut und öffne <b>http://{AP_GATEWAY_IP}</b>.
+        </Alert>
+    );
+
     return (
         <>
-            <NetworkStatusBanner />
             <Container
                 component="main"
                 maxWidth="xs"
@@ -89,6 +97,7 @@ const WifiSetup = () => {
                                     trennt sich. Klappt die Verbindung nicht, erscheint der Hotspot
                                     erneut. Du kannst das Gerät alternativ neu starten.
                                 </Typography>
+                                {hotspotInfo}
                             </Stack>
                         ) : (
                             <>
@@ -104,6 +113,7 @@ const WifiSetup = () => {
                                     Der Bilderrahmen konnte kein bekanntes WLAN finden. Gib hier deine
                                     Zugangsdaten ein, damit er sich wieder mit dem Internet verbinden kann.
                                 </Typography>
+                                {hotspotInfo}
 
                                 <TextField
                                     autoFocus
@@ -161,20 +171,20 @@ const WifiSetup = () => {
                                 >
                                     Stattdessen mit Passwort anmelden
                                 </Button>
+                                <Button
+                                    variant="text"
+                                    color="error"
+                                    fullWidth
+                                    onClick={() => dispatch(openGeneralFactoryResetDialog())}
+                                >
+                                    Auf Werkseinstellungen zurücksetzen
+                                </Button>
                             </>
                         )}
                     </CardContent>
                 </Card>
-
-                {mode === 'ap' && (
-                    <Alert severity="info" sx={{ mt: 2 }}>
-                        Falls sich diese Seite schließt: verbinde dich erneut mit dem WLAN
-                        {' '}<b>„{ap_ssid || 'shareframe-board'}“</b>
-                        {ap_password ? <> (Passwort: <b>{ap_password}</b>)</> : null} und öffne
-                        {' '}<b>http://{AP_GATEWAY_IP}</b> im Browser.
-                    </Alert>
-                )}
             </Container>
+            <FactoryResetDialog />
         </>
     );
 };

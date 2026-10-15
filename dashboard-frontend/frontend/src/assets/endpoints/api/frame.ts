@@ -40,6 +40,7 @@ export const getSystemInfoUrl = () => `${systemBaseUrl()}/info`;
 export const getSystemHealthUrl = () => `${systemBaseUrl()}/health`;
 export const getRestartPiUrl = () => `${systemBaseUrl()}/restart`;
 export const getShutdownPiUrl = () => `${systemBaseUrl()}/shutdown`;
+export const getFactoryResetUrl = () => `${systemBaseUrl()}/factory-reset`;
 export const getFrameLogsUrl = () => `${systemBaseUrl()}/logs`;
 export const getLatestReleaseUrl = () => `${systemBaseUrl()}/updates/latest`;
 export const getPerformUpdateUrl = () => `${systemBaseUrl()}/updates/perform-update`;
