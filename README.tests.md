@@ -97,8 +97,7 @@ Prefer a step in an existing spec over a new one; the stack takes about a minute
   duplicates, garbage, dropped connections and rejected tokens.
 - **Virtual panel.** With `display.mock_display` and `display.mock_output_dir` set, the
   display writes every frame to `panel.pbm` (the exact 800×480 1-bit buffer the e-paper
-  would get, 4-gray frames thresholded to 1-bit) and `panel.json` (`state`, `source`, `seq`,
-  `gray4`), and counts refreshes like the
+  would get) and `panel.json` (`state`, `source`, `seq`), and counts refreshes like the
   panel. Wait with `waitForPanel(predicate)`; check the frame with `Frame.read()` and
   `blackRatio(...)` (orientation, polarity, dithering) — no reference images in the repo.
   The report attaches the frames as PNG.

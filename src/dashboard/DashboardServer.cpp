@@ -89,8 +89,6 @@ void DashboardServer::_initRoutes()
         {"POST", "/api/frame/slideshow/skip",     [this](auto& req, auto&) { return frameHandlers_.handleSkip(req); }},
         {"POST", "/api/frame/clear",              [this](auto& req, auto&) { return frameHandlers_.handleClear(req); }},
         {"GET",  "/api/frame/display/stats",      [this](auto& req, auto&) { return frameHandlers_.handleDisplayStats(req); }},
-        {"GET",  "/api/frame/display/quality",    [this](auto& req, auto&) { return frameHandlers_.handleImageQuality(req); }},
-        {"POST", "/api/frame/display/quality",    [this](auto& req, auto&) { return frameHandlers_.handleUpdateImageQuality(req); }},
         {"POST", "/api/frame/slideshow/order",    [this](auto& req, auto&) { return slideshowImageHandlers_.handleUpdateOrder(req); }},
         {"GET",  "/api/frame/slideshow/images",             [this](auto& req, auto&) { return slideshowImageHandlers_.handleList(req); }},
         {"GET",  "/api/frame/images/file",        [this](auto& req, auto& qp) { return slideshowImageHandlers_.handleFile(req, qp); }},

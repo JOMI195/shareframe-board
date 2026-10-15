@@ -1,6 +1,5 @@
 #pragma once
 #include "config/AppConfig.hpp"
-#include "settings/ImageQuality.hpp"
 #include "settings/PlaybackOrder.hpp"
 #include "repository/SettingsRepository.hpp"
 #include <mutex>
@@ -23,9 +22,6 @@ public:
     [[nodiscard]] int getNightInterval() const;
     [[nodiscard]] bool isNightBlank() const;
     void setNightMode(bool enabled, int startHour, int endHour, int intervalSecs, bool blank);
-
-    [[nodiscard]] ImageQuality getImageQuality() const;
-    void setImageQuality(ImageQuality quality);
 
     [[nodiscard]] PlaybackMode getPlaybackMode() const;
     [[nodiscard]] std::vector<int64_t> getCustomOrder() const;
@@ -60,7 +56,6 @@ private:
     int nightEndHour_;
     int nightIntervalSecs_;
     bool nightBlank_;
-    ImageQuality imageQuality_ = ImageQuality::Mono;
     PlaybackMode playbackMode_ = PlaybackMode::Chronological;
     std::vector<int64_t> customOrder_;
 };

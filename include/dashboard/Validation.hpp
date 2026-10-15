@@ -1,5 +1,4 @@
 #pragma once
-#include "settings/ImageQuality.hpp"
 #include "settings/PlaybackOrder.hpp"
 #include <nlohmann/json.hpp>
 #include <optional>
@@ -82,11 +81,6 @@ inline bool isValidIntervalSecs(const int secs)
 inline bool isValidHour(const int hour)
 {
     return hour >= 0 && hour <= 23;
-}
-
-inline bool isValidImageQuality(const std::string& quality)
-{
-    return imageQualityFromString(quality).has_value();
 }
 
 inline bool isValidPlaybackMode(const std::string& mode)

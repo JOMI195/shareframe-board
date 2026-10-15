@@ -84,13 +84,6 @@ RuntimeSettings::RuntimeSettings(SettingsRepository& repo, const AppConfig& cfg)
     logger_->info("Night mode: enabled={}, window={}-{}, interval={}s, blank={}",
                   nightModeEnabled_, nightStartHour_, nightEndHour_, nightIntervalSecs_, nightBlank_);
 
-    if (auto storedQuality = repo_.get("image_quality"))
-    {
-        if (const auto quality = imageQualityFromString(*storedQuality))
-            imageQuality_ = *quality;
-    }
-    logger_->info("Image quality: {}", toString(imageQuality_));
-
     if (auto storedMode = repo_.get("playback_mode"))
     {
         if (const auto mode = playbackModeFromString(*storedMode))
@@ -178,20 +171,6 @@ void RuntimeSettings::setNightMode(const bool enabled, const int startHour,
     repo_.set("night_blank", blank ? "1" : "0");
     logger_->info("Night mode updated to enabled={}, window={}-{}, interval={}s, blank={} (persisted)",
                   enabled, startHour, endHour, intervalSecs, blank);
-}
-
-ImageQuality RuntimeSettings::getImageQuality() const
-{
-    std::lock_guard lk(mtx_);
-    return imageQuality_;
-}
-
-void RuntimeSettings::setImageQuality(const ImageQuality quality)
-{
-    std::lock_guard lk(mtx_);
-    imageQuality_ = quality;
-    repo_.set("image_quality", toString(quality));
-    logger_->info("Image quality updated to {} (persisted)", toString(quality));
 }
 
 PlaybackMode RuntimeSettings::getPlaybackMode() const

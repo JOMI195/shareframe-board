@@ -58,27 +58,6 @@ TEST_F(MockPanelTest, DisplayedImageIsWrittenAsOneBitFrame)
     EXPECT_EQ(meta()["state"], "image");
     EXPECT_EQ(meta()["source"], kLoadingImage.string());
     EXPECT_EQ(meta()["seq"], 1);
-    EXPECT_EQ(meta()["gray4"], false);
-}
-
-TEST_F(MockPanelTest, Gray4FrameIsWrittenAsItsOneBitThreshold)
-{
-    // Pixel codes per byte: white, light gray, dark gray, black.
-    const std::vector<uint8_t> gray(DisplayManager::GRAY4_BUFFER_SIZE, 0b11'10'01'00);
-    DisplayManager display(cfg, metrics);
-    ASSERT_TRUE(display.displayBuffer(gray, "gray4"));
-
-    const auto body = read("panel.pbm").substr(kHeader.size());
-    EXPECT_EQ(body, std::string(DisplayManager::BUFFER_SIZE, '\x33'));
-    EXPECT_EQ(meta()["gray4"], true);
-    EXPECT_EQ(metrics.get("epd_image_refresh_total"), 1);
-}
-
-TEST_F(MockPanelTest, BufferOfUnknownSizeIsRefused)
-{
-    DisplayManager display(cfg, metrics);
-    EXPECT_FALSE(display.displayBuffer(std::vector<uint8_t>(DisplayManager::BUFFER_SIZE + 1), "odd"));
-    EXPECT_FALSE(std::filesystem::exists(std::filesystem::path(cfg.display.mockOutputDir) / "panel.json"));
 }
 
 TEST_F(MockPanelTest, ClearWritesWhiteFrame)

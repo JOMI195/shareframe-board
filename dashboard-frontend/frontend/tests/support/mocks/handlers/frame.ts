@@ -7,7 +7,6 @@ import { ok } from '../envelope';
 // The toggle thunk polls the status until it flips, so the default world must remember it.
 const initialBoard = () => ({
   slideshowActive: true,
-  displayQuality: 'mono' as 'mono' | 'gray4',
   slideshowImages: makeSlideshowImages() as SlideshowImagesPayload,
 });
 
@@ -47,17 +46,11 @@ export const frameHandlers = [
   http.post(apiUrl(api.getSkipSlideshowImageUrl()), () => ok()),
   http.post(apiUrl(api.getClearDisplayUrl()), () => ok()),
   http.get(apiUrl(api.getDisplayStatsUrl()), () => ok(makeDisplayStats())),
-  http.get(apiUrl(api.getDisplayQualityUrl()), () => ok({ quality: board.displayQuality })),
   http.get(apiUrl(api.getSlideshowImagesUrl()), () => ok(board.slideshowImages)),
   http.get(apiPath(api.getImageFileUrl(0)), () => image('image/jpeg')),
   http.post(apiUrl(api.getSlideshowOrderUrl()), async ({ request }) => {
     const { mode, custom_order } = (await request.json()) as { mode: SlideshowImagesPayload['mode']; custom_order?: number[] };
     board.slideshowImages = applyOrder(board.slideshowImages, mode, custom_order);
     return ok({ mode, custom_order: board.slideshowImages.custom_order });
-  }),
-  http.post(apiUrl(api.getDisplayQualityUrl()), async ({ request }) => {
-    const { quality } = (await request.json()) as { quality: 'mono' | 'gray4' };
-    board.displayQuality = quality;
-    return ok({ quality });
   }),
 ];

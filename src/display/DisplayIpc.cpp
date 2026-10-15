@@ -65,22 +65,6 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
             {"active_now", settings_.isNightNow()}
         };
 
-    case IpcMessageType::UpdateImageQuality:
-    {
-        const auto quality = imageQualityFromString(msg.data.value("quality", ""));
-        if (!quality)
-        {
-            spdlog::warn("IPC: invalid quality in update_image_quality");
-            return nlohmann::json::object();
-        }
-        spdlog::info("IPC: update image quality to {}", toString(*quality));
-        bus_.publish<Topic::UPDATE_IMAGE_QUALITY>(UpdateImageQualityEvent{*quality});
-        return nlohmann::json::object();
-    }
-
-    case IpcMessageType::GetImageQuality:
-        return {{"quality", toString(settings_.getImageQuality())}};
-
     case IpcMessageType::UpdatePlaybackOrder:
     {
         const auto mode = playbackModeFromString(msg.data.value("mode", ""));

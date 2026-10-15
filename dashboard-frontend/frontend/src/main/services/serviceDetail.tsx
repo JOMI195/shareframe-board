@@ -11,7 +11,6 @@ import LogsContent from '@/main/monitoring/logsContent';
 import LogFilter, { LogFilterParams } from '@/main/monitoring/logFilter';
 import { HealthChip, RestartButton } from './serviceUtils';
 import { formatUptime } from './formatUptime';
-import DisplayQualityCard from './displayQualityCard';
 
 const POLL_MS = 10000;
 
@@ -52,8 +51,6 @@ const ServiceDetail: React.FC<{ serviceId: ServiceType }> = ({ serviceId }) => {
                 ]}
                 actions={<RestartButton id={serviceId} size="medium" />}
             />
-
-            {serviceId === 'display' && <DisplayQualityCard />}
 
             <Box>
                 <Typography variant="h6" gutterBottom sx={{

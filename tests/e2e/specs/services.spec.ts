@@ -1,4 +1,4 @@
-import { expectShimCall, readPanel, showsDefault, waitForPanel } from '../support/board';
+import { expectShimCall } from '../support/board';
 import { card, expect, signIn, test } from '../support/fixtures';
 
 test('every service reports as running', async ({ page }) => {
@@ -32,23 +32,4 @@ test('a service page shows its process and its own log', async ({ page, board })
 
   await expect(card(page, 'Display')).toContainText(String(display.pid));
   await expect(page.getByText(/\[mock\] Display/).first()).toBeVisible();
-});
-
-test('the display page switches photos to 4 gray levels', async ({ page, board }) => {
-  await signIn(page);
-  await page.goto('/services/display');
-  const toggle = card(page, 'Bildqualität').getByRole('switch', { name: '4 Graustufen (Test)' });
-
-  try {
-    await toggle.click();
-    await expect(page.getByText('4 Graustufen ab dem nächsten Bild')).toBeVisible();
-    await expect.poll(async () => (await board.get('/api/frame/display/quality')).quality).toBe('gray4');
-
-    const before = (await readPanel())!;
-    expect(before.gray4).toBe(false);
-    await board.post('/api/frame/slideshow/skip');
-    await waitForPanel((p) => showsDefault(p) && p.seq > before.seq && p.gray4, 'next photo painted in 4-gray');
-  } finally {
-    await board.post('/api/frame/display/quality', { quality: 'mono' });
-  }
 });

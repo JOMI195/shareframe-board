@@ -17,20 +17,6 @@ int64_t nowUnix()
     return std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
 }
-
-// The mock panel stays 1-bit: light grays become white, dark grays black.
-std::vector<uint8_t> toMono(const std::vector<uint8_t>& buffer)
-{
-    if (buffer.size() != DisplayManager::GRAY4_BUFFER_SIZE)
-        return buffer;
-    std::vector<uint8_t> mono(DisplayManager::BUFFER_SIZE, 0x00);
-    for (int i = 0; i < DisplayManager::WIDTH * DisplayManager::HEIGHT; ++i)
-    {
-        if ((buffer[i / 4] >> (6 - 2 * (i % 4))) & 0b10)
-            mono[i / 8] |= (0x80 >> (i % 8));
-    }
-    return mono;
-}
 } // namespace
 
 DisplayManager::DisplayManager(const AppConfig& cfg, DisplayMetricsRepository& metrics)
@@ -189,13 +175,12 @@ bool DisplayManager::_sendBufferHw(const std::vector<uint8_t>& buffer, const std
         return false;
     }
 
-    if (buffer.size() != BUFFER_SIZE && buffer.size() != GRAY4_BUFFER_SIZE)
+    if (buffer.size() != BUFFER_SIZE)
     {
-        _logger->error("Refusing to display {}: buffer has {} bytes, expected {} or {}",
-                       source, buffer.size(), BUFFER_SIZE, GRAY4_BUFFER_SIZE);
+        _logger->error("Refusing to display {}: buffer has {} bytes, expected {}",
+                       source, buffer.size(), BUFFER_SIZE);
         return false;
     }
-    const bool gray4 = buffer.size() == GRAY4_BUFFER_SIZE;
 
     if (_cfg.display.mockDisplay)
     {
@@ -209,16 +194,12 @@ bool DisplayManager::_sendBufferHw(const std::vector<uint8_t>& buffer, const std
     }
 
 #ifdef EPD_HARDWARE_ENABLED
-    if (!_hwInit(gray4))
+    if (!_hwInit())
         return false;
 
     _logger->debug("Sending buffer to panel ({} bytes) and refreshing", buffer.size());
     const auto t0 = std::chrono::steady_clock::now();
-    UBYTE rc = 0;
-    if (gray4)
-        EPD_7IN5_V2_Display_4Gray(buffer.data());
-    else
-        rc = EPD_7IN5_V2_Display(const_cast<UBYTE*>(buffer.data()));
+    const UBYTE rc = EPD_7IN5_V2_Display(const_cast<UBYTE*>(buffer.data()));
     const auto refreshMs = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - t0).count();
     _lastDisplayTime.store(std::chrono::steady_clock::now());
@@ -239,7 +220,7 @@ bool DisplayManager::_sendBufferHw(const std::vector<uint8_t>& buffer, const std
     _consecutiveFailures = 0;
     _isCleared = false;
     _recordScreen("image", source);
-    _logger->info("Displayed {} ({}, panel refresh {} ms)", source, gray4 ? "4-gray" : "1-bit", refreshMs);
+    _logger->info("Displayed {} (panel refresh {} ms)", source, refreshMs);
     return true;
 #else
     _logger->warn("EPD hardware not available (built without ENABLE_EPD_HARDWARE)");
@@ -295,7 +276,7 @@ nlohmann::json DisplayManager::healthSnapshot() const
     return j;
 }
 
-bool DisplayManager::_hwInit(const bool gray4)
+bool DisplayManager::_hwInit()
 {
 #ifdef EPD_HARDWARE_ENABLED
     if (!_initialized)
@@ -312,7 +293,7 @@ bool DisplayManager::_hwInit(const bool gray4)
     DEV_Digital_Write(EPD_PWR_PIN, 1);
     _panelPowered = true;
     const auto t0 = std::chrono::steady_clock::now();
-    if ((gray4 ? EPD_7IN5_V2_Init_4Gray() : EPD_7IN5_V2_Init()) != 0)
+    if (EPD_7IN5_V2_Init() != 0)
     {
         _metrics.increment("epd_poweron_fail_total");
         ++_consecutiveFailures;
@@ -384,15 +365,14 @@ void DisplayManager::_writeMockPanel(const std::vector<uint8_t>& buffer, const s
     {
         std::ofstream pbm(dir / "panel.pbm.tmp", std::ios::binary);
         pbm << "P4\n" << WIDTH << " " << HEIGHT << "\n";
-        for (const uint8_t b : toMono(buffer))
+        for (const uint8_t b : buffer)
             pbm.put(static_cast<char>(~b));
     }
     std::filesystem::rename(dir / "panel.pbm.tmp", dir / "panel.pbm");
 
     {
         std::ofstream meta(dir / "panel.json.tmp");
-        meta << nlohmann::json{{"state", state}, {"source", source}, {"seq", ++_mockSeq},
-                               {"gray4", buffer.size() == GRAY4_BUFFER_SIZE}}.dump();
+        meta << nlohmann::json{{"state", state}, {"source", source}, {"seq", ++_mockSeq}}.dump();
     }
     std::filesystem::rename(dir / "panel.json.tmp", dir / "panel.json");
 

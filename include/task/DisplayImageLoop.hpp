@@ -11,7 +11,6 @@
 class RuntimeSettings;
 struct SetSlideshowActiveEvent;
 struct UpdateNightModeEvent;
-struct UpdateImageQualityEvent;
 struct UpdatePlaybackOrderEvent;
 
 class DisplayImageLoop : public Task
@@ -50,7 +49,6 @@ private:
     void _onSkipImage();
     void _onUpdateInterval(const UpdateDisplayIntervalEvent& evt) const;
     void _onUpdateNightMode(const UpdateNightModeEvent& evt) const;
-    void _onUpdateImageQuality(const UpdateImageQualityEvent& evt) const;
     void _onUpdatePlaybackOrder(const UpdatePlaybackOrderEvent& evt) const;
     [[nodiscard]] int64_t _pickNext(const std::vector<Image>& images);
     void _onSetSlideshowActive(const SetSlideshowActiveEvent& evt);
