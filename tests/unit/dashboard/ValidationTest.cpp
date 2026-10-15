@@ -47,3 +47,11 @@ TEST(Validation, IntervalAndHourBounds)
     EXPECT_FALSE(isValidHour(24));
     EXPECT_FALSE(isValidHour(-1));
 }
+
+TEST(Validation, ImageQualityIsMonoOrGray4)
+{
+    EXPECT_TRUE(isValidImageQuality("mono"));
+    EXPECT_TRUE(isValidImageQuality("gray4"));
+    EXPECT_FALSE(isValidImageQuality(""));
+    EXPECT_FALSE(isValidImageQuality("Gray4"));
+}

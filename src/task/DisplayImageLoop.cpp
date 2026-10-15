@@ -35,6 +35,8 @@ void DisplayImageLoop::subscribe()
         [this](const UpdateDisplayIntervalEvent& evt) { _onUpdateInterval(evt); });
     bus_.subscribe<Topic::UPDATE_NIGHT_MODE>(
         [this](const UpdateNightModeEvent& evt) { _onUpdateNightMode(evt); });
+    bus_.subscribe<Topic::UPDATE_IMAGE_QUALITY>(
+        [this](const UpdateImageQualityEvent& evt) { _onUpdateImageQuality(evt); });
     bus_.subscribe<Topic::SET_SLIDESHOW_ACTIVE>(
         [this](const SetSlideshowActiveEvent& evt) { _onSetSlideshowActive(evt); });
 }
@@ -250,7 +252,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
 
 bool DisplayImageLoop::_paint(const std::filesystem::path& path, const std::stop_token& st) const
 {
-    return display_.displayBuffer(PhotoRenderer::render(path), path.string(), st);
+    return display_.displayBuffer(PhotoRenderer::render(path, settings_.getImageQuality()), path.string(), st);
 }
 
 void DisplayImageLoop::_onImageNew()
@@ -277,6 +279,11 @@ void DisplayImageLoop::_onUpdateInterval(const UpdateDisplayIntervalEvent& evt) 
 void DisplayImageLoop::_onUpdateNightMode(const UpdateNightModeEvent& evt) const
 {
     settings_.setNightMode(evt.enabled, evt.startHour, evt.endHour, evt.intervalSecs);
+}
+
+void DisplayImageLoop::_onUpdateImageQuality(const UpdateImageQualityEvent& evt) const
+{
+    settings_.setImageQuality(evt.quality);
 }
 
 void DisplayImageLoop::_onSetSlideshowActive(const SetSlideshowActiveEvent& evt)

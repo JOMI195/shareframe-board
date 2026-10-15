@@ -67,6 +67,13 @@ RuntimeSettings::RuntimeSettings(SettingsRepository& repo, const AppConfig& cfg)
 
     logger_->info("Night mode: enabled={}, window={}-{}, interval={}s",
                   nightModeEnabled_, nightStartHour_, nightEndHour_, nightIntervalSecs_);
+
+    if (auto storedQuality = repo_.get("image_quality"))
+    {
+        if (const auto quality = imageQualityFromString(*storedQuality))
+            imageQuality_ = *quality;
+    }
+    logger_->info("Image quality: {}", toString(imageQuality_));
 }
 
 int RuntimeSettings::getDisplayInterval() const
@@ -135,6 +142,20 @@ void RuntimeSettings::setNightMode(const bool enabled, const int startHour,
     repo_.set("night_interval", std::to_string(intervalSecs));
     logger_->info("Night mode updated to enabled={}, window={}-{}, interval={}s (persisted)",
                   enabled, startHour, endHour, intervalSecs);
+}
+
+ImageQuality RuntimeSettings::getImageQuality() const
+{
+    std::lock_guard lk(mtx_);
+    return imageQuality_;
+}
+
+void RuntimeSettings::setImageQuality(const ImageQuality quality)
+{
+    std::lock_guard lk(mtx_);
+    imageQuality_ = quality;
+    repo_.set("image_quality", toString(quality));
+    logger_->info("Image quality updated to {} (persisted)", toString(quality));
 }
 
 bool RuntimeSettings::isNightNow() const

@@ -40,6 +40,7 @@ protected:
     Recorder<Topic::SET_SLIDESHOW_ACTIVE> active{bus};
     Recorder<Topic::UPDATE_DISPLAY_INTERVAL> intervals{bus};
     Recorder<Topic::UPDATE_NIGHT_MODE> nightModes{bus};
+    Recorder<Topic::UPDATE_IMAGE_QUALITY> qualities{bus};
     Recorder<Topic::CLEAR_DISPLAY> clears{bus};
 
     NngRepServer server{url, [this](const IpcMessage& m) { return displayIpc.handle(m); }};
@@ -83,6 +84,18 @@ TEST_F(DashboardDisplayTest, NightModeFieldsArriveUnchanged)
     EXPECT_EQ(e.intervalSecs, 7200);
 }
 
+TEST_F(DashboardDisplayTest, ImageQualityArrivesAndReadsBack)
+{
+    const auto r = result(frame.handleUpdateImageQuality(httpRequest("POST", "/", {{"quality", "gray4"}})));
+    EXPECT_EQ(r.status, 200);
+    ASSERT_TRUE(waitFor([&] { return qualities.size() == 1; }));
+    EXPECT_EQ(qualities.get()[0].quality, ImageQuality::Gray4);
+
+    EXPECT_EQ(result(frame.handleImageQuality(httpRequest("GET", "/"))).body["data"]["quality"], "mono");
+    settings.setImageQuality(ImageQuality::Gray4);
+    EXPECT_EQ(result(frame.handleImageQuality(httpRequest("GET", "/"))).body["data"]["quality"], "gray4");
+}
+
 TEST_F(DashboardDisplayTest, ClearReachesTheDisplay)
 {
     EXPECT_EQ(result(frame.handleClear(httpRequest("POST", "/"))).status, 200);
@@ -95,9 +108,10 @@ TEST_F(DashboardDisplayTest, InvalidRequestsNeverReachTheDisplay)
     EXPECT_EQ(result(frame.handleUpdateInterval(httpRequest("POST", "/", {{"interval_seconds", 60}}))).status, 400);
     EXPECT_EQ(result(frame.handleUpdateNightMode(httpRequest("POST", "/",
         {{"enabled", true}, {"start_hour", 3}, {"end_hour", 3}, {"interval_seconds", 3600}}))).status, 400);
+    EXPECT_EQ(result(frame.handleUpdateImageQuality(httpRequest("POST", "/", {{"quality", "gray16"}}))).status, 400);
     EXPECT_EQ(frame.handleSkip(httpRequest("POST", "/"))->statusCode, 200);
     ASSERT_TRUE(waitFor([&] { return skips.size() == 1; }));
-    EXPECT_EQ(active.size() + intervals.size() + nightModes.size(), 0u);
+    EXPECT_EQ(active.size() + intervals.size() + nightModes.size() + qualities.size(), 0u);
 }
 
 TEST_F(DashboardDisplayTest, StatusAggregatesTheDisplayState)

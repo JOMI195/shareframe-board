@@ -1,5 +1,6 @@
 #pragma once
 #include "config/AppConfig.hpp"
+#include "settings/ImageQuality.hpp"
 #include "repository/SettingsRepository.hpp"
 #include <mutex>
 #include <spdlog/spdlog.h>
@@ -21,6 +22,9 @@ public:
     [[nodiscard]] int getNightInterval() const;
     void setNightMode(bool enabled, int startHour, int endHour, int intervalSecs);
 
+    [[nodiscard]] ImageQuality getImageQuality() const;
+    void setImageQuality(ImageQuality quality);
+
     /// True while the wall clock sits inside an enabled quiet-hours window.
     [[nodiscard]] bool isNightNow() const;
 
@@ -41,4 +45,5 @@ private:
     int nightStartHour_;
     int nightEndHour_;
     int nightIntervalSecs_;
+    ImageQuality imageQuality_ = ImageQuality::Mono;
 };

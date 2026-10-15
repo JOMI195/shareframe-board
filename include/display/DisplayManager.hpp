@@ -40,7 +40,8 @@ public:
     /// so tasks unblock within the timeout-kill window instead of holding the lock.
     void requestShutdown();
 
-    /// Paint a ready 1-bit panel buffer (init → display → sleep cycle); `source`
+    /// Paint a ready panel buffer (init → display → sleep cycle), 1-bit or 4-gray
+    /// as told by its size (BUFFER_SIZE / GRAY4_BUFFER_SIZE); `source`
     /// names the content for logs and the mock panel. A stop request cancels a
     /// paint still waiting for the min refresh interval.
     [[nodiscard]] bool displayBuffer(const std::vector<uint8_t>& buffer, const std::string& source,
@@ -63,12 +64,13 @@ public:
     static constexpr int WIDTH = 800;
     static constexpr int HEIGHT = 480;
     static constexpr int BUFFER_SIZE = WIDTH * HEIGHT / 8;
+    static constexpr int GRAY4_BUFFER_SIZE = WIDTH * HEIGHT / 4;
     static constexpr int FIRST_START_SETTLE_SECS = 5;
     /// Manufacturer full-refresh endurance estimate (UC8179 / Waveshare 7.5"V2).
     static constexpr int64_t RATED_REFRESHES = 1'000'000;
 
 private:
-    [[nodiscard]] bool _hwInit();
+    [[nodiscard]] bool _hwInit(bool gray4 = false);
     void _hwSleep();
     void _waitMinRefresh(const std::stop_token& st = {}) const;
     void _clearHw();

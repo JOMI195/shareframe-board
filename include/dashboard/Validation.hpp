@@ -1,4 +1,5 @@
 #pragma once
+#include "settings/ImageQuality.hpp"
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -75,6 +76,11 @@ inline bool isValidIntervalSecs(const int secs)
 inline bool isValidHour(const int hour)
 {
     return hour >= 0 && hour <= 23;
+}
+
+inline bool isValidImageQuality(const std::string& quality)
+{
+    return imageQualityFromString(quality).has_value();
 }
 
 } // namespace dashboard::Validation

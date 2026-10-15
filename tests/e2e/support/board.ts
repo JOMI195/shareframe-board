@@ -12,7 +12,7 @@ export const INSTALLED_VERSION = '1.2.0';
 
 // ---- virtual panel
 
-export type Panel = { state: 'image' | 'cleared'; source: string; seq: number };
+export type Panel = { state: 'image' | 'cleared'; source: string; seq: number; gray4: boolean };
 
 export async function readPanel(): Promise<Panel | null> {
   try {

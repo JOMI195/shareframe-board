@@ -151,3 +151,33 @@ ix::HttpResponsePtr FrameHandlers::handleDisplayStats(const ix::HttpRequestPtr& 
     }
     return jsonResponse(200, "OK", *result);
 }
+
+ix::HttpResponsePtr FrameHandlers::handleImageQuality(const ix::HttpRequestPtr& /*req*/) const
+{
+    auto result = ipc_.sendAndReceive(IpcMessage{IpcMessageType::GetImageQuality, {}});
+    if (!result)
+    {
+        logger_->error("Failed to query image quality via IPC");
+        return errorResponse(500, "Internal Server Error", "Service unavailable");
+    }
+    return jsonResponse(200, "OK", {{"quality", result->value("quality", "mono")}});
+}
+
+ix::HttpResponsePtr FrameHandlers::handleUpdateImageQuality(const ix::HttpRequestPtr& req) const
+{
+    nlohmann::json body;
+    try { body = nlohmann::json::parse(req->body); }
+    catch (...) { return errorResponse(400, "Bad Request", "Invalid JSON"); }
+
+    const auto quality = body.value("quality", "");
+    if (!Validation::isValidImageQuality(quality))
+        return errorResponse(400, "Bad Request", "quality must be 'mono' or 'gray4'");
+
+    if (!ipc_.send(IpcMessage{IpcMessageType::UpdateImageQuality, {{"quality", quality}}}))
+    {
+        logger_->error("Failed to send update_image_quality via IPC");
+        return errorResponse(500, "Internal Server Error", "IPC error");
+    }
+
+    return jsonResponse(200, "OK", {{"quality", quality}});
+}

@@ -10,6 +10,8 @@ enum class IpcMessageType
     GetDisplayInterval,
     UpdateNightMode,
     GetNightMode,
+    UpdateImageQuality,
+    GetImageQuality,
     ClearDisplay,
     SetSlideshowActive,
     GetSlideshowActive,
@@ -37,6 +39,8 @@ inline std::string ipcMessageTypeToString(IpcMessageType t)
     case IpcMessageType::GetDisplayInterval:      return "get_display_interval";
     case IpcMessageType::UpdateNightMode:         return "update_night_mode";
     case IpcMessageType::GetNightMode:            return "get_night_mode";
+    case IpcMessageType::UpdateImageQuality:      return "update_image_quality";
+    case IpcMessageType::GetImageQuality:         return "get_image_quality";
     case IpcMessageType::ClearDisplay:            return "clear_display";
     case IpcMessageType::SetSlideshowActive:      return "set_slideshow_active";
     case IpcMessageType::GetSlideshowActive:      return "get_slideshow_active";
@@ -58,6 +62,8 @@ inline std::optional<IpcMessageType> ipcMessageTypeFromString(const std::string&
     if (s == "get_display_interval")     return IpcMessageType::GetDisplayInterval;
     if (s == "update_night_mode")       return IpcMessageType::UpdateNightMode;
     if (s == "get_night_mode")          return IpcMessageType::GetNightMode;
+    if (s == "update_image_quality")    return IpcMessageType::UpdateImageQuality;
+    if (s == "get_image_quality")       return IpcMessageType::GetImageQuality;
     if (s == "clear_display")           return IpcMessageType::ClearDisplay;
     if (s == "set_slideshow_active")    return IpcMessageType::SetSlideshowActive;
     if (s == "get_slideshow_active")    return IpcMessageType::GetSlideshowActive;
