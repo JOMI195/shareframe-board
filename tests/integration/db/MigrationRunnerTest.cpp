@@ -17,14 +17,14 @@ TEST(MigrationRunner, AppliesAllProjectMigrations)
     TestDb db;
     for (const auto* table : {"tokens", "images", "settings", "display_metrics"})
         EXPECT_TRUE(db.get().tableExists(table)) << table;
-    EXPECT_EQ(count(db.get(), "SELECT COUNT(*) FROM schema_migrations"), 5);
+    EXPECT_EQ(count(db.get(), "SELECT COUNT(*) FROM schema_migrations"), 6);
 }
 
 TEST(MigrationRunner, RerunIsIdempotent)
 {
     TestDb db;
     MigrationRunner(db.get(), SHAREFRAME_MIGRATIONS_DIR).run();
-    EXPECT_EQ(count(db.get(), "SELECT COUNT(*) FROM schema_migrations"), 5);
+    EXPECT_EQ(count(db.get(), "SELECT COUNT(*) FROM schema_migrations"), 6);
 }
 
 TEST(MigrationRunner, AppliesInFilenameOrderAndSkipsNonSql)

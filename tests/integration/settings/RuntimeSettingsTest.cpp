@@ -28,6 +28,7 @@ TEST(RuntimeSettings, ChangesSurviveRestart)
         s.setSlideshowActive(false);
         s.setNightMode(true, 22, 6, 7200, true);
         s.setImageQuality(ImageQuality::Gray4);
+        s.setPlaybackOrder(PlaybackMode::Custom, {3, 1, 2});
     }
     RuntimeSettings s(repo, config());
     EXPECT_EQ(s.getDisplayInterval(), 1200);
@@ -38,6 +39,8 @@ TEST(RuntimeSettings, ChangesSurviveRestart)
     EXPECT_EQ(s.getNightInterval(), 7200);
     EXPECT_TRUE(s.isNightBlank());
     EXPECT_EQ(s.getImageQuality(), ImageQuality::Gray4);
+    EXPECT_EQ(s.getPlaybackMode(), PlaybackMode::Custom);
+    EXPECT_EQ(s.getCustomOrder(), (std::vector<int64_t>{3, 1, 2}));
 }
 
 TEST(RuntimeSettings, MigrationBlanksNightsOnceAndTheUserChoiceSticks)
@@ -75,12 +78,16 @@ TEST(RuntimeSettings, GarbageInDbFallsBackToConfig)
     repo.set("night_end_hour", "-1");
     repo.set("night_interval", "0");
     repo.set("image_quality", "sepia");
+    repo.set("playback_mode", "backwards");
+    repo.set("playback_custom_order", "[1, \"x\"");
     RuntimeSettings s(repo, config());
     EXPECT_EQ(s.getDisplayInterval(), 900);
     EXPECT_EQ(s.getNightStartHour(), 2);
     EXPECT_EQ(s.getNightEndHour(), 5);
     EXPECT_EQ(s.getNightInterval(), 3600);
     EXPECT_EQ(s.getImageQuality(), ImageQuality::Mono);
+    EXPECT_EQ(s.getPlaybackMode(), PlaybackMode::Chronological);
+    EXPECT_TRUE(s.getCustomOrder().empty());
 }
 
 TEST(RuntimeSettings, InsideNightWindowEffectiveIntervalClampsToWindowEnd)

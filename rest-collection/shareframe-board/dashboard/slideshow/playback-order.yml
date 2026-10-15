@@ -1,0 +1,24 @@
+info:
+  name: playback-order
+  type: http
+  seq: 7
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/frame/slideshow/order"
+  body:
+    type: json
+    data: |-
+      {
+        "mode": "custom",
+        "custom_order": [3, 1, 2]
+      }
+  headers:
+    Cookie: "session={{sessionCookie}}"
+  auth: none
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

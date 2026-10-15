@@ -55,8 +55,9 @@ std::optional<Image> ImageManager::saveImage(
             return std::nullopt;
         }
 
+        const int64_t receivedAt = std::time(nullptr);
         auto filename = fmt::format("{}_{}_{}_{}.jpg",
-                                    safeFilePart(sender), std::time(nullptr), expiresAt, sentImageId);
+                                    safeFilePart(sender), receivedAt, expiresAt, sentImageId);
         auto filepath = _savePath / filename;
 
         std::ofstream file(filepath, std::ios::binary);
@@ -69,7 +70,7 @@ std::optional<Image> ImageManager::saveImage(
                    static_cast<std::streamsize>(decoded.size()));
         file.close();
 
-        Image image{sentImageId, sender, filepath, expiresAt};
+        Image image{sentImageId, sender, filepath, expiresAt, receivedAt};
         _repo.save(image);
         spdlog::info("Saved image: {}", filepath.string());
         return image;

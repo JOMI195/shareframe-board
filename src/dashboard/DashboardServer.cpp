@@ -22,7 +22,8 @@ const std::string kNotConfiguredMsg =
 DashboardServer::DashboardServer(AppConfig& cfg, IpcClient& ipc,
                                  HTTPClient& http, SessionManager& sessions,
                                  AuthTokenManager& authTokenManager, WifiManager& wifi,
-                                 IpcClient& updateIpc, SettingsRepository& settings)
+                                 IpcClient& updateIpc, SettingsRepository& settings,
+                                 IImageRepository& images)
     : cfg_(cfg), http_(http), sessions_(sessions),
       authTokenManager_(authTokenManager),
       settings_(settings), wifi_(wifi),
@@ -30,6 +31,7 @@ DashboardServer::DashboardServer(AppConfig& cfg, IpcClient& ipc,
       logger_(spdlog::default_logger()->clone("DashboardServer")),
       wifiHandlers_(wifi),
       frameHandlers_(ipc, cfg),
+      slideshowImageHandlers_(ipc, images),
       systemHandlers_(cfg, wifi),
       serviceHandlers_(cfg),
       updateHandlers_(updateIpc)
@@ -89,6 +91,9 @@ void DashboardServer::_initRoutes()
         {"GET",  "/api/frame/display/stats",      [this](auto& req, auto&) { return frameHandlers_.handleDisplayStats(req); }},
         {"GET",  "/api/frame/display/quality",    [this](auto& req, auto&) { return frameHandlers_.handleImageQuality(req); }},
         {"POST", "/api/frame/display/quality",    [this](auto& req, auto&) { return frameHandlers_.handleUpdateImageQuality(req); }},
+        {"POST", "/api/frame/slideshow/order",    [this](auto& req, auto&) { return slideshowImageHandlers_.handleUpdateOrder(req); }},
+        {"GET",  "/api/frame/slideshow/images",             [this](auto& req, auto&) { return slideshowImageHandlers_.handleList(req); }},
+        {"GET",  "/api/frame/images/file",        [this](auto& req, auto& qp) { return slideshowImageHandlers_.handleFile(req, qp); }},
 
         // WiFi / Connection
         {"GET",  "/api/connection/status",         [this](auto& req, auto&) { return wifiHandlers_.handleStatus(req); }},

@@ -2,6 +2,7 @@
 #include "settings/NightWindow.hpp"
 #include <algorithm>
 #include <ctime>
+#include <nlohmann/json.hpp>
 
 namespace
 {
@@ -89,6 +90,18 @@ RuntimeSettings::RuntimeSettings(SettingsRepository& repo, const AppConfig& cfg)
             imageQuality_ = *quality;
     }
     logger_->info("Image quality: {}", toString(imageQuality_));
+
+    if (auto storedMode = repo_.get("playback_mode"))
+    {
+        if (const auto mode = playbackModeFromString(*storedMode))
+            playbackMode_ = *mode;
+    }
+    if (auto storedOrder = repo_.get("playback_custom_order"))
+    {
+        try { customOrder_ = nlohmann::json::parse(*storedOrder).get<std::vector<int64_t>>(); }
+        catch (...) {}
+    }
+    logger_->info("Playback order: {} ({} custom entries)", toString(playbackMode_), customOrder_.size());
 }
 
 int RuntimeSettings::getDisplayInterval() const
@@ -179,6 +192,28 @@ void RuntimeSettings::setImageQuality(const ImageQuality quality)
     imageQuality_ = quality;
     repo_.set("image_quality", toString(quality));
     logger_->info("Image quality updated to {} (persisted)", toString(quality));
+}
+
+PlaybackMode RuntimeSettings::getPlaybackMode() const
+{
+    std::lock_guard lk(mtx_);
+    return playbackMode_;
+}
+
+std::vector<int64_t> RuntimeSettings::getCustomOrder() const
+{
+    std::lock_guard lk(mtx_);
+    return customOrder_;
+}
+
+void RuntimeSettings::setPlaybackOrder(const PlaybackMode mode, const std::vector<int64_t>& customOrder)
+{
+    std::lock_guard lk(mtx_);
+    playbackMode_ = mode;
+    customOrder_ = customOrder;
+    repo_.set("playback_mode", toString(mode));
+    repo_.set("playback_custom_order", nlohmann::json(customOrder).dump());
+    logger_->info("Playback order updated to {} ({} custom entries, persisted)", toString(mode), customOrder.size());
 }
 
 bool RuntimeSettings::isNightNow() const

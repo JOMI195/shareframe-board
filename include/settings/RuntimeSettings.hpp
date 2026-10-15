@@ -1,6 +1,7 @@
 #pragma once
 #include "config/AppConfig.hpp"
 #include "settings/ImageQuality.hpp"
+#include "settings/PlaybackOrder.hpp"
 #include "repository/SettingsRepository.hpp"
 #include <mutex>
 #include <spdlog/spdlog.h>
@@ -25,6 +26,10 @@ public:
 
     [[nodiscard]] ImageQuality getImageQuality() const;
     void setImageQuality(ImageQuality quality);
+
+    [[nodiscard]] PlaybackMode getPlaybackMode() const;
+    [[nodiscard]] std::vector<int64_t> getCustomOrder() const;
+    void setPlaybackOrder(PlaybackMode mode, const std::vector<int64_t>& customOrder);
 
     /// True while the wall clock sits inside an enabled quiet-hours window.
     [[nodiscard]] bool isNightNow() const;
@@ -56,4 +61,6 @@ private:
     int nightIntervalSecs_;
     bool nightBlank_;
     ImageQuality imageQuality_ = ImageQuality::Mono;
+    PlaybackMode playbackMode_ = PlaybackMode::Chronological;
+    std::vector<int64_t> customOrder_;
 };

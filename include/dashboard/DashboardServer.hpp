@@ -1,6 +1,7 @@
 #pragma once
 #include "config/AppConfig.hpp"
 #include "dashboard/FrameHandlers.hpp"
+#include "dashboard/SlideshowImageHandlers.hpp"
 #include "dashboard/LoginThrottle.hpp"
 #include "dashboard/ServiceHandlers.hpp"
 #include "dashboard/SessionManager.hpp"
@@ -24,7 +25,7 @@ public:
     DashboardServer(AppConfig& cfg, IpcClient& ipc, HTTPClient& http,
                     SessionManager& sessions, AuthTokenManager& authTokenManager,
                     WifiManager& wifi, IpcClient& updateIpc,
-                    SettingsRepository& settings);
+                    SettingsRepository& settings, IImageRepository& images);
 
     void start();
     void stop();
@@ -80,6 +81,7 @@ private:
     // Handler classes
     WifiHandlers wifiHandlers_;
     FrameHandlers frameHandlers_;
+    SlideshowImageHandlers slideshowImageHandlers_;
     SystemHandlers systemHandlers_;
     ServiceHandlers serviceHandlers_;
     UpdateHandlers updateHandlers_;

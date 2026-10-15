@@ -120,6 +120,7 @@ void DisplayManager::_clearHw()
         _logger->info("[mock] Display clear");
         if (!_cfg.display.mockOutputDir.empty())
             _writeMockPanel(std::vector<uint8_t>(BUFFER_SIZE, 0xFF), "cleared", {});
+        _recordScreen("cleared", {});
         _lastDisplayTime.store(std::chrono::steady_clock::now());
         _isCleared = true;
         return;
@@ -151,6 +152,7 @@ void DisplayManager::_clearHw()
         _metrics.setIfUnset("epd_first_use_at", nowUnix());
         _consecutiveFailures = 0;
         _isCleared = true;
+        _recordScreen("cleared", {});
         _logger->info("Display cleared (panel refresh {} ms)", ms);
     }
 #else
@@ -200,6 +202,7 @@ bool DisplayManager::_sendBufferHw(const std::vector<uint8_t>& buffer, const std
         _logger->info("[mock] Display: {}", source);
         if (!_cfg.display.mockOutputDir.empty())
             _writeMockPanel(buffer, "image", source);
+        _recordScreen("image", source);
         _lastDisplayTime.store(std::chrono::steady_clock::now());
         _isCleared = false;
         return true;
@@ -235,6 +238,7 @@ bool DisplayManager::_sendBufferHw(const std::vector<uint8_t>& buffer, const std
     _metrics.setIfUnset("epd_first_use_at", nowUnix());
     _consecutiveFailures = 0;
     _isCleared = false;
+    _recordScreen("image", source);
     _logger->info("Displayed {} ({}, panel refresh {} ms)", source, gray4 ? "4-gray" : "1-bit", refreshMs);
     return true;
 #else
@@ -356,6 +360,18 @@ void DisplayManager::_waitMinRefresh(const std::stop_token& st) const
     });
     std::unique_lock lk(_waitMtx);
     _waitCv.wait_for(lk, remaining, [this, &st] { return _shuttingDown.load() || st.stop_requested(); });
+}
+
+ScreenSnapshot DisplayManager::screenSnapshot() const
+{
+    std::lock_guard lk(_screenMtx);
+    return _screen;
+}
+
+void DisplayManager::_recordScreen(const std::string& state, const std::string& source)
+{
+    std::lock_guard lk(_screenMtx);
+    _screen = {state, source, _screen.seq + 1, nowUnix()};
 }
 
 void DisplayManager::_writeMockPanel(const std::vector<uint8_t>& buffer, const std::string& state,

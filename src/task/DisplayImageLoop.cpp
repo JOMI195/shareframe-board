@@ -37,6 +37,8 @@ void DisplayImageLoop::subscribe()
         [this](const UpdateNightModeEvent& evt) { _onUpdateNightMode(evt); });
     bus_.subscribe<Topic::UPDATE_IMAGE_QUALITY>(
         [this](const UpdateImageQualityEvent& evt) { _onUpdateImageQuality(evt); });
+    bus_.subscribe<Topic::UPDATE_PLAYBACK_ORDER>(
+        [this](const UpdatePlaybackOrderEvent& evt) { _onUpdatePlaybackOrder(evt); });
     bus_.subscribe<Topic::SET_SLIDESHOW_ACTIVE>(
         [this](const SetSlideshowActiveEvent& evt) { _onSetSlideshowActive(evt); });
 }
@@ -79,9 +81,9 @@ int DisplayImageLoop::secondsUntilNext() const
 void DisplayImageLoop::_onImageRemoved(const std::vector<int64_t>& removedIds)
 {
     std::lock_guard lk(mtx_);
-    if (std::ranges::find(removedIds, currentImageId_) != removedIds.end())
+    if (const int64_t current = currentImageId_.load(); std::ranges::find(removedIds, current) != removedIds.end())
     {
-        logger_->info("Current image {} was removed, skipping", currentImageId_);
+        logger_->info("Current image {} was removed, skipping", current);
         skipCurrent_ = true;
         cv_.notify_one();
     }
@@ -125,9 +127,9 @@ void DisplayImageLoop::_run(const std::stop_token st)
 
         try
         {
-            auto ids = repo_.getAllIds();
+            const auto all = repo_.getAll();
 
-            if (ids.empty())
+            if (all.empty())
             {
                 // Show default images when no user images exist
                 auto defaultImages = _loadDefaultImages();
@@ -188,21 +190,8 @@ void DisplayImageLoop::_run(const std::stop_token st)
                 continue;
             }
 
-            // Find next image ID > currentImageId_, or wrap to lowest
-            std::ranges::sort(ids);
-            auto it = std::ranges::upper_bound(ids, currentImageId_);
-            int64_t nextId = (it != ids.end()) ? *it : ids.front();
-
-            // Fetch the image to get its file path
-            auto images = repo_.getByIds({nextId});
-            if (images.empty())
-            {
-                logger_->warn("Image {} not found in repository, skipping", nextId);
-                currentImageId_ = nextId;
-                continue;
-            }
-
-            const auto& image = images.front();
+            const int64_t nextId = _pickNext(all);
+            const auto& image = *std::ranges::find(all, nextId, &Image::id);
             if (!std::filesystem::exists(image.imagePath))
             {
                 logger_->warn("Image file missing: {}, skipping", image.imagePath.string());
@@ -262,6 +251,27 @@ void DisplayImageLoop::_onImageNew()
     cv_.notify_one();
 }
 
+int64_t DisplayImageLoop::_pickNext(const std::vector<Image>& images)
+{
+    if (const auto mode = settings_.getPlaybackMode(); mode != PlaybackMode::Shuffle)
+        return playback::nextAfter(playback::arrange(images, mode, settings_.getCustomOrder()),
+                                   currentImageId_.load());
+
+    std::vector<int64_t> ids;
+    ids.reserve(images.size());
+    for (const auto& img : images)
+        ids.push_back(img.id);
+    std::lock_guard lk(shuffleMtx_);
+    shuffle_.sync(ids);
+    return shuffle_.next();
+}
+
+std::vector<int64_t> DisplayImageLoop::shuffleOrder() const
+{
+    std::lock_guard lk(shuffleMtx_);
+    return shuffle_.order();
+}
+
 void DisplayImageLoop::_onSkipImage()
 {
     std::lock_guard lk(mtx_);
@@ -284,6 +294,11 @@ void DisplayImageLoop::_onUpdateNightMode(const UpdateNightModeEvent& evt) const
 void DisplayImageLoop::_onUpdateImageQuality(const UpdateImageQualityEvent& evt) const
 {
     settings_.setImageQuality(evt.quality);
+}
+
+void DisplayImageLoop::_onUpdatePlaybackOrder(const UpdatePlaybackOrderEvent& evt) const
+{
+    settings_.setPlaybackOrder(evt.mode, evt.customOrder);
 }
 
 void DisplayImageLoop::_onSetSlideshowActive(const SetSlideshowActiveEvent& evt)

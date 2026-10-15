@@ -8,6 +8,7 @@
 #include "ipc/IpcClient.hpp"
 #include "ipc/NngRepServer.hpp"
 #include "net/HTTPClient.hpp"
+#include "repository/ImageRepository.hpp"
 #include "repository/SettingsRepository.hpp"
 #include "repository/TokenRepository.hpp"
 #include "Version.hpp"
@@ -38,6 +39,9 @@ int main(int argc, char* argv[])
     // Settings store (persists the user-set dashboard password hash on /data)
     SettingsRepository settingsRepo(db.get());
 
+    // Read-only view of the pictures the websocket service stores, for the slideshow page
+    ImageRepository imageRepo(db.get());
+
     // Managers
     WifiManager wifi(cfg.display.wifiModePath);
     SessionManager sessions;
@@ -47,7 +51,7 @@ int main(int argc, char* argv[])
     if (!updateIpc.connect())
         spdlog::warn("Update service IPC endpoint not available yet, will retry on first request");
 
-    DashboardServer server(cfg, ipc, http, sessions, authTokenManager, wifi, updateIpc, settingsRepo);
+    DashboardServer server(cfg, ipc, http, sessions, authTokenManager, wifi, updateIpc, settingsRepo, imageRepo);
     server.start();
 
     // Health endpoint so other services can probe the dashboard over nng.

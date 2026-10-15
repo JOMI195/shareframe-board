@@ -26,6 +26,7 @@ ix::HttpResponsePtr FrameHandlers::handleStatus(const ix::HttpRequestPtr& /*req*
     // Best-effort: don't fail the whole status if this single call misses.
     auto secondsResult = ipc_.sendAndReceive(IpcMessage{IpcMessageType::GetSecondsUntilNext, {}});
     auto nightResult = ipc_.sendAndReceive(IpcMessage{IpcMessageType::GetNightMode, {}});
+    auto screenResult = ipc_.sendAndReceive(IpcMessage{IpcMessageType::GetScreenInfo, {}});
 
     nlohmann::json nightMode = {
         {"enabled", nightResult ? nightResult->value("enabled", false) : cfg_.display.nightModeEnabled},
@@ -42,7 +43,13 @@ ix::HttpResponsePtr FrameHandlers::handleStatus(const ix::HttpRequestPtr& /*req*
         {"image_count", activeResult->value("image_count", 0)},
         {"interval_seconds", intervalResult->value("interval_secs", cfg_.display.intervalSecs)},
         {"seconds_until_next", secondsResult ? secondsResult->value("seconds_until_next", -1) : -1},
-        {"night_mode", nightMode}
+        {"night_mode", nightMode},
+        {"now_showing", {
+            {"seq", screenResult ? screenResult->value("seq", int64_t{0}) : 0},
+            {"state", screenResult ? screenResult->value("state", "empty") : "empty"},
+            {"image_id", screenResult ? screenResult->value("image_id", int64_t{0}) : 0},
+            {"sender", screenResult ? screenResult->value("sender", "") : ""},
+        }}
     });
 }
 

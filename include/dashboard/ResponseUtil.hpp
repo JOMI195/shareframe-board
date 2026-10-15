@@ -35,4 +35,14 @@ inline ix::HttpResponsePtr errorResponse(int status, const std::string& statusTe
         status, statusText, ix::HttpErrorCode::Ok, headers, body.dump());
 }
 
+inline ix::HttpResponsePtr binaryResponse(const std::string& contentType, std::string body,
+                                          const std::string& cacheControl)
+{
+    ix::WebSocketHttpHeaders headers;
+    headers["Content-Type"] = contentType;
+    headers["Cache-Control"] = cacheControl;
+    return std::make_shared<ix::HttpResponse>(
+        200, "OK", ix::HttpErrorCode::Ok, headers, std::move(body));
+}
+
 } // namespace dashboard

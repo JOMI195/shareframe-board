@@ -119,3 +119,25 @@ TEST_F(DisplayImageLoopTest, RemovingTheShownPictureMovesOn)
     bus.publish<Topic::IMAGE_REMOVED>({1});
     EXPECT_TRUE(waitFor([&] { return panel().value("source", "").ends_with("/2.jpg"); }));
 }
+
+TEST_F(DisplayImageLoopTest, PlaybackOrderDecidesWhichPictureComesNext)
+{
+    for (const auto& [id, receivedAt] : std::vector<std::pair<int64_t, int64_t>>{{1, 100}, {2, 300}, {3, 200}})
+    {
+        const auto path = db.dir() / (std::to_string(id) + ".jpg");
+        std::filesystem::copy_file(std::string(SHAREFRAME_ASSETS_DIR) + "/image/loading/logo-frame-loading-shareframe.jpg", path);
+        repo.save({id, "alice", path, std::time(nullptr) + 3600, receivedAt});
+    }
+    settings.setPlaybackOrder(PlaybackMode::NewestFirst, {});
+    start();
+    ASSERT_TRUE(waitFor([&] { return panel().value("source", "").ends_with("/2.jpg"); }));
+    EXPECT_EQ(loop.currentImageId(), 2);
+
+    bus.publish<Topic::SKIP_IMAGE>({});
+    ASSERT_TRUE(waitFor([&] { return panel().value("source", "").ends_with("/3.jpg"); }));
+
+    bus.publish<Topic::UPDATE_PLAYBACK_ORDER>({PlaybackMode::Custom, {3, 2, 1}});
+    ASSERT_TRUE(waitFor([&] { return settings.getPlaybackMode() == PlaybackMode::Custom; }));
+    bus.publish<Topic::SKIP_IMAGE>({});
+    EXPECT_TRUE(waitFor([&] { return panel().value("source", "").ends_with("/2.jpg"); }));
+}

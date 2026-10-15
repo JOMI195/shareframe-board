@@ -8,12 +8,13 @@ void ImageRepository::save(const Image& image)
 {
     SQLite::Statement stmt(
         _db,
-        "INSERT OR REPLACE INTO images (id, sender, image_path, expires_at) "
-        "VALUES (?, ?, ?, ?)");
+        "INSERT OR REPLACE INTO images (id, sender, image_path, expires_at, received_at) "
+        "VALUES (?, ?, ?, ?, ?)");
     stmt.bind(1, image.id);
     stmt.bind(2, image.sender);
     stmt.bind(3, image.imagePath.string());
     stmt.bind(4, image.expiresAt);
+    stmt.bind(5, image.receivedAt);
     stmt.exec();
 }
 
@@ -22,7 +23,7 @@ std::vector<Image> ImageRepository::getAll()
     std::vector<Image> images;
     SQLite::Statement query(
         _db,
-        "SELECT id, sender, image_path, expires_at FROM images");
+        "SELECT id, sender, image_path, expires_at, received_at FROM images");
     while (query.executeStep())
     {
         images.push_back({
@@ -30,6 +31,7 @@ std::vector<Image> ImageRepository::getAll()
             .sender = query.getColumn(1).getString(),
             .imagePath = query.getColumn(2).getString(),
             .expiresAt = query.getColumn(3).getInt64(),
+            .receivedAt = query.getColumn(4).getInt64(),
         });
     }
     return images;
@@ -49,7 +51,7 @@ std::vector<Image> ImageRepository::getByIds(const std::vector<int64_t>& ids)
     if (ids.empty())
         return {};
 
-    std::string sql = "SELECT id, sender, image_path, expires_at FROM images WHERE id IN (";
+    std::string sql = "SELECT id, sender, image_path, expires_at, received_at FROM images WHERE id IN (";
     for (size_t i = 0; i < ids.size(); ++i)
     {
         if (i > 0)
@@ -70,6 +72,7 @@ std::vector<Image> ImageRepository::getByIds(const std::vector<int64_t>& ids)
             .sender = query.getColumn(1).getString(),
             .imagePath = query.getColumn(2).getString(),
             .expiresAt = query.getColumn(3).getInt64(),
+            .receivedAt = query.getColumn(4).getInt64(),
         });
     }
     return images;

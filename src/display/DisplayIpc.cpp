@@ -1,6 +1,7 @@
 #include "display/DisplayIpc.hpp"
 #include "events/Messages.hpp"
 #include "ipc/EventTopics.hpp"
+#include <algorithm>
 #include <spdlog/spdlog.h>
 
 DisplayIpc::DisplayIpc(EventBus& bus, RuntimeSettings& settings, DisplayImageLoop& loop,
@@ -79,6 +80,55 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
 
     case IpcMessageType::GetImageQuality:
         return {{"quality", toString(settings_.getImageQuality())}};
+
+    case IpcMessageType::UpdatePlaybackOrder:
+    {
+        const auto mode = playbackModeFromString(msg.data.value("mode", ""));
+        std::vector<int64_t> customOrder;
+        try { customOrder = msg.data.value("custom_order", std::vector<int64_t>{}); }
+        catch (...) { customOrder.clear(); }
+        if (!mode)
+        {
+            spdlog::warn("IPC: invalid mode in update_playback_order");
+            return nlohmann::json::object();
+        }
+        spdlog::info("IPC: update playback order to {}", toString(*mode));
+        bus_.publish<Topic::UPDATE_PLAYBACK_ORDER>(UpdatePlaybackOrderEvent{*mode, std::move(customOrder)});
+        return nlohmann::json::object();
+    }
+
+    case IpcMessageType::GetPlaybackOrder:
+        return {
+            {"mode", toString(settings_.getPlaybackMode())},
+            {"custom_order", settings_.getCustomOrder()},
+            {"shuffle_order", loop_.shuffleOrder()},
+            {"current_image_id", loop_.currentImageId()}
+        };
+
+    case IpcMessageType::GetScreenInfo:
+    {
+        const auto screen = display_.screenSnapshot();
+        int64_t imageId = 0;
+        std::string sender;
+        if (screen.state == "image")
+        {
+            const auto all = images_.getAll();
+            if (const auto it = std::ranges::find(all, std::filesystem::path(screen.source), &Image::imagePath);
+                it != all.end())
+            {
+                imageId = it->id;
+                sender = it->sender;
+            }
+        }
+        return {
+            {"seq", screen.seq},
+            {"state", screen.state},
+            {"source", screen.source},
+            {"updated_at", screen.updatedAt},
+            {"image_id", imageId},
+            {"sender", sender},
+        };
+    }
 
     case IpcMessageType::ClearDisplay:
         spdlog::info("IPC: clear display");
