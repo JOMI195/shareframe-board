@@ -141,7 +141,7 @@ export class FakeServer {
   }
 
   /** Pushes a fixture image as a new picture and returns the id the server gave it. */
-  async sendPicture(fixture: string, opts: { expiresInSecs?: number; id?: number; data?: string } = {}): Promise<number> {
+  async sendPicture(fixture: string, opts: { expiresInSecs?: number; id?: number; data?: string; sender?: string } = {}): Promise<number> {
     await this.waitForFrame();
     const data = opts.data ?? (await readFile(path.join(FIXTURES, fixture))).toString('base64');
     const res = await this.request.post(`${FAKE_SERVER}/__test/picture`, { data: { ...opts, data } });
@@ -211,5 +211,16 @@ export class BoardApi {
         return svc?.running && svc.pid !== before;
       }, { message: `${id} restarted`, timeout: 20_000 })
       .toBe(true);
+    // A new pid comes before the service binds its IPC socket.
+    const probe = SERVICE_PROBES[id];
+    if (probe)
+      await expect
+        .poll(async () => (await this.request.get(probe)).ok(), { message: `${id} answers again`, timeout: 20_000 })
+        .toBe(true);
   }
 }
+
+const SERVICE_PROBES: Record<string, string> = {
+  display: '/api/frame/slideshow/status',
+  update: '/api/system/updates/status',
+};
