@@ -1,4 +1,5 @@
 #include "settings/RuntimeSettings.hpp"
+#include "settings/NightWindow.hpp"
 #include <algorithm>
 #include <ctime>
 
@@ -162,23 +163,5 @@ int RuntimeSettings::_secsUntilNightEnd() const
     const std::time_t nowT = std::time(nullptr);
     std::tm local{};
     localtime_r(&nowT, &local);
-
-    const int hour = local.tm_hour;
-    // The window is half-open and may wrap past midnight.
-    const bool inside = (nightStartHour_ < nightEndHour_)
-        ? (hour >= nightStartHour_ && hour < nightEndHour_)
-        : (hour >= nightStartHour_ || hour < nightEndHour_);
-    if (!inside)
-        return 0;
-
-    std::tm end = local;
-    end.tm_hour = nightEndHour_;
-    end.tm_min = 0;
-    end.tm_sec = 0;
-
-    std::time_t endT = std::mktime(&end);
-    if (endT <= nowT)
-        endT += 24 * 60 * 60;
-
-    return static_cast<int>(endT - nowT);
+    return night::secsUntilEnd(local, nightStartHour_, nightEndHour_);
 }
