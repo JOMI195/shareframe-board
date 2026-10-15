@@ -205,6 +205,7 @@ set(DISPLAY_SOURCES
         src/task/DisplayImageLoop.cpp
         src/task/DisplayClear.cpp
         src/task/ApNetworkSetupScreen.cpp
+        src/task/NightBlankScreen.cpp
         src/task/DisplayTaskManager.cpp
         src/task/WifiModeWatcher.cpp
         src/settings/RuntimeSettings.cpp

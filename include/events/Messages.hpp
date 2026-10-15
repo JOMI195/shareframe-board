@@ -32,7 +32,7 @@ template <> struct TopicMessage<Topic::IMAGE_NEW>     { using type = int64_t; };
 // Dashboard IPC events
 struct SkipImageEvent {};
 struct UpdateDisplayIntervalEvent { int intervalSecs; };
-struct UpdateNightModeEvent { bool enabled; int startHour; int endHour; int intervalSecs; };
+struct UpdateNightModeEvent { bool enabled; int startHour; int endHour; int intervalSecs; bool blank; };
 struct UpdateImageQualityEvent { ImageQuality quality; };
 struct SetSlideshowActiveEvent { bool active; };
 

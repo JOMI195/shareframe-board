@@ -278,7 +278,7 @@ void DisplayImageLoop::_onUpdateInterval(const UpdateDisplayIntervalEvent& evt) 
 
 void DisplayImageLoop::_onUpdateNightMode(const UpdateNightModeEvent& evt) const
 {
-    settings_.setNightMode(evt.enabled, evt.startHour, evt.endHour, evt.intervalSecs);
+    settings_.setNightMode(evt.enabled, evt.startHour, evt.endHour, evt.intervalSecs, evt.blank);
 }
 
 void DisplayImageLoop::_onUpdateImageQuality(const UpdateImageQualityEvent& evt) const

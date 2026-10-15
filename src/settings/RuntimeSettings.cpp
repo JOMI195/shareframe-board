@@ -3,6 +3,17 @@
 #include <algorithm>
 #include <ctime>
 
+namespace
+{
+std::tm localNow()
+{
+    const std::time_t nowT = std::time(nullptr);
+    std::tm local{};
+    localtime_r(&nowT, &local);
+    return local;
+}
+} // namespace
+
 RuntimeSettings::RuntimeSettings(SettingsRepository& repo, const AppConfig& cfg)
     : repo_(repo),
       logger_(spdlog::default_logger()->clone("RuntimeSettings")),
@@ -10,7 +21,8 @@ RuntimeSettings::RuntimeSettings(SettingsRepository& repo, const AppConfig& cfg)
       nightModeEnabled_(cfg.display.nightModeEnabled),
       nightStartHour_(cfg.display.nightStartHour),
       nightEndHour_(cfg.display.nightEndHour),
-      nightIntervalSecs_(cfg.display.nightIntervalSecs)
+      nightIntervalSecs_(cfg.display.nightIntervalSecs),
+      nightBlank_(cfg.display.nightBlank)
 {
     // Restore persisted value from DB if available
     auto stored = repo_.get("display_interval");
@@ -65,8 +77,11 @@ RuntimeSettings::RuntimeSettings(SettingsRepository& repo, const AppConfig& cfg)
         catch (...) {}
     }
 
-    logger_->info("Night mode: enabled={}, window={}-{}, interval={}s",
-                  nightModeEnabled_, nightStartHour_, nightEndHour_, nightIntervalSecs_);
+    if (auto storedBlank = repo_.get("night_blank"))
+        nightBlank_ = (*storedBlank == "1");
+
+    logger_->info("Night mode: enabled={}, window={}-{}, interval={}s, blank={}",
+                  nightModeEnabled_, nightStartHour_, nightEndHour_, nightIntervalSecs_, nightBlank_);
 
     if (auto storedQuality = repo_.get("image_quality"))
     {
@@ -128,20 +143,28 @@ int RuntimeSettings::getNightInterval() const
     return nightIntervalSecs_;
 }
 
+bool RuntimeSettings::isNightBlank() const
+{
+    std::lock_guard lk(mtx_);
+    return nightBlank_;
+}
+
 void RuntimeSettings::setNightMode(const bool enabled, const int startHour,
-                                   const int endHour, const int intervalSecs)
+                                   const int endHour, const int intervalSecs, const bool blank)
 {
     std::lock_guard lk(mtx_);
     nightModeEnabled_ = enabled;
     nightStartHour_ = startHour;
     nightEndHour_ = endHour;
     nightIntervalSecs_ = intervalSecs;
+    nightBlank_ = blank;
     repo_.set("night_mode_enabled", enabled ? "1" : "0");
     repo_.set("night_start_hour", std::to_string(startHour));
     repo_.set("night_end_hour", std::to_string(endHour));
     repo_.set("night_interval", std::to_string(intervalSecs));
-    logger_->info("Night mode updated to enabled={}, window={}-{}, interval={}s (persisted)",
-                  enabled, startHour, endHour, intervalSecs);
+    repo_.set("night_blank", blank ? "1" : "0");
+    logger_->info("Night mode updated to enabled={}, window={}-{}, interval={}s, blank={} (persisted)",
+                  enabled, startHour, endHour, intervalSecs, blank);
 }
 
 ImageQuality RuntimeSettings::getImageQuality() const
@@ -164,6 +187,22 @@ bool RuntimeSettings::isNightNow() const
     return nightModeEnabled_ && _secsUntilNightEnd() > 0;
 }
 
+bool RuntimeSettings::isNightBlankNow() const
+{
+    std::lock_guard lk(mtx_);
+    return nightModeEnabled_ && nightBlank_ && _secsUntilNightEnd() > 0;
+}
+
+int RuntimeSettings::secsUntilNightBlankChange() const
+{
+    std::lock_guard lk(mtx_);
+    if (!nightModeEnabled_ || !nightBlank_ || nightStartHour_ == nightEndHour_)
+        return -1;
+    if (const int untilEnd = _secsUntilNightEnd(); untilEnd > 0)
+        return untilEnd;
+    return _secsUntilNightStart();
+}
+
 int RuntimeSettings::getEffectiveInterval() const
 {
     std::lock_guard lk(mtx_);
@@ -181,8 +220,10 @@ int RuntimeSettings::getEffectiveInterval() const
 
 int RuntimeSettings::_secsUntilNightEnd() const
 {
-    const std::time_t nowT = std::time(nullptr);
-    std::tm local{};
-    localtime_r(&nowT, &local);
-    return night::secsUntilEnd(local, nightStartHour_, nightEndHour_);
+    return night::secsUntilEnd(localNow(), nightStartHour_, nightEndHour_);
+}
+
+int RuntimeSettings::_secsUntilNightStart() const
+{
+    return night::secsUntilStart(localNow(), nightStartHour_, nightEndHour_);
 }

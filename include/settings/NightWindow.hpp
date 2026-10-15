@@ -22,4 +22,16 @@ inline int secsUntilEnd(const std::tm& local, const int startHour, const int end
     const int end = endHour * 3600;
     return end > now ? end - now : end + kDay - now;
 }
+
+/// Seconds until the window next opens; 0 when inside it or when it is empty.
+inline int secsUntilStart(const std::tm& local, const int startHour, const int endHour)
+{
+    if (startHour == endHour || secsUntilEnd(local, startHour, endHour) > 0)
+        return 0;
+
+    constexpr int kDay = 24 * 60 * 60;
+    const int now = local.tm_hour * 3600 + local.tm_min * 60 + local.tm_sec;
+    const int start = startHour * 3600;
+    return start > now ? start - now : start + kDay - now;
+}
 } // namespace night

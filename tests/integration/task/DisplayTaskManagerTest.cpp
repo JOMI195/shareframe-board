@@ -21,6 +21,8 @@ protected:
         cfg.display.loadingImagePath = std::string(SHAREFRAME_ASSETS_DIR) + "/image/loading";
         cfg.display.defaultImagesPath = std::string(SHAREFRAME_ASSETS_DIR) + "/image/default";
         cfg.display.setupFontPath = std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans.ttf";
+        // The migrated DB blanks the panel from 1 to 6, whatever the wall clock says here.
+        settings.setNightMode(false, 1, 6, 3600, false);
     }
 
     void TearDown() override
@@ -66,7 +68,8 @@ protected:
     DisplayManager display{cfg, metrics};
     DisplayImageLoop loop{bus, cfg, repo, display, settings};
     ApNetworkSetupScreen setupScreen{bus, cfg, display};
-    DisplayTaskManager manager{bus, cfg, display, loop, setupScreen, settings};
+    NightBlankScreen nightBlank{bus, display};
+    DisplayTaskManager manager{bus, cfg, display, loop, setupScreen, nightBlank, settings};
 };
 }
 
@@ -128,4 +131,34 @@ TEST_F(DisplayTaskManagerTest, StoppedSlideshowGetsABlankPanelInsteadOfAStaleQr)
 
     apSetup(false);
     EXPECT_TRUE(waitFor([&] { return panel().value("state", "") == "cleared"; }));
+}
+
+TEST_F(DisplayTaskManagerTest, BlankNightPausesTheSlideshowAndYieldsOnlyToTheSetupScreen)
+{
+    start();
+    ASSERT_TRUE(waitFor([&] { return showsDefault(); }));
+
+    const std::time_t now = std::time(nullptr);
+    std::tm local{};
+    localtime_r(&now, &local);
+    const int from = local.tm_hour;
+    const int to = (local.tm_hour + 1) % 24;
+    bus.publish<Topic::UPDATE_NIGHT_MODE>({true, from, to, 3600, true});
+    ASSERT_TRUE(waitFor([&] { return panel().value("state", "") == "cleared"; }));
+    EXPECT_EQ(manager.state(), DisplayState::NightBlank);
+    const auto blankedAt = seq();
+
+    bus.publish<Topic::SKIP_IMAGE>({});
+    std::this_thread::sleep_for(500ms);
+    EXPECT_EQ(seq(), blankedAt) << "panel repainted during a blank night";
+
+    apSetup(true);
+    ASSERT_TRUE(waitFor([&] { return source() == "ap-setup"; }));
+    apSetup(false);
+    ASSERT_TRUE(waitFor([&] { return panel().value("state", "") == "cleared"; }));
+    EXPECT_EQ(manager.state(), DisplayState::NightBlank);
+
+    bus.publish<Topic::UPDATE_NIGHT_MODE>({false, from, to, 3600, true});
+    EXPECT_TRUE(waitFor([&] { return showsDefault(); }));
+    EXPECT_EQ(manager.state(), DisplayState::Slideshow);
 }

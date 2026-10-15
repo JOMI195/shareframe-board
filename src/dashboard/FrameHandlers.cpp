@@ -32,6 +32,7 @@ ix::HttpResponsePtr FrameHandlers::handleStatus(const ix::HttpRequestPtr& /*req*
         {"start_hour", nightResult ? nightResult->value("start_hour", cfg_.display.nightStartHour) : cfg_.display.nightStartHour},
         {"end_hour", nightResult ? nightResult->value("end_hour", cfg_.display.nightEndHour) : cfg_.display.nightEndHour},
         {"interval_seconds", nightResult ? nightResult->value("interval_secs", cfg_.display.nightIntervalSecs) : cfg_.display.nightIntervalSecs},
+        {"blank", nightResult ? nightResult->value("blank", cfg_.display.nightBlank) : cfg_.display.nightBlank},
         {"active_now", nightResult && nightResult->value("active_now", false)}
     };
 
@@ -94,6 +95,7 @@ ix::HttpResponsePtr FrameHandlers::handleUpdateNightMode(const ix::HttpRequestPt
     const int startHour = body.value("start_hour", -1);
     const int endHour = body.value("end_hour", -1);
     const int secs = body.value("interval_seconds", 0);
+    const bool blank = body.value("blank", false);
 
     if (!Validation::isValidHour(startHour) || !Validation::isValidHour(endHour))
         return errorResponse(400, "Bad Request", "start_hour and end_hour must be between 0 and 23");
@@ -106,7 +108,8 @@ ix::HttpResponsePtr FrameHandlers::handleUpdateNightMode(const ix::HttpRequestPt
             {"enabled", enabled},
             {"start_hour", startHour},
             {"end_hour", endHour},
-            {"interval_secs", secs}
+            {"interval_secs", secs},
+            {"blank", blank}
         }}))
     {
         logger_->error("Failed to send update_night_mode via IPC");
@@ -117,7 +120,8 @@ ix::HttpResponsePtr FrameHandlers::handleUpdateNightMode(const ix::HttpRequestPt
         {"enabled", enabled},
         {"start_hour", startHour},
         {"end_hour", endHour},
-        {"interval_seconds", secs}
+        {"interval_seconds", secs},
+        {"blank", blank}
     });
 }
 

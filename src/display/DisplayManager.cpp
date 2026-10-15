@@ -81,10 +81,12 @@ void DisplayManager::init()
         std::this_thread::sleep_for(std::chrono::seconds(FIRST_START_SETTLE_SECS));
 }
 
-void DisplayManager::clear()
+void DisplayManager::clear(const std::stop_token st)
 {
     std::lock_guard lock(_hwMutex);
-    _waitMinRefresh();
+    _waitMinRefresh(st);
+    if (st.stop_requested())
+        return;
     _clearHw();
 }
 

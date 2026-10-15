@@ -29,8 +29,9 @@ public:
     /// paints no content.
     void init();
 
-    /// Clear the display to white (init → clear → sleep cycle).
-    void clear();
+    /// Clear the display to white (init → clear → sleep cycle). A stop request
+    /// cancels a clear still waiting for the min refresh interval.
+    void clear(std::stop_token st = {});
 
     /// Clear before shutdown if the panel still shows content; skips the
     /// min-refresh wait (shutdown can't block) and no-ops if already cleared.

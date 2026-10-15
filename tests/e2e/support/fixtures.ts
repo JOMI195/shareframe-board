@@ -25,6 +25,8 @@ export const test = base.extend<Fixtures>({
     async ({ server, board }, use) => {
       await resetBoardState();
       await server.reset();
+      // The migrated database blanks the panel from 1 to 6, so tests at night would see no pictures.
+      await board.post('/api/frame/slideshow/night-mode', { enabled: false, start_hour: 1, end_hour: 6, interval_seconds: 3600, blank: false });
       await expect.poll(async () => (await board.slideshowStatus()).image_count, { message: 'user images cleared' }).toBe(0);
       if (!(await board.slideshowStatus()).active) await board.post('/api/frame/slideshow', { action: 'start' });
       // nng PUB/SUB drops the removal event while a restarted service reconnects,

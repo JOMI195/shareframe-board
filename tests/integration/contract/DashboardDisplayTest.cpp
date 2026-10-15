@@ -74,7 +74,7 @@ TEST_F(DashboardDisplayTest, IntervalInSecondsArrivesUnchanged)
 TEST_F(DashboardDisplayTest, NightModeFieldsArriveUnchanged)
 {
     const auto r = result(frame.handleUpdateNightMode(httpRequest("POST", "/",
-        {{"enabled", true}, {"start_hour", 22}, {"end_hour", 6}, {"interval_seconds", 7200}})));
+        {{"enabled", true}, {"start_hour", 22}, {"end_hour", 6}, {"interval_seconds", 7200}, {"blank", true}})));
     EXPECT_EQ(r.status, 200);
     ASSERT_TRUE(waitFor([&] { return nightModes.size() == 1; }));
     const auto e = nightModes.get()[0];
@@ -82,6 +82,7 @@ TEST_F(DashboardDisplayTest, NightModeFieldsArriveUnchanged)
     EXPECT_EQ(e.startHour, 22);
     EXPECT_EQ(e.endHour, 6);
     EXPECT_EQ(e.intervalSecs, 7200);
+    EXPECT_TRUE(e.blank);
 }
 
 TEST_F(DashboardDisplayTest, ImageQualityArrivesAndReadsBack)
@@ -118,7 +119,7 @@ TEST_F(DashboardDisplayTest, StatusAggregatesTheDisplayState)
 {
     settings.setDisplayInterval(1200);
     settings.setSlideshowActive(false);
-    settings.setNightMode(true, 22, 6, 7200);
+    settings.setNightMode(true, 22, 6, 7200, false);
     repo.save({7, "alice", "/x.jpg", 0});
 
     const auto [status, body] = result(frame.handleStatus(httpRequest("GET", "/")));
@@ -132,6 +133,7 @@ TEST_F(DashboardDisplayTest, StatusAggregatesTheDisplayState)
     EXPECT_EQ(d["night_mode"]["start_hour"], 22);
     EXPECT_EQ(d["night_mode"]["end_hour"], 6);
     EXPECT_EQ(d["night_mode"]["interval_seconds"], 7200);
+    EXPECT_EQ(d["night_mode"]["blank"], false);
 }
 
 TEST_F(DashboardDisplayTest, DisplayStatsDeriveWearFromRefreshCount)
