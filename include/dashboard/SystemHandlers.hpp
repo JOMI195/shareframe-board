@@ -17,6 +17,7 @@ public:
     ix::HttpResponsePtr handleCheckInternet(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleRestart(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleShutdown(const ix::HttpRequestPtr& req) const;
+    ix::HttpResponsePtr handleFactoryReset(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleLogs(const ix::HttpRequestPtr& req,
                                    const std::unordered_map<std::string, std::string>& queryParams) const;
 

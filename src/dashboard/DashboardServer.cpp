@@ -105,6 +105,7 @@ void DashboardServer::_initRoutes()
         {"GET",  "/api/system/check-internet",   [this](auto& req, auto&) { return systemHandlers_.handleCheckInternet(req); }},
         {"POST", "/api/system/restart",          [this](auto& req, auto&) { return systemHandlers_.handleRestart(req); }},
         {"POST", "/api/system/shutdown",         [this](auto& req, auto&) { return systemHandlers_.handleShutdown(req); }},
+        {"POST", "/api/system/factory-reset",    [this](auto& req, auto&) { return systemHandlers_.handleFactoryReset(req); }},
         {"GET",  "/api/system/logs",             [this](auto& req, auto& qp) { return systemHandlers_.handleLogs(req, qp); }},
 
         // Updates (A/B image update via RAUC + tryboot)
@@ -132,13 +133,15 @@ ix::HttpResponsePtr DashboardServer::_handleRequest(
         if (req->method == method && path == routePath)
             return handler(req, queryParams);
 
-    // AP fallback: joining the AP is implicit auth for the wifi-setup endpoints
-    // only — explicit allowlist (ap-password stays session-gated).
+    // AP fallback: joining the AP is implicit auth for the setup endpoints only —
+    // explicit allowlist (ap-password stays session-gated). Factory reset is the
+    // recovery path for a forgotten device password.
     static const std::vector<std::string> kApBypassPaths = {
         "/api/connection/status",
         "/api/connection/saved-networks",
         "/api/connection/connect",
         "/api/connection/forget",
+        "/api/system/factory-reset",
     };
     const bool apBypass = _isApMode()
         && std::find(kApBypassPaths.begin(), kApBypassPaths.end(), path) != kApBypassPaths.end();
