@@ -136,6 +136,7 @@ struct glz::meta<DisplayConfig>
     using T = DisplayConfig;
     static constexpr auto value = glz::object(
         "mock_display", &T::mockDisplay,
+        "mock_output_dir", &T::mockOutputDir,
         "interval_secs", &T::intervalSecs,
         "min_refresh_secs", &T::minRefreshSecs,
         "loading_image_path", &T::loadingImagePath,

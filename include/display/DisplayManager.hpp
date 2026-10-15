@@ -62,6 +62,8 @@ private:
     [[nodiscard]] bool _displayImageHw(const std::filesystem::path& imagePath);
     [[nodiscard]] std::vector<uint8_t> _prepareImageBuffer(
         const std::filesystem::path& imagePath) const;
+    void _writeMockPanel(const std::vector<uint8_t>& buffer, const std::string& state,
+                         const std::filesystem::path& source);
 
     const AppConfig& _cfg;
     DisplayMetricsRepository& _metrics;
@@ -77,6 +79,7 @@ private:
     /// by the hw threads.
     std::atomic<std::chrono::steady_clock::time_point> _lastDisplayTime{};
     std::mutex _hwMutex; ///< serializes all EPD hardware access (init/clear/display/sleep)
+    int64_t _mockSeq = 0;
 
     /// Set by requestShutdown(): makes the min-refresh wait return early so
     /// shutdown doesn't block.

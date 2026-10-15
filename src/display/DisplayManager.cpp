@@ -2,6 +2,7 @@
 #include <spdlog/spdlog.h>
 #include <stb_image.h>
 #include <stb_image_resize2.h>
+#include <fstream>
 #include <thread>
 
 #ifdef EPD_HARDWARE_ENABLED
@@ -105,6 +106,8 @@ void DisplayManager::_clearHw()
     if (_cfg.display.mockDisplay)
     {
         _logger->info("[mock] Display clear");
+        if (!_cfg.display.mockOutputDir.empty())
+            _writeMockPanel(std::vector<uint8_t>(BUFFER_SIZE, 0xFF), "cleared", {});
         _lastDisplayTime.store(std::chrono::steady_clock::now());
         _isCleared = true;
         return;
@@ -162,6 +165,13 @@ bool DisplayManager::_displayImageHw(const std::filesystem::path& imagePath)
     if (_cfg.display.mockDisplay)
     {
         _logger->info("[mock] Display image: {}", imagePath.string());
+        if (!_cfg.display.mockOutputDir.empty())
+        {
+            const auto buffer = _prepareImageBuffer(imagePath);
+            if (buffer.empty())
+                return false;
+            _writeMockPanel(buffer, "image", imagePath);
+        }
         _lastDisplayTime.store(std::chrono::steady_clock::now());
         _isCleared = false;
         return true;
@@ -373,4 +383,31 @@ std::vector<uint8_t> DisplayManager::_prepareImageBuffer(
 
     _logger->debug("Image buffer prepared: {} bytes", buffer.size());
     return buffer;
+}
+
+void DisplayManager::_writeMockPanel(const std::vector<uint8_t>& buffer, const std::string& state,
+                                     const std::filesystem::path& source)
+{
+    const std::filesystem::path dir(_cfg.display.mockOutputDir);
+    std::filesystem::create_directories(dir);
+
+    // PBM stores 1 = black, the panel buffer 1 = white.
+    {
+        std::ofstream pbm(dir / "panel.pbm.tmp", std::ios::binary);
+        pbm << "P4\n" << WIDTH << " " << HEIGHT << "\n";
+        for (const uint8_t b : buffer)
+            pbm.put(static_cast<char>(~b));
+    }
+    std::filesystem::rename(dir / "panel.pbm.tmp", dir / "panel.pbm");
+
+    {
+        std::ofstream meta(dir / "panel.json.tmp");
+        meta << nlohmann::json{{"state", state}, {"source", source.string()}, {"seq", ++_mockSeq}}.dump();
+    }
+    std::filesystem::rename(dir / "panel.json.tmp", dir / "panel.json");
+
+    _metrics.increment("epd_refresh_total");
+    _metrics.increment(state == "image" ? "epd_image_refresh_total" : "epd_clear_total");
+    _metrics.set("epd_last_refresh_at", nowUnix());
+    _metrics.setIfUnset("epd_first_use_at", nowUnix());
 }

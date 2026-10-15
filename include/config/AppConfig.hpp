@@ -49,6 +49,8 @@ struct ImageConfig
 struct DisplayConfig
 {
     bool mockDisplay = false;
+    // Mock only: write each frame as panel.pbm + panel.json here (e2e tests).
+    std::string mockOutputDir;
     int intervalSecs = 900;
     int minRefreshSecs = 120;
     std::string loadingImagePath = "assets/image/loading";
