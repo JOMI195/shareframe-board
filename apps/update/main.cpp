@@ -4,6 +4,7 @@
 #include "ipc/NngRepServer.hpp"
 #include "net/HTTPClient.hpp"
 #include "repository/TokenRepository.hpp"
+#include "update/UpdateIpc.hpp"
 #include "update/UpdateManager.hpp"
 #include "Version.hpp"
 #include <spdlog/spdlog.h>
@@ -28,46 +29,8 @@ int main(int argc, char* argv[])
     updates.startPeriodicCheck();
 
     // REP server: dashboard proxies its /api/system/updates/* routes here.
-    NngRepServer repServer(cfg.ipc.updateRep, [&](const IpcMessage& msg) -> nlohmann::json
-    {
-        switch (msg.type)
-        {
-        case IpcMessageType::UpdateCheckLatest:
-        {
-            auto resp = updates.fetchLatestRelease();
-            if (!resp.ok())
-                return {{"ok", false}, {"error", resp.errorMsg}, {"status_code", resp.statusCode}};
-            try
-            {
-                return {{"ok", true}, {"release", nlohmann::json::parse(resp.body)}};
-            }
-            catch (...)
-            {
-                return {{"ok", false}, {"error", "Invalid response from update server"}};
-            }
-        }
-
-        case IpcMessageType::UpdatePerform:
-        {
-            std::string error;
-            const bool started = updates.startUpdate(error);
-            return {{"ok", started}, {"error", error}};
-        }
-
-        case IpcMessageType::UpdateStatus:
-            return {{"ok", true}, {"status", updates.status()}};
-
-        case IpcMessageType::UpdateHistory:
-            return {{"ok", true}, {"history", updates.history()}};
-
-        case IpcMessageType::GetHealth:
-            return {{"running", true}};
-
-        default:
-            spdlog::warn("IPC: unhandled message type");
-            return nlohmann::json::object();
-        }
-    });
+    UpdateIpc updateIpc(updates);
+    NngRepServer repServer(cfg.ipc.updateRep, [&](const IpcMessage& msg) { return updateIpc.handle(msg); });
     repServer.start();
 
     int sig = waitForSignal();

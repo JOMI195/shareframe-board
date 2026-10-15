@@ -1,0 +1,11 @@
+*
+!CMakeLists.txt
+!CMakePresets.json
+!include/
+!src/
+!apps/
+!external/
+!migrations/
+!assets/
+!config.toml
+!tests/e2e/board/

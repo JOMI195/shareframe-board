@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+echo "64 bytes from 1.1.1.1: icmp_seq=1 ttl=57 time=4.2 ms"

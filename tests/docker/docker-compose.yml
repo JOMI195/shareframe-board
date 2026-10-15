@@ -1,0 +1,12 @@
+name: shareframe-board-cpp-test
+
+services:
+  cpp:
+    build: .
+    image: shareframe-board-cpp-test
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    environment:
+      SHAREFRAME_BUILD_ROOT: /src/build-docker
+    volumes:
+      - ../..:/src
+    entrypoint: ["/src/test.sh"]

@@ -1,0 +1,53 @@
+# Complete config for the e2e board container; no profile overlay is used.
+base_dir = "/data"
+debug = true
+production = false
+base_url = "fake-server:9000"
+
+[log]
+log_path = "logs"
+system_log_path = "/data/logs/system.log"
+
+[database]
+database_path = "db"
+database_name = "shareframe.db"
+migrations_path = "/usr/share/shareframe/migrations"
+
+[auth_token]
+http_fetch_token_url = "/api/frames/obtain-frame-token/"
+http_verify_token_url = "/api/frames/verify-frame-auth-token/"
+
+[websocket]
+ws_path = "ws/frames/"
+
+[image]
+image_save_path = "images"
+
+[display]
+mock_display = true
+mock_output_dir = "/panel"
+interval_secs = 900
+min_refresh_secs = 1
+loading_image_path = "/usr/share/shareframe/assets/image/loading"
+default_images_path = "/usr/share/shareframe/assets/image/default"
+clear_target_hour = 3
+night_mode_enabled = false
+night_start_hour = 2
+night_end_hour = 5
+night_interval_secs = 3600
+
+[update]
+http_latest_url = "/api/frame-updates/latest/"
+check_interval_secs = 0
+
+[dashboard_application]
+port = 8080
+host = "0.0.0.0"
+http_verify_otp_url = "/api/frames/verify-frame-otp/"
+
+[heartbeat]
+interval_secs = 3
+http_url = "/api/frames/frame-hearbeat/"
+
+[expiry_cleanup]
+interval_secs = 2

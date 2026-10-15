@@ -17,7 +17,7 @@ frontend/tests/
 ```
 
 **Which tier?** No DOM and no network → unit. MSW can answer it → integration.
-There is no e2e tier yet: the C++ dashboard server has no test stack.
+Flows against the real board processes live in the e2e suite, see the root `README.tests.md`.
 
 ## Support
 

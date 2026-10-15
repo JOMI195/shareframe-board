@@ -1,0 +1,45 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 28, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "test",
+      "displayName": "Tests",
+      "binaryDir": "${sourceDir}/build-test",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "SHAREFRAME_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "test-asan",
+      "displayName": "Tests (ASan + UBSan)",
+      "inherits": "test",
+      "binaryDir": "${sourceDir}/build-asan",
+      "cacheVariables": { "SHAREFRAME_SANITIZE": "ON" }
+    },
+    {
+      "name": "test-coverage",
+      "displayName": "Tests (coverage)",
+      "inherits": "test",
+      "binaryDir": "${sourceDir}/build-coverage",
+      "cacheVariables": { "SHAREFRAME_COVERAGE": "ON" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "test", "configurePreset": "test", "targets": ["shareframe-unit-tests", "shareframe-integration-tests"] },
+    { "name": "test-asan", "configurePreset": "test-asan", "targets": ["shareframe-unit-tests", "shareframe-integration-tests"] },
+    { "name": "test-coverage", "configurePreset": "test-coverage", "targets": ["shareframe-unit-tests", "shareframe-integration-tests"] }
+  ],
+  "testPresets": [
+    { "name": "test", "configurePreset": "test", "output": { "outputOnFailure": true }, "execution": { "jobs": 8 } },
+    {
+      "name": "test-asan",
+      "configurePreset": "test-asan",
+      "output": { "outputOnFailure": true },
+      "execution": { "jobs": 8 },
+      "environment": { "ASAN_OPTIONS": "detect_leaks=1", "UBSAN_OPTIONS": "print_stacktrace=1:halt_on_error=1" }
+    },
+    { "name": "test-coverage", "configurePreset": "test-coverage", "output": { "outputOnFailure": true }, "execution": { "jobs": 8 } }
+  ]
+}

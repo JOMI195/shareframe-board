@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+line="$*"
+echo "${line% }" >> /state/shim-calls.log

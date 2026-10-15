@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Stands in for wpa_cli: saved networks live in /state/wifi-networks.
+/opt/shims/_log "shareframe-wifi $*"
+networks=/state/wifi-networks
+case "${1:-}" in
+    status) printf 'ssid=E2E-WiFi\nwpa_state=COMPLETED\n' ;;
+    list)
+        echo 'network id / ssid / bssid / flags'
+        n=0
+        while read -r ssid; do printf '%d\t%s\tany\t\n' "$n" "$ssid"; n=$((n + 1)); done < "$networks"
+        ;;
+    add) grep -qxF "$2" "$networks" || echo "$2" >> "$networks" ;;
+    del) grep -vxF "$2" "$networks" > "$networks.tmp"; cat "$networks.tmp" > "$networks"; rm -f "$networks.tmp" ;;
+esac

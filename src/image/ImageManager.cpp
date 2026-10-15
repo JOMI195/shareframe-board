@@ -1,6 +1,7 @@
 #include "image/ImageManager.hpp"
 #include <openssl/evp.h>
 #include <spdlog/spdlog.h>
+#include <cctype>
 #include <ctime>
 #include <fstream>
 #include <unordered_set>
@@ -20,6 +21,15 @@ static std::vector<uint8_t> decodeBase64(const std::string& encoded)
     if (encoded.size() >= 2 && encoded[encoded.size() - 2] == '=') ++padding;
     out.resize(static_cast<size_t>(len) - padding);
     return out;
+}
+
+// The sender is server-supplied; keep it from steering the path.
+static std::string safeFilePart(std::string s)
+{
+    for (auto& c : s)
+        if (!std::isalnum(static_cast<unsigned char>(c)) && c != '-' && c != '_')
+            c = '_';
+    return s;
 }
 
 ImageManager::ImageManager(const AppConfig& cfg, ImageRepository& repo)
@@ -46,7 +56,7 @@ std::optional<Image> ImageManager::saveImage(
         }
 
         auto filename = fmt::format("{}_{}_{}_{}.jpg",
-                                    sender, std::time(nullptr), expiresAt, sentImageId);
+                                    safeFilePart(sender), std::time(nullptr), expiresAt, sentImageId);
         auto filepath = _savePath / filename;
 
         std::ofstream file(filepath, std::ios::binary);

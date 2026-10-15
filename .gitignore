@@ -35,6 +35,7 @@
 cmake-build-debug/
 cmake-build*
 build/
+build-*/
 
 # IDE
 .idea/
@@ -53,3 +54,7 @@ config.prod.local.toml
 #dashboard
 node_modules/
 .env.dev
+
+# e2e
+tests/e2e/playwright-report/
+tests/e2e/test-results/

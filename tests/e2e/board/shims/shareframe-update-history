@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Appends an entry the way the board tool does, from the staged update metadata.
+/opt/shims/_log "shareframe-update-history $*"
+meta=$(cat /data/rauc/pending-meta.json 2>/dev/null || echo '{}')
+from=$(sed -n 's/.*"from_version":"\([^"]*\)".*/\1/p' <<< "$meta")
+to=$(sed -n 's/.*"to_version":"\([^"]*\)".*/\1/p' <<< "$meta")
+error=$(sed 's/["\\]/\\&/g' <<< "${2:-}")
+mkdir -p /data/shareframe
+printf '{"timestamp":"%s","from_version":"%s","to_version":"%s","result":"%s","error":"%s"}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$from" "$to" "$1" "$error" >> /data/shareframe/update-history.jsonl

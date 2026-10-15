@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+cat <<'INFO'
+health_state=ok
+uptime_seconds=1234
+boot_count=7
+boot_slot=A
+kernel=6.6.0-e2e
+cpu_temp_celsius=42.5
+cpu_usage_percent=3
+ram_total_bytes=499122176
+ram_available_bytes=300000000
+storage_data_total_bytes=8000000000
+storage_data_free_bytes=6000000000
+INFO

@@ -1,5 +1,6 @@
 #include "task/DisplayClear.hpp"
 #include "events/Messages.hpp"
+#include "util/DailyTime.hpp"
 #include <chrono>
 #include <ctime>
 
@@ -60,20 +61,8 @@ void DisplayClear::_run(std::stop_token st)
 
 int DisplayClear::_secsUntilNextTarget() const
 {
-    const auto now = std::chrono::system_clock::now();
-    const std::time_t nowT = std::chrono::system_clock::to_time_t(now);
+    const std::time_t nowT = std::time(nullptr);
     std::tm local{};
     localtime_r(&nowT, &local);
-
-    std::tm target = local;
-    target.tm_hour = cfg_.display.clearTargetHour;
-    target.tm_min = 0;
-    target.tm_sec = 0;
-
-    std::time_t targetT = std::mktime(&target);
-
-    if (targetT <= nowT)
-        targetT += 24 * 60 * 60;
-
-    return static_cast<int>(targetT - nowT);
+    return daily::secsUntilHour(local, cfg_.display.clearTargetHour);
 }

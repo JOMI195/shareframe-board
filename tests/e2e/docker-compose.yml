@@ -1,0 +1,57 @@
+name: shareframe-board-e2e
+
+services:
+  board:
+    build:
+      context: ../..
+      dockerfile: tests/e2e/board/board.Dockerfile
+    image: shareframe-board-e2e-board
+    volumes:
+      - panel:/panel
+      - state:/state
+    depends_on:
+      fake-server:
+        condition: service_healthy
+
+  fake-server:
+    build: ./fake-server
+    image: shareframe-board-e2e-fake-server
+
+  frontend:
+    build:
+      context: ../../dashboard-frontend
+      dockerfile: ../tests/e2e/frontend/Dockerfile
+      additional_contexts:
+        e2e: ./frontend
+    image: shareframe-board-e2e-frontend
+    ports:
+      - "127.0.0.1:8088:80"
+    depends_on:
+      board:
+        condition: service_healthy
+
+  e2e:
+    build:
+      context: .
+      dockerfile: runner.Dockerfile
+    image: shareframe-board-e2e-runner
+    profiles: [runner]
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    ipc: host
+    environment:
+      CI: "1"
+      HOME: /tmp
+    ports:
+      - "127.0.0.1:8089:8089"
+    volumes:
+      - ./:/e2e
+      - /e2e/node_modules
+      - panel:/panel:ro
+      - state:/state
+    depends_on:
+      frontend:
+        condition: service_healthy
+
+volumes:
+  panel:
+  state:

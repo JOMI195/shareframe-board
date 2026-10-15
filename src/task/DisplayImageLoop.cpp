@@ -135,7 +135,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
                     continue;
                 }
 
-                while (!st.stop_requested())
+                while (!st.stop_requested() && settings_.isSlideshowActive())
                 {
                     // Check if user images appeared
                     if (!repo_.getAllIds().empty())
