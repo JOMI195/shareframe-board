@@ -17,10 +17,10 @@ import { serializableCheckOptions } from './setupStore';
 
 const persistConfig: PersistConfig<ReturnType<typeof rootReducer>> = {
   key: 'shareframe-dashboard-data',
-  version: 3,
+  version: 4,
   storage,
   stateReconciler: autoMergeLevel2,
-  blacklist: ['slideshowImages'],
+  blacklist: ['slideshowImages', 'dialogs'],
   migrate: createMigrate(migrations, { debug: import.meta.env.VITE_APP_PRODUCTION === "False" ? true : false }),
 };
 

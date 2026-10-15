@@ -1,14 +1,16 @@
 import { MigrationManifest } from 'redux-persist';
 
+// The stored dialogs would shadow keys added since (autoMergeLevel2 replaces
+// each slice wholesale), so drop them and let the slice re-initialise.
+const dropDialogs = (state: Record<string, unknown> | undefined) => {
+    if (!state) return state;
+    const { dialogs, ...rest } = state;
+    return rest;
+};
+
 const typedMigrations = {
-    // v3: dialogs gained changePassword/changeApPassword. Drop the persisted
-    // copy (autoMergeLevel2 would otherwise shadow the new keys) so the slice
-    // re-initialises with the full shape.
-    3: (state: Record<string, unknown> | undefined) => {
-        if (!state) return state;
-        const { dialogs, ...rest } = state;
-        return rest;
-    },
+    3: dropDialogs,
+    4: dropDialogs,
 };
 
 const migrations = typedMigrations as unknown as MigrationManifest;
