@@ -75,7 +75,7 @@ void ImageUpdate::_onPicture(const nlohmann::json& msg) const
             return 0;
         };
 
-        const auto sentImageId = msg.value("sent_image_id", 0);
+        const auto sentImageId = jsonInt64("sent_image_id");
         const auto sender = msg.value("sender", "");
         const auto base64Data = msg.value("data", "");
         const auto expiresAt = jsonInt64("expiry_unix_timestamp");
@@ -96,7 +96,7 @@ void ImageUpdate::_onPicture(const nlohmann::json& msg) const
         if (auto saved = imgMgr_.saveImage(sentImageId, sender, base64Data, expiresAt))
         {
             logger_->info("Saved image {} from {}", sentImageId, sender);
-            bus_.publish<Topic::IMAGE_NEW>(static_cast<int64_t>(sentImageId));
+            bus_.publish<Topic::IMAGE_NEW>(sentImageId);
         }
         else
             logger_->error("Failed to save image {} from {}", sentImageId, sender);
