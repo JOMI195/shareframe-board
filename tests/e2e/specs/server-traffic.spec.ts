@@ -7,7 +7,7 @@ import { expect, test } from '../support/fixtures';
 test.describe('pictures', () => {
   test('without user pictures the frame rotates its default images', async ({ board }) => {
     const first = await waitForPanel(showsDefault, 'default image shown');
-    await board.post('/api/frame/slideshow/skip');
+    await board.skip();
     const next = await waitForPanel((p) => showsDefault(p) && p.seq > first.seq, 'next default image');
     expect(next.source).not.toBe(first.source);
   });
@@ -42,13 +42,13 @@ test.describe('pictures', () => {
     const b = await server.sendPicture('top-black.jpg');
     await expect.poll(async () => (await board.slideshowStatus()).image_count).toBe(2);
 
-    await board.post('/api/frame/slideshow/skip');
+    await board.skip();
     await waitForPanel(showsImage(b), `skip to ${b}`);
     const frame = await Frame.read();
     expect(frame.blackRatio(0, 0, 800, 230)).toBeGreaterThan(0.98);
     expect(frame.blackRatio(0, 250, 800, 480)).toBeLessThan(0.02);
 
-    await board.post('/api/frame/slideshow/skip');
+    await board.skip();
     await waitForPanel(showsImage(a), `wrap around to ${a}`);
   });
 
@@ -95,7 +95,7 @@ test.describe('removal', () => {
     await waitForPanel(showsImage(id), `picture ${id} on panel`);
 
     await expect.poll(async () => (await board.slideshowStatus()).image_count, { timeout: 20_000 }).toBe(0);
-    await board.post('/api/frame/slideshow/skip');
+    await board.skip();
     await waitForPanel(showsDefault, 'back to default images');
   });
 

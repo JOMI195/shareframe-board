@@ -141,3 +141,22 @@ TEST_F(DisplayImageLoopTest, PlaybackOrderDecidesWhichPictureComesNext)
     bus.publish<Topic::SKIP_IMAGE>({});
     EXPECT_TRUE(waitFor([&] { return panel().value("source", "").ends_with("/2.jpg"); }));
 }
+
+TEST_F(DisplayImageLoopTest, ReportsRefreshingOnlyWhilePainting)
+{
+    start();
+    ASSERT_TRUE(waitFor([&] { return seq() >= 1; }));
+    EXPECT_TRUE(waitFor([&] { return !loop.isRefreshing(); }));
+}
+
+TEST_F(DisplayImageLoopTest, PaintWaitingForThePanelCountsAsRefreshing)
+{
+    cfg.display.minRefreshSecs = 3600;
+    const auto picture = db.dir() / "user.jpg";
+    std::filesystem::copy_file(std::string(SHAREFRAME_ASSETS_DIR) + "/image/loading/logo-frame-loading-shareframe.jpg", picture);
+    repo.save({42, "alice", picture, std::time(nullptr) + 3600});
+    start();
+
+    EXPECT_TRUE(waitFor([&] { return loop.isRefreshing(); }));
+    EXPECT_EQ(seq(), 0);
+}

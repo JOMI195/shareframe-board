@@ -2,7 +2,7 @@ import { card, expect, signIn, test } from '../support/fixtures';
 
 test('display health counts the refreshes the panel really did', async ({ page, board }) => {
   const before = (await board.get('/api/frame/display/stats')).epd_image_refresh_total;
-  await board.post('/api/frame/slideshow/skip');
+  await board.skip();
   await expect.poll(async () => (await board.get('/api/frame/display/stats')).epd_image_refresh_total).toBe(before + 1);
 
   await signIn(page);

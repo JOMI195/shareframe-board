@@ -40,6 +40,7 @@ ix::HttpResponsePtr FrameHandlers::handleStatus(const ix::HttpRequestPtr& /*req*
     return jsonResponse(200, "OK", {
         {"active", activeResult->value("active", true)},
         {"loop_started", activeResult->value("loop_started", false)},
+        {"refreshing", activeResult->value("refreshing", false)},
         {"image_count", activeResult->value("image_count", 0)},
         {"interval_seconds", intervalResult->value("interval_secs", cfg_.display.intervalSecs)},
         {"seconds_until_next", secondsResult ? secondsResult->value("seconds_until_next", -1) : -1},
@@ -134,11 +135,14 @@ ix::HttpResponsePtr FrameHandlers::handleUpdateNightMode(const ix::HttpRequestPt
 
 ix::HttpResponsePtr FrameHandlers::handleSkip(const ix::HttpRequestPtr& /*req*/) const
 {
-    if (!ipc_.send(IpcMessage{IpcMessageType::SkipImage, {}}))
+    const auto result = ipc_.sendAndReceive(IpcMessage{IpcMessageType::SkipImage, {}});
+    if (!result)
     {
         logger_->error("Failed to send skip_image via IPC");
         return errorResponse(500, "Internal Server Error", "IPC error");
     }
+    if (result->value("refreshing", false))
+        return errorResponse(409, "Conflict", "Display is refreshing");
     return jsonResponse(200, "OK", nlohmann::json::object());
 }
 

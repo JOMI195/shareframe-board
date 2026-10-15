@@ -32,6 +32,9 @@ public:
     /// True once the loop has displayed its first image (default or user).
     [[nodiscard]] bool isReady() const { return ready_.load(); }
 
+    /// True while the loop paints; a skip arriving then would be lost.
+    [[nodiscard]] bool isRefreshing() const { return refreshing_.load(); }
+
     /// Id of the user picture shown last, 0 while none was shown.
     [[nodiscard]] int64_t currentImageId() const { return currentImageId_.load(); }
 
@@ -67,4 +70,5 @@ private:
     // steady_clock ms at which the next image change is due; 0 = none scheduled.
     std::atomic<int64_t> nextChangeAtMs_{0};
     std::atomic<bool> ready_{false};
+    std::atomic<bool> refreshing_{false};
 };

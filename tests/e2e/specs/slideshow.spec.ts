@@ -34,9 +34,9 @@ test('a hand-picked order decides which picture the panel shows next', async ({ 
   await page.getByRole('button', { name: 'Reihenfolge speichern' }).click();
   await expect(page.getByText('Eigene Reihenfolge ab dem nächsten Bild')).toBeVisible();
 
-  await board.post('/api/frame/slideshow/skip');
+  await board.skip();
   await waitForPanel(showsImage(c), `custom order: ${c} after ${a}`);
-  await board.post('/api/frame/slideshow/skip');
+  await board.skip();
   await waitForPanel(showsImage(b), `custom order: ${b} after ${c}`);
   expect((await board.get('/api/frame/slideshow/images')).custom_order).toEqual([a, c, b]);
 });
@@ -52,6 +52,6 @@ test('newest first jumps from the oldest picture to the latest', async ({ page, 
   await page.getByRole('button', { name: 'Neueste zuerst' }).click();
   await expect(page.getByText('Neueste zuerst ab dem nächsten Bild')).toBeVisible();
 
-  await board.post('/api/frame/slideshow/skip');
+  await board.skip();
   await waitForPanel(showsImage(c), `newest first: ${c} after ${a}`);
 });

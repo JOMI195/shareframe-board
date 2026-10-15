@@ -72,7 +72,7 @@ test('a stopped slideshow ignores skip requests', async ({ board }) => {
   await board.post('/api/frame/clear');
   const cleared = await waitForPanel(isCleared, 'panel cleared');
 
-  await board.post('/api/frame/slideshow/skip');
+  await board.skip();
   await new Promise((r) => setTimeout(r, 2000));
   expect((await readPanel())?.seq).toBe(cleared.seq);
 });

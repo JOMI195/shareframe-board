@@ -193,6 +193,13 @@ export class BoardApi {
     return (await res.json()).data;
   }
 
+  /** Skips the current image, retrying while the board rejects skips because the panel is refreshing. */
+  async skip() {
+    await expect
+      .poll(async () => (await this.postRaw('/api/frame/slideshow/skip')).status(), { message: 'skip accepted' })
+      .toBe(200);
+  }
+
   slideshowStatus() {
     return this.get('/api/frame/slideshow/status');
   }

@@ -25,6 +25,7 @@ protected:
 
     ~DashboardDisplayTest() override
     {
+        loop.stop();
         server.stop();
         bus.stop();
     }
@@ -63,6 +64,20 @@ TEST_F(DashboardDisplayTest, SkipReachesTheLoop)
 {
     EXPECT_EQ(result(frame.handleSkip(httpRequest("POST", "/"))).status, 200);
     EXPECT_TRUE(waitFor([&] { return skips.size() == 1; }));
+}
+
+TEST_F(DashboardDisplayTest, SkipIsRejectedWhileThePanelRefreshes)
+{
+    cfg.display.minRefreshSecs = 3600;
+    picture(1, 100);
+    loop.start();
+    ASSERT_TRUE(waitFor([&] { return loop.isRefreshing(); }));
+
+    const auto [status, body] = result(frame.handleSkip(httpRequest("POST", "/")));
+    EXPECT_EQ(status, 409);
+    EXPECT_EQ(body["success"], false);
+    EXPECT_EQ(result(frame.handleStatus(httpRequest("GET", "/"))).body["data"]["refreshing"], true);
+    EXPECT_EQ(skips.size(), 0u);
 }
 
 TEST_F(DashboardDisplayTest, StartAndStopSetSlideshowActive)
@@ -126,6 +141,7 @@ TEST_F(DashboardDisplayTest, StatusAggregatesTheDisplayState)
     ASSERT_EQ(status, 200);
     const auto& d = body["data"];
     EXPECT_EQ(d["active"], false);
+    EXPECT_EQ(d["refreshing"], false);
     EXPECT_EQ(d["interval_seconds"], 1200);
     EXPECT_EQ(d["image_count"], 1);
     EXPECT_EQ(d["seconds_until_next"], -1);

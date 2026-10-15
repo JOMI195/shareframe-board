@@ -15,9 +15,14 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
     switch (msg.type)
     {
     case IpcMessageType::SkipImage:
+        if (loop_.isRefreshing())
+        {
+            spdlog::info("IPC: skip image rejected, panel refreshing");
+            return {{"refreshing", true}};
+        }
         spdlog::info("IPC: skip image");
         bus_.publish<Topic::SKIP_IMAGE>(SkipImageEvent{});
-        return nlohmann::json::object();
+        return {{"refreshing", false}};
 
     case IpcMessageType::UpdateDisplayInterval:
     {
@@ -131,6 +136,7 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
         return {
             {"active", settings_.isSlideshowActive()},
             {"loop_started", loop_.isReady()},
+            {"refreshing", loop_.isRefreshing()},
             {"image_count", static_cast<int64_t>(images_.getAllIds().size())}
         };
 

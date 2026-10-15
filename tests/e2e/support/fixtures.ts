@@ -32,7 +32,7 @@ export const test = base.extend<Fixtures>({
       // nng PUB/SUB drops the removal event while a restarted service reconnects,
       // which leaves a deleted picture on the panel until the next change.
       const panel = await readPanel();
-      if (panel && !showsDefault(panel)) await board.post('/api/frame/slideshow/skip');
+      if (panel && !showsDefault(panel)) await board.skip();
       await waitForPanel(showsDefault, 'board back on default images');
       await use();
     },

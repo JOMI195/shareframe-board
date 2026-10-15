@@ -78,6 +78,7 @@ int DisplayImageLoop::secondsUntilNext() const
 
 void DisplayImageLoop::_onImageRemoved(const std::vector<int64_t>& removedIds)
 {
+    // Removed mid-paint: stays on the panel until the next change, by design.
     std::lock_guard lk(mtx_);
     if (const int64_t current = currentImageId_.load(); std::ranges::find(removedIds, current) != removedIds.end())
     {
@@ -166,6 +167,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
                     if (defaultImageIdx_ >= defaultImages.size())
                         defaultImageIdx_ = 0;
 
+                    refreshing_ = true;
                     if (const auto& path = defaultImages[defaultImageIdx_]; _paint(path, st))
                     {
                         ready_.store(true);
@@ -182,6 +184,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
                     std::unique_lock lk(mtx_);
                     skipCurrent_ = false;
                     newImage_ = false;
+                    refreshing_ = false;
                     cv_.wait_for(lk, std::chrono::seconds(settings_.getEffectiveInterval()),
                                  [&st, this] { return st.stop_requested() || (newImage_ && !settings_.isNightNow()) || skipCurrent_ || !settings_.isSlideshowActive(); });
                 }
@@ -198,6 +201,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
             }
 
             // Display the image (DisplayManager enforces min refresh)
+            refreshing_ = true;
             if (_paint(image.imagePath, st))
             {
                 ready_.store(true);
@@ -215,6 +219,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
                 _armNextChange();
                 std::unique_lock lk(mtx_);
                 skipCurrent_ = false;
+                refreshing_ = false;
                 cv_.wait_for(lk, std::chrono::seconds(settings_.getEffectiveInterval()),
                              [&st, this] { return st.stop_requested() || skipCurrent_ || !settings_.isSlideshowActive(); });
             }
@@ -222,6 +227,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
         catch (const std::exception& e)
         {
             logger_->error("DisplayImageLoop iteration failed: {}", e.what());
+            refreshing_ = false;
             std::unique_lock lk(mtx_);
             cv_.wait_for(lk, std::chrono::seconds(5),
                          [&st] { return st.stop_requested(); });
@@ -229,11 +235,13 @@ void DisplayImageLoop::_run(const std::stop_token st)
         catch (...)
         {
             logger_->error("DisplayImageLoop iteration failed with unknown exception");
+            refreshing_ = false;
             std::unique_lock lk(mtx_);
             cv_.wait_for(lk, std::chrono::seconds(5),
                          [&st] { return st.stop_requested(); });
         }
     }
+    refreshing_ = false;
     nextChangeAtMs_.store(0);
 }
 
