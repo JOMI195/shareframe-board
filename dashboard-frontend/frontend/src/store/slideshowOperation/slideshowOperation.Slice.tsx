@@ -414,6 +414,8 @@ export const updateNightMode = (
     }
 };
 
+const SKIP_WHILE_REFRESHING = 'Display wird gerade aktualisiert, bitte gleich erneut versuchen';
+
 export const skipImageThunk = () => async (
     dispatch: AppDispatch,
     getState: () => RootState
@@ -442,6 +444,10 @@ export const skipImageThunk = () => async (
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
         });
+
+        if (skipResponse.status === 409) {
+            throw new Error(SKIP_WHILE_REFRESHING);
+        }
 
         const clearData: IServerResponse = await skipResponse.json();
 
@@ -476,7 +482,9 @@ export const skipImageThunk = () => async (
 
         dispatch(addAlertSnackbar(
             uuid(),
-            'Aktuelles Bild überspringen fehlgeschlagen',
+            error instanceof Error && error.message === SKIP_WHILE_REFRESHING
+                ? SKIP_WHILE_REFRESHING
+                : 'Aktuelles Bild überspringen fehlgeschlagen',
             'error'
         ));
 

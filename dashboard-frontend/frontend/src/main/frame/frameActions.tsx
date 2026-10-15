@@ -58,7 +58,7 @@ const FrameActions: React.FC = () => {
 
     const { isConnected } = usePiConnection();
     const { isToggling, isClearingDisplay, isSkippingImage, isFetchingInterval, isUpdatingInterval, isFetchingNightMode, isUpdatingNightMode } = useAppSelector(selectSlideshowOperation);
-    const { isActive, loopStarted, imageCount, lastCheckedAt, secondsUntilNext, nowShowing } = useAppSelector(selectSlideshowStatus);
+    const { isActive, loopStarted, isRefreshing, imageCount, lastCheckedAt, secondsUntilNext, nowShowing } = useAppSelector(selectSlideshowStatus);
 
     // Interval form state
     const [intervalValue, setIntervalValue] = useState<number>(useAppSelector(selectDisplayRefreshInterval));
@@ -108,6 +108,7 @@ const FrameActions: React.FC = () => {
     const countdownText =
         !(isConnected && lastCheckedAt !== null) ? 'Unbekannt'
             : !isActive ? 'Pausiert'
+                : isRefreshing ? 'Wird aktualisiert…'
                 : remaining != null ? formatCountdown(remaining) : '—';
 
     const {
@@ -183,7 +184,7 @@ const FrameActions: React.FC = () => {
 
     const isLoopLoading = isActive && !loopStarted && isConnected && lastCheckedAt !== null;
     const isTimerRunning = isSlideshowActionsTimerActive || isAppIntialLoadTimerActive;
-    const isButtonsDisabled = isTimerRunning || isLoopLoading || isToggling || isClearingDisplay || isSkippingImage || !isConnected || lastCheckedAt === null;
+    const isButtonsDisabled = isTimerRunning || isLoopLoading || isToggling || isClearingDisplay || isSkippingImage || isRefreshing || !isConnected || lastCheckedAt === null;
     const isNightModeDisabled = !isConnected || lastCheckedAt === null || isUpdatingNightMode;
 
     return (

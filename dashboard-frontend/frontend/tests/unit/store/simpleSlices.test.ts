@@ -81,14 +81,14 @@ describe('frameLogs slice', () => {
 
 describe('slideshowStatus slice', () => {
   const payload = {
-    active: true, loopStarted: true, imageCount: 4, secondsUntilNext: 30,
+    active: true, loopStarted: true, isRefreshing: true, imageCount: 4, secondsUntilNext: 30,
     nowShowing: { seq: 3, state: 'image' as const, imageId: 7, sender: 'alice' },
   };
 
   it('applies a status check', () => {
     const state = slideshowStatus(undefined, checkSlideshowStatusThunk.fulfilled(payload, 'req'));
 
-    expect(state).toMatchObject({ isActive: true, loopStarted: true, imageCount: 4, secondsUntilNext: 30, isLoading: false });
+    expect(state).toMatchObject({ isActive: true, loopStarted: true, isRefreshing: true, imageCount: 4, secondsUntilNext: 30, isLoading: false });
     expect(state.lastCheckedAt).toEqual(expect.any(Number));
   });
 
@@ -96,7 +96,7 @@ describe('slideshowStatus slice', () => {
     const active = slideshowStatus(undefined, checkSlideshowStatusThunk.fulfilled(payload, 'req'));
     const state = slideshowStatus(active, checkSlideshowStatusThunk.rejected(null, 'req', undefined, 'offline'));
 
-    expect(state).toMatchObject({ isActive: false, loopStarted: false, imageCount: null, secondsUntilNext: null, error: 'offline' });
+    expect(state).toMatchObject({ isActive: false, loopStarted: false, isRefreshing: false, imageCount: null, secondsUntilNext: null, error: 'offline' });
   });
 
   it('resets', () => {

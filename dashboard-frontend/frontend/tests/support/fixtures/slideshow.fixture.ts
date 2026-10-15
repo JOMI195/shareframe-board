@@ -2,6 +2,7 @@
 export interface SlideshowStatusPayload {
   active: boolean;
   loop_started: boolean;
+  refreshing: boolean;
   image_count: number;
   interval_seconds: number;
   seconds_until_next: number;
@@ -24,6 +25,7 @@ export interface SlideshowStatusPayload {
 export const makeSlideshowStatus = (over: Partial<SlideshowStatusPayload> = {}): SlideshowStatusPayload => ({
   active: true,
   loop_started: true,
+  refreshing: false,
   image_count: 12,
   interval_seconds: 900,
   seconds_until_next: 300,

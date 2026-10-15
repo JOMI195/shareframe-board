@@ -123,6 +123,24 @@ describe('frame actions', () => {
     expect(screen.getByRole('button', { name: 'Bild überspringen' })).toBeEnabled();
   });
 
+  it('locks the actions while the panel refreshes', async () => {
+    server.use(...withSlideshowStatus({ refreshing: true }));
+    await openHome();
+
+    expect(screen.getByText('Wird aktualisiert…')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bild überspringen' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Stoppen' })).toBeDisabled();
+  });
+
+  it('reports a skip rejected during a refresh', async () => {
+    server.use(...failsWith('post', api.getSkipSlideshowImageUrl(), 409, 'Display is refreshing'));
+    const { user } = await openHome();
+
+    await user.click(screen.getByRole('button', { name: 'Bild überspringen' }));
+
+    expect(await screen.findByText('Display wird gerade aktualisiert, bitte gleich erneut versuchen')).toBeInTheDocument();
+  });
+
   it('saves the interval in seconds', async () => {
     const interval = spyOnRequests('post', api.getSlideshowIntervalUrl());
     server.use(interval.handler);
