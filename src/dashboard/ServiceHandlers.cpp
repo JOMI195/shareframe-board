@@ -121,5 +121,5 @@ ix::HttpResponsePtr ServiceHandlers::handleRestart(const ix::HttpRequestPtr& req
         return errorResponse(500, "Internal Server Error", "Failed to restart service");
     }
 
-    return jsonResponse(200, "OK", {{"service", id}}, "Service wird neu gestartet");
+    return jsonResponse(200, "OK", {{"service", id}}, "Dienst wird neu gestartet");
 }
