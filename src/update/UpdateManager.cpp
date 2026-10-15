@@ -68,6 +68,12 @@ bool UpdateManager::isVersionNewer(const std::string& candidate, const std::stri
     if (!std::regex_match(candidate, semver) || !std::regex_match(current, semver))
         return candidate != current && std::regex_match(candidate, semver);
 
+    // Segments compare as digit strings so arbitrarily long numbers can't overflow.
+    const auto trimZeros = [](std::string s)
+    {
+        const auto nz = s.find_first_not_of('0');
+        return nz == std::string::npos ? std::string() : s.substr(nz);
+    };
     std::istringstream a(candidate), b(current);
     std::string sa, sb;
     while (true)
@@ -76,8 +82,10 @@ bool UpdateManager::isVersionNewer(const std::string& candidate, const std::stri
         const bool hb = static_cast<bool>(std::getline(b, sb, '.'));
         if (!ha && !hb)
             return false;
-        const long va = ha ? std::stol(sa) : 0;
-        const long vb = hb ? std::stol(sb) : 0;
+        const std::string va = ha ? trimZeros(sa) : "";
+        const std::string vb = hb ? trimZeros(sb) : "";
+        if (va.size() != vb.size())
+            return va.size() > vb.size();
         if (va != vb)
             return va > vb;
     }
@@ -103,7 +111,14 @@ std::optional<nlohmann::json> UpdateManager::_latestReleaseJson() const
         return std::nullopt;
     try
     {
-        return nlohmann::json::parse(resp.body);
+        auto j = nlohmann::json::parse(resp.body);
+        const auto stringOrAbsent = [&](const char* key) { return !j.contains(key) || j[key].is_string(); };
+        if (!j.is_object() || !stringOrAbsent("version") || !stringOrAbsent("criticality"))
+        {
+            logger_->warn("Ignoring malformed latest-release response");
+            return std::nullopt;
+        }
+        return j;
     }
     catch (...)
     {
