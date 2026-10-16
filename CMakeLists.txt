@@ -137,6 +137,7 @@ set(COMMON_SOURCES
         src/db/MigrationRunner.cpp
         src/logging/Logger.cpp
         src/net/HTTPClient.cpp
+        src/net/DiagnosticsUploader.cpp
         src/auth/AuthTokenManager.cpp
         src/auth/Ed25519Auth.cpp
         src/auth/FrameIdentity.cpp
@@ -190,6 +191,7 @@ set(WEBSOCKET_SOURCES
         src/task/ImageUpdate.cpp
         src/task/MissingImageCheck.cpp
         src/task/ExpiredImageCleanup.cpp
+        src/task/RemoteCommand.cpp
         src/ipc/EventBridge.cpp
 )
 add_library(shareframe-websocket-lib STATIC ${WEBSOCKET_SOURCES})

@@ -8,6 +8,8 @@
 #include "util/Subprocess.hpp"
 #include "Version.hpp"
 #include <arpa/inet.h>
+#include <filesystem>
+#include <fstream>
 #include <sstream>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -63,12 +65,37 @@ void Heartbeat::execute()
         "ram_total_bytes", "ram_available_bytes",
         // Storage
         "storage_data_total_bytes", "storage_data_free_bytes",
+        // Faults & watermarks
+        "health_oom", "health_temp", "health_disk",
+        "crash_count", "unclean_resets", "oom_kills", "uv_events",
+        "temp_peak_celsius", "ram_available_min_bytes", "slot_trial",
+        // WiFi (no SSID)
+        "wifi_mode", "wlan_connected", "wlan_signal_dbm",
     };
     for (const auto& key : sysInfoKeys)
     {
         if (sysInfo.contains(key))
             payload[key] = sysInfo[key];
     }
+    for (const auto& [key, value] : sysInfo.items())
+    {
+        if (key.starts_with("proc_"))
+            payload[key] = value;
+    }
+
+    if (displayRunning)
+    {
+        if (const auto stats = displayIpc_.sendAndReceive({IpcMessageType::GetDisplayStats, {}}, std::chrono::milliseconds{1000});
+            stats && stats->is_object())
+        {
+            for (const auto& [key, value] : stats->items())
+                payload["display_" + key] = value;
+        }
+    }
+
+    const auto events = _getNewEvents();
+    if (!events.empty())
+        payload["events"] = events;
 
     auto headers = TokenAuth::buildTokenAuthHeaders(auth_);
     if (headers.empty())
@@ -95,6 +122,53 @@ void Heartbeat::execute()
         return;
     }
     logger_->debug("Heartbeat acknowledged ({})", res.statusCode);
+    if (!events.empty())
+        _saveEventCursor(events.back()["seq"].get<int64_t>());
+}
+
+nlohmann::json Heartbeat::_getNewEvents() const
+{
+    constexpr std::size_t kMaxEventsPerBeat = 50;
+    auto events = nlohmann::json::array();
+
+    int64_t cursor = 0;
+    std::ifstream(cfg_.heartbeat.eventCursorPath) >> cursor;
+    const auto res = Subprocess::run({"shareframe-event", "--since", std::to_string(cursor)}, 10);
+    if (res.exitCode != 0)
+        return events;
+
+    // Line format: "<seq> <time> [<source>] <message>"
+    std::istringstream stream(res.stdOut);
+    std::string line;
+    while (events.size() < kMaxEventsPerBeat && std::getline(stream, line))
+    {
+        std::istringstream fields(line);
+        int64_t seq = 0;
+        std::string time, source;
+        if (!(fields >> seq >> time >> source) || source.size() < 2)
+            continue;
+        std::string message;
+        std::getline(fields >> std::ws, message);
+        // The backend logs the body as a Python bytes repr that Grafana re-parses as JSON.
+        for (auto& c : message)
+            if (c < 0x20 || c > 0x7e || c == '"' || c == '\'' || c == '\\')
+                c = ' ';
+        events.push_back({{"seq", seq}, {"time", time},
+                          {"source", source.substr(1, source.size() - 2)}, {"message", message}});
+    }
+    return events;
+}
+
+void Heartbeat::_saveEventCursor(int64_t seq) const
+{
+    const auto tmp = cfg_.heartbeat.eventCursorPath + ".tmp";
+    if (std::ofstream(tmp) << seq << '\n')
+    {
+        std::error_code ec;
+        std::filesystem::rename(tmp, cfg_.heartbeat.eventCursorPath, ec);
+        if (ec)
+            logger_->warn("Could not save event cursor: {}", ec.message());
+    }
 }
 
 nlohmann::json Heartbeat::_getSysInfo() const

@@ -96,6 +96,12 @@ void WebsocketClient::_processMessage(const std::string& text) const
         case WsMessageType::ClearDisplay:
             bus_.publish<Topic::CLEAR_DISPLAY>(json);
             break;
+        case WsMessageType::Command:
+            bus_.publish<Topic::REMOTE_COMMAND>(json);
+            break;
+        default:
+            logger_->warn("Unexpected inbound message type: {}", type);
+            break;
         }
     }
     catch (const nlohmann::json::parse_error&)

@@ -39,6 +39,7 @@ protected:
     Recorder<Topic::PICTURE> pictures{bus};
     Recorder<Topic::CLEAR_IMAGES> clearImages{bus};
     Recorder<Topic::CLEAR_DISPLAY> clearDisplay{bus};
+    Recorder<Topic::REMOTE_COMMAND> commands{bus};
     WebsocketClient client{bus, cfg, auth};
 };
 }
@@ -61,9 +62,13 @@ TEST_F(WebsocketClientTest, ServerMessagesAreRoutedByType)
     server.sendToAll(R"({"type":"something_new"})");
     server.sendToAll(R"({"type":"picture","sent_image_id":1})");
     server.sendToAll(R"({"type":"clear_specific_sent_images","sent_image_ids":[1]})");
+    server.sendToAll(R"({"type":"command_result","id":1})");
+    server.sendToAll(R"({"type":"command","id":5,"command":"reboot"})");
     server.sendToAll(R"({"type":"clear_display"})");
 
     ASSERT_TRUE(waitFor([&] { return clearDisplay.size() == 1; }));
+    ASSERT_EQ(commands.size(), 1u);
+    EXPECT_EQ(commands.get()[0]["id"], 5);
     ASSERT_EQ(pictures.size(), 1u);
     EXPECT_EQ(pictures.get()[0]["sent_image_id"], 1);
     ASSERT_EQ(clearImages.size(), 1u);

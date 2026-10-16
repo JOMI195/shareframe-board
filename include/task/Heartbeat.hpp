@@ -24,6 +24,8 @@ protected:
 private:
     static std::string _getLocalIp();
     nlohmann::json _getSysInfo() const;
+    nlohmann::json _getNewEvents() const;
+    void _saveEventCursor(int64_t seq) const;
 
     const HTTPClient& http_;
     AuthTokenManager& auth_;

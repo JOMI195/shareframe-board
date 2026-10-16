@@ -8,6 +8,7 @@
 #include "dashboard/SystemHandlers.hpp"
 #include "dashboard/UpdateHandlers.hpp"
 #include "dashboard/WifiHandlers.hpp"
+#include "net/DiagnosticsUploader.hpp"
 #include "net/HTTPClient.hpp"
 #include "repository/SettingsRepository.hpp"
 #include <functional>
@@ -77,6 +78,8 @@ private:
     mutable LoginThrottle throttle_;
     ix::HttpServer server_;
     std::shared_ptr<spdlog::logger> logger_;
+
+    DiagnosticsUploader diagnostics_;
 
     // Handler classes
     WifiHandlers wifiHandlers_;

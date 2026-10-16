@@ -1,13 +1,18 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, Stack } from '@mui/material';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import RestoreIcon from '@mui/icons-material/Restore';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import uuid from 'react-uuid';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { selectFrameInfoState, fetchFrameInfos } from '@/store/frameInfo/frameInfo.Slice';
 import { openGeneralChangePasswordDialog, openGeneralFactoryResetDialog } from '@/store/dialogs/dialogs.Slice';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import ChangePasswordDialog from './dialogs/changePasswordDialog';
 import FactoryResetDialog from '@/common/components/factoryResetDialog';
+import { addAlertSnackbar } from '@/store/snackbars/snackbars.Slice';
+import { fetchWithTimeout } from '@/common/utils/fetch';
+import { getSendDiagnosticsUrl } from '@/assets/endpoints/api/frame';
 
 const RESOLUTION = "800mm x 480mm";
 const SYSTEM_INFO_POLL_MS = 5000;
@@ -69,6 +74,21 @@ const fmtWifiMode = (m?: string): string => (m ? WIFI_MODE_LABELS[m] ?? m : DASH
 const General = () => {
     const dispatch = useAppDispatch();
     const info = useAppSelector(selectFrameInfoState).frameInfo;
+    const [sendingDiagnostics, setSendingDiagnostics] = useState(false);
+
+    const sendDiagnostics = async () => {
+        setSendingDiagnostics(true);
+        try {
+            const response = await fetchWithTimeout(getSendDiagnosticsUrl(), { method: 'POST' }, 120000);
+            dispatch(response.ok
+                ? addAlertSnackbar(uuid(), "Diagnose an den Support gesendet", "success")
+                : addAlertSnackbar(uuid(), "Diagnose konnte nicht gesendet werden", "error"));
+        } catch {
+            dispatch(addAlertSnackbar(uuid(), "Diagnose konnte nicht gesendet werden", "error"));
+        } finally {
+            setSendingDiagnostics(false);
+        }
+    };
 
     // Poll live metrics while this page is open (layout fetches once on mount).
     useEffect(() => {
@@ -147,6 +167,28 @@ const General = () => {
                             onClick={() => dispatch(openGeneralChangePasswordDialog())}
                         >
                             Passwort ändern
+                        </Button>
+                    }
+                />
+
+                <ShareframeInfoCard
+                    title="Support"
+                    minHeight="0px"
+                    sections={[
+                        {
+                            label: "Diagnose",
+                            content: "Sendet Protokolle und Systemzustand an den Support. Ohne Passwörter, WLAN-Zugangsdaten und Bilder.",
+                        },
+                    ]}
+                    actions={
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            startIcon={<SupportAgentIcon />}
+                            disabled={sendingDiagnostics}
+                            onClick={sendDiagnostics}
+                        >
+                            {sendingDiagnostics ? "Wird gesendet …" : "Diagnose senden"}
                         </Button>
                     }
                 />

@@ -18,6 +18,7 @@ public:
         std::string path;
         std::string body;
         ix::WebSocketHttpHeaders headers;
+        std::string uri;
     };
 
     FakeHttpServer()
@@ -67,7 +68,7 @@ private:
     {
         std::lock_guard lk(mtx_);
         const auto path = req->uri.substr(0, req->uri.find('?'));
-        requests_.push_back({req->method, path, req->body, req->headers});
+        requests_.push_back({req->method, path, req->body, req->headers, req->uri});
         const auto it = routes_.find(req->method + " " + path);
         const auto [status, body] = it != routes_.end() ? it->second : std::pair{404, std::string("{}")};
         ix::WebSocketHttpHeaders headers{{"Content-Type", "application/json"}};

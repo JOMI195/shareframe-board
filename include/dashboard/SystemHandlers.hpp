@@ -1,6 +1,7 @@
 #pragma once
 #include "config/AppConfig.hpp"
 #include "dashboard/WifiManager.hpp"
+#include "net/DiagnosticsUploader.hpp"
 #include <ixwebsocket/IXHttpServer.h>
 #include <spdlog/spdlog.h>
 #include <string>
@@ -10,7 +11,7 @@
 class SystemHandlers
 {
 public:
-    SystemHandlers(const AppConfig& cfg, WifiManager& wifi);
+    SystemHandlers(const AppConfig& cfg, WifiManager& wifi, const DiagnosticsUploader& diagnostics);
 
     ix::HttpResponsePtr handleHealth(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleInfo(const ix::HttpRequestPtr& req) const;
@@ -18,12 +19,14 @@ public:
     ix::HttpResponsePtr handleRestart(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleShutdown(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleFactoryReset(const ix::HttpRequestPtr& req) const;
+    ix::HttpResponsePtr handleSendDiagnostics(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleLogs(const ix::HttpRequestPtr& req,
                                    const std::unordered_map<std::string, std::string>& queryParams) const;
 
 private:
     const AppConfig& cfg_;
     WifiManager& wifi_;
+    const DiagnosticsUploader& diagnostics_;
     std::shared_ptr<spdlog::logger> logger_;
     std::vector<std::string> allowedServiceNames_;
 };
