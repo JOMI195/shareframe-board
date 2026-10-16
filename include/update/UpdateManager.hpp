@@ -1,5 +1,6 @@
 #pragma once
 #include "config/AppConfig.hpp"
+#include "ipc/IpcClient.hpp"
 #include "net/HTTPClient.hpp"
 #include <atomic>
 #include <mutex>
@@ -26,7 +27,7 @@ public:
         Failed
     };
 
-    UpdateManager(const AppConfig& cfg, HTTPClient& http, AuthTokenManager& authTokenManager);
+    UpdateManager(const AppConfig& cfg, HTTPClient& http, AuthTokenManager& authTokenManager, IpcClient& displayIpc);
     ~UpdateManager();
 
     // Proxy of the server's latest-release metadata (TokenAuth).
@@ -56,6 +57,7 @@ private:
     const AppConfig& cfg_;
     HTTPClient& http_;
     AuthTokenManager& authTokenManager_;
+    IpcClient& displayIpc_;
     std::shared_ptr<spdlog::logger> logger_;
 
     mutable std::mutex mutex_;

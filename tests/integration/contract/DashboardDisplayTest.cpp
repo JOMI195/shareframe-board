@@ -1,10 +1,13 @@
+#include "auth/AuthTokenManager.hpp"
 #include "dashboard/FrameHandlers.hpp"
 #include "dashboard/SlideshowImageHandlers.hpp"
+#include "dashboard/SystemHandlers.hpp"
 #include "display/DisplayIpc.hpp"
 #include "ipc/NngRepServer.hpp"
 #include "repository/DisplayMetricsRepository.hpp"
 #include "support/Http.hpp"
 #include "support/ImageFixture.hpp"
+#include "support/PathShim.hpp"
 #include "support/Wait.hpp"
 #include <gtest/gtest.h>
 
@@ -44,11 +47,19 @@ protected:
     Recorder<Topic::UPDATE_NIGHT_MODE> nightModes{bus};
     Recorder<Topic::CLEAR_DISPLAY> clears{bus};
     Recorder<Topic::UPDATE_PLAYBACK_ORDER> orders{bus};
+    Recorder<Topic::STATUS_SCREEN> statusScreens{bus};
 
     NngRepServer server{url, [this](const IpcMessage& m) { return displayIpc.handle(m); }};
     IpcClient ipc{url};
     FrameHandlers frame{ipc, cfg};
     SlideshowImageHandlers slideshowImages{ipc, repo};
+
+    TokenRepository tokens{db.get()};
+    HTTPClient http{5, 5};
+    AuthTokenManager auth{cfg, tokens, http};
+    DiagnosticsUploader diagnostics{cfg, http, auth};
+    WifiManager wifi{(db.dir() / "wifi-mode.json").string()};
+    SystemHandlers system{cfg, wifi, diagnostics, ipc};
 
     std::filesystem::path picture(const int64_t id, const int64_t receivedAt)
     {
@@ -235,4 +246,23 @@ TEST_F(DashboardDisplayTest, StatusNamesThePictureOnThePanel)
     EXPECT_EQ(now()["state"], "cleared");
     EXPECT_EQ(now()["image_id"], 0);
     EXPECT_EQ(now()["seq"], 2);
+}
+
+TEST_F(DashboardDisplayTest, RebootShowsTheStatusScreen)
+{
+    PathShim shims;
+    shims.add("reboot", "exit 0");
+    EXPECT_EQ(result(system.handleRestart(httpRequest("POST", "/"))).status, 200);
+    ASSERT_TRUE(waitFor([&] { return statusScreens.size() == 1; }));
+    EXPECT_EQ(statusScreens.get()[0].kind, StatusScreenKind::Reboot);
+}
+
+TEST_F(DashboardDisplayTest, FailedFactoryResetHidesTheStatusScreenAgain)
+{
+    PathShim shims;
+    shims.add("shareframe-factory-reset", "exit 1");
+    EXPECT_EQ(result(system.handleFactoryReset(httpRequest("POST", "/"))).status, 500);
+    ASSERT_TRUE(waitFor([&] { return statusScreens.size() == 2; }));
+    EXPECT_EQ(statusScreens.get()[0].kind, StatusScreenKind::FactoryReset);
+    EXPECT_FALSE(statusScreens.get()[1].kind);
 }

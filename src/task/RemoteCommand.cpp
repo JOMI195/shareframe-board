@@ -1,5 +1,6 @@
 #include "task/RemoteCommand.hpp"
 #include "ipc/IpcClient.hpp"
+#include "ipc/StatusScreenKind.hpp"
 #include "net/WsProtocol.hpp"
 #include "util/Subprocess.hpp"
 #include <algorithm>
@@ -144,10 +145,16 @@ void RemoteCommand::_handle(const nlohmann::json& msg, const std::stop_token& st
 
     Subprocess::run({"shareframe-remote-gate", "mark"}, 5);
     std::this_thread::sleep_for(timing_.settle);
-    if (command == "reboot")
-        Subprocess::run({"reboot"}, 5);
-    else
-        Subprocess::run({"shareframe-factory-reset", "--yes"}, 5);
+    const auto kind = command == "reboot" ? StatusScreenKind::Reboot : StatusScreenKind::FactoryReset;
+    displayIpc_.send({IpcMessageType::ShowStatusScreen, {{"screen", toString(kind)}}});
+    const auto res = command == "reboot"
+        ? Subprocess::run({"reboot"}, 5)
+        : Subprocess::run({"shareframe-factory-reset", "--yes"}, 5);
+    if (res.exitCode != 0)
+    {
+        logger_->error("{} failed: {}", command, res.stdErr);
+        displayIpc_.send({IpcMessageType::HideStatusScreen, {}});
+    }
 }
 
 RemoteCommand::Gate RemoteCommand::_updateIdle()

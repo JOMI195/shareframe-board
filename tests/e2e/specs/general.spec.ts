@@ -1,4 +1,4 @@
-import { DASHBOARD_PASSWORD, expectShimCall, isCleared, waitForPanel } from '../support/board';
+import { DASHBOARD_PASSWORD, expectShimCall, isCleared, showsStatus, waitForPanel } from '../support/board';
 import { card, expect, signIn, test } from '../support/fixtures';
 
 test('device info shows the identity the server knows and live system metrics', async ({ page, server }) => {
@@ -37,6 +37,7 @@ test('restarting from the power menu reboots the board', async ({ page }) => {
   await page.getByRole('menuitem', { name: 'Neustarten' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Neustarten' }).click();
   await expectShimCall('reboot');
+  await waitForPanel(showsStatus('reboot'), 'reboot status screen');
 });
 
 test('shutting down blanks the panel before powering off', async ({ page }) => {

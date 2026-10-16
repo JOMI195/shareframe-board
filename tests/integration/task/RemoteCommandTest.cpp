@@ -93,12 +93,23 @@ protected:
     DiagnosticsUploader diagnostics{cfg, http, auth};
     EventBus bus;
 
+    std::vector<std::string> shownStatusScreens()
+    {
+        std::lock_guard lk(sentMtx);
+        return statusScreens;
+    }
+
     std::atomic<bool> refreshing{false};
     std::string updatePhase = "idle";
     bool newerRelease = true;
     NngRepServer display{sock("display.sock"), [this](const IpcMessage& msg) -> nlohmann::json {
         if (msg.type == IpcMessageType::GetSlideshowActive)
             return {{"refreshing", refreshing.load()}};
+        if (msg.type == IpcMessageType::ShowStatusScreen || msg.type == IpcMessageType::HideStatusScreen)
+        {
+            std::lock_guard lk(sentMtx);
+            statusScreens.push_back(msg.type == IpcMessageType::HideStatusScreen ? "hide" : msg.data.value("screen", ""));
+        }
         return health::respond(msg);
     }};
     NngRepServer update{sock("update.sock"), [this](const IpcMessage& msg) -> nlohmann::json {
@@ -116,6 +127,7 @@ protected:
 
     std::mutex sentMtx;
     std::vector<nlohmann::json> sent;
+    std::vector<std::string> statusScreens;
 };
 }
 
@@ -152,6 +164,7 @@ TEST_F(RemoteCommandTest, RebootCapturesEvidenceAndMarksTheRateLimit)
     const auto tools = calledTools();
     EXPECT_LT(tools.find("gate check"), tools.find("gate mark"));
     EXPECT_LT(tools.find("gate mark"), tools.find("reboot \n"));
+    EXPECT_EQ(shownStatusScreens(), std::vector<std::string>{"reboot"});
     const auto uploads = backend.requests(kDiagnostics);
     ASSERT_EQ(uploads.size(), 1u);
     EXPECT_EQ(uploads[0].uri, std::string(kDiagnostics) + "?trigger=pre-reboot&command_id=1");
@@ -220,4 +233,11 @@ TEST_F(RemoteCommandTest, RequestDiagnosticsUploadsWithTheCommandId)
     send("request_diagnostics", "", 7);
     ASSERT_TRUE(waitStatuses({"accepted", "done"}));
     EXPECT_EQ(backend.requests(kDiagnostics).back().uri, std::string(kDiagnostics) + "?trigger=admin&command_id=7");
+}
+
+TEST_F(RemoteCommandTest, FailedFactoryResetHidesTheStatusScreenAgain)
+{
+    shims.add("shareframe-factory-reset", "exit 1");
+    send("factory_reset");
+    EXPECT_TRUE(waitFor([&] { return shownStatusScreens() == std::vector<std::string>{"factory_reset", "hide"}; }, 5000ms));
 }

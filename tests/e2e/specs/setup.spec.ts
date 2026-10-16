@@ -1,4 +1,4 @@
-import { attachPanel, expectShimCall, Frame, setWifiMode, showsApSetup, showsDefault, waitForPanel } from '../support/board';
+import { attachPanel, expectShimCall, Frame, setWifiMode, showsApSetup, showsDefault, showsStatus, waitForPanel } from '../support/board';
 import { expect, test } from '../support/fixtures';
 
 // The hotspot fallback: no internet, the owner joins the board's AP and sets up Wi-Fi
@@ -34,6 +34,7 @@ test('in hotspot mode a visitor can reset the frame to factory defaults', async 
   await page.getByRole('button', { name: 'Auf Werkseinstellungen zurücksetzen' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Zurücksetzen' }).click();
   await expectShimCall('shareframe-factory-reset --yes');
+  await waitForPanel(showsStatus('factory_reset'), 'factory reset status screen');
 });
 
 test('the hotspot password is only shown to hotspot clients and signed-in owners', async ({ request, board }) => {
