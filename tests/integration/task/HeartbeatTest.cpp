@@ -9,6 +9,7 @@
 #include "task/Heartbeat.hpp"
 #include <fstream>
 #include <gtest/gtest.h>
+#include <thread>
 
 using namespace std::chrono_literals;
 
@@ -25,6 +26,8 @@ protected:
         cfg.frameId = "ABCD-EFGH-IJKL-MNOP";
         cfg.heartbeat.intervalSecs = 3600;
         cfg.heartbeat.eventCursorPath = (db.dir() / "event-cursor").string();
+        cfg.heartbeat.firstContactRetrySecs = 3600;
+        cfg.heartbeat.backendOkPath = (db.dir() / "backend-ok").string();
         storeValidToken(db.get());
         backend.on(std::string("POST ") + kHeartbeat, 200);
         wsHealth.start();
@@ -98,10 +101,15 @@ TEST_F(HeartbeatTest, RejectedHeartbeatDropsTheTokenForRefetch)
 TEST_F(HeartbeatTest, ForwardsFaultCountersAndPerProcessMemory)
 {
     shims.add("shareframe-sysinfo", "printf 'crash_count=2\\nwlan_signal_dbm=-61\\nwifi_ssid=Home\\n"
-                                    "proc_display_heap_bytes=1048576\\nproc_update_threads=3\\n'");
+                                    "proc_display_heap_bytes=1048576\\nproc_update_threads=3\\n"
+                                    "data_written_kb=8589934592\\nsd_card=SC32G mfr=0x000003 oem=0x5344 date=05/2023\\n"
+                                    "safe_mode=display-crash\\n'");
     const auto p = sentPayload();
 
     EXPECT_EQ(p["crash_count"], 2);
+    EXPECT_EQ(p["data_written_kb"], 8589934592);
+    EXPECT_EQ(p["sd_card"], "SC32G mfr=0x000003 oem=0x5344 date=05/2023");
+    EXPECT_EQ(p["safe_mode"], "display-crash");
     EXPECT_EQ(p["wlan_signal_dbm"], -61);
     EXPECT_EQ(p["proc_display_heap_bytes"], 1048576);
     EXPECT_EQ(p["proc_update_threads"], 3);
@@ -155,4 +163,27 @@ TEST_F(HeartbeatTest, KeepsEventCursorWhenHeartbeatFails)
 
     EXPECT_EQ(p["events"].size(), 1u);
     EXPECT_FALSE(std::filesystem::exists(cfg.heartbeat.eventCursorPath));
+    EXPECT_FALSE(std::filesystem::exists(cfg.heartbeat.backendOkPath));
+}
+
+TEST_F(HeartbeatTest, AcknowledgedHeartbeatMarksTheBackendReached)
+{
+    shims.add("shareframe-sysinfo", "exit 0");
+    sentPayload();
+    EXPECT_TRUE(waitFor([&] { return std::filesystem::exists(cfg.heartbeat.backendOkPath); }));
+}
+
+TEST_F(HeartbeatTest, RetriesFastOnlyUntilTheFirstAcknowledgedHeartbeat)
+{
+    cfg.heartbeat.firstContactRetrySecs = 1;
+    shims.add("shareframe-sysinfo", "exit 0");
+    backend.on(std::string("POST ") + kHeartbeat, 500);
+    heartbeat.start();
+    ASSERT_TRUE(waitFor([&] { return backend.requests(kHeartbeat).size() == 1; }, 5000ms));
+
+    backend.on(std::string("POST ") + kHeartbeat, 200);
+    ASSERT_TRUE(waitFor([&] { return std::filesystem::exists(cfg.heartbeat.backendOkPath); }, 5000ms));
+    const auto sent = backend.requests(kHeartbeat).size();
+    std::this_thread::sleep_for(1500ms);
+    EXPECT_EQ(backend.requests(kHeartbeat).size(), sent);
 }
