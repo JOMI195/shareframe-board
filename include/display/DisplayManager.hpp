@@ -47,6 +47,10 @@ public:
     /// min-refresh wait (shutdown can't block) and no-ops if already cleared.
     void clearForShutdown();
 
+    /// Takes the place of clearForShutdown() when the panel should keep a screen
+    /// through the reboot; skips the min-refresh wait for the same reason.
+    bool paintForShutdown(const std::vector<uint8_t>& buffer, const std::string& source);
+
     /// Signal shutdown: wakes the min-refresh wait and makes pending displays bail,
     /// so tasks unblock within the timeout-kill window instead of holding the lock.
     void requestShutdown();

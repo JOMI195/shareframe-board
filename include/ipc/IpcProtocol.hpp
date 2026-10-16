@@ -23,6 +23,8 @@ enum class IpcMessageType
     UpdatePerform,
     UpdateStatus,
     UpdateHistory,
+    ShowStatusScreen,
+    HideStatusScreen,
 };
 
 struct IpcMessage
@@ -53,6 +55,8 @@ inline std::string ipcMessageTypeToString(IpcMessageType t)
     case IpcMessageType::UpdatePerform:           return "update_perform";
     case IpcMessageType::UpdateStatus:            return "update_status";
     case IpcMessageType::UpdateHistory:           return "update_history";
+    case IpcMessageType::ShowStatusScreen:        return "show_status_screen";
+    case IpcMessageType::HideStatusScreen:        return "hide_status_screen";
     }
     return "unknown";
 }
@@ -77,6 +81,8 @@ inline std::optional<IpcMessageType> ipcMessageTypeFromString(const std::string&
     if (s == "update_perform")          return IpcMessageType::UpdatePerform;
     if (s == "update_status")           return IpcMessageType::UpdateStatus;
     if (s == "update_history")          return IpcMessageType::UpdateHistory;
+    if (s == "show_status_screen")      return IpcMessageType::ShowStatusScreen;
+    if (s == "hide_status_screen")      return IpcMessageType::HideStatusScreen;
     return std::nullopt;
 }
 

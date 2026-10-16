@@ -40,7 +40,7 @@ protected:
 
 const std::string kHeader = "P4\n800 480\n";
 const std::filesystem::path kLoadingImage =
-    std::filesystem::path(SHAREFRAME_ASSETS_DIR) / "image/loading/logo-frame-loading-shareframe.jpg";
+    std::filesystem::path(SHAREFRAME_ASSETS_DIR) / "image/loading/logo-frame-generic-shareframe.jpg";
 }
 
 TEST_F(MockPanelTest, DisplayedImageIsWrittenAsOneBitFrame)

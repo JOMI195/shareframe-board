@@ -14,6 +14,7 @@
 #include "task/DisplayImageLoop.hpp"
 #include "task/DisplayTaskManager.hpp"
 #include "task/NightBlankScreen.hpp"
+#include "task/StatusScreen.hpp"
 #include "task/WifiModeWatcher.hpp"
 #include <spdlog/spdlog.h>
 
@@ -49,8 +50,9 @@ int main(int argc, char* argv[])
     DisplayImageLoop displayImageLoop(eventBus, cfg, imageRepo, displayManager, runtimeSettings);
     ApNetworkSetupScreen apNetworkSetupScreen(eventBus, cfg, displayManager);
     NightBlankScreen nightBlankScreen(eventBus, displayManager);
+    StatusScreen statusScreen(eventBus, cfg, displayManager);
     DisplayTaskManager displayTaskManager(eventBus, cfg, displayManager, displayImageLoop,
-                                          apNetworkSetupScreen, nightBlankScreen, runtimeSettings);
+                                          apNetworkSetupScreen, nightBlankScreen, statusScreen, runtimeSettings);
     WifiModeWatcher wifiModeWatcher(eventBus, cfg);
     DisplayClear displayClear(eventBus, cfg, displayManager);
     displayImageLoop.subscribe();
@@ -86,9 +88,12 @@ int main(int argc, char* argv[])
     displayTaskManager.stop();
     displayClear.stop();
 
-    // Tasks stopped; leave a blank white screen (e-paper is bistable). No-op if
-    // already cleared.
-    displayManager.clearForShutdown();
+    // Tasks stopped; e-paper is bistable, so leave the status screen of a reboot up,
+    // otherwise a blank white screen (no-op if already cleared).
+    if (displayTaskManager.state() == DisplayState::Status)
+        statusScreen.finishForShutdown();
+    else
+        displayManager.clearForShutdown();
 
     return 0;
 }

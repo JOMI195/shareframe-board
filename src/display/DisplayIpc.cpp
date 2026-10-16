@@ -149,6 +149,24 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
     case IpcMessageType::GetDisplayStats:
         return display_.healthSnapshot();
 
+    case IpcMessageType::ShowStatusScreen:
+    {
+        const auto kind = statusScreenKindFromString(msg.data.value("screen", ""));
+        if (!kind)
+        {
+            spdlog::warn("IPC: invalid screen in show_status_screen");
+            return nlohmann::json::object();
+        }
+        spdlog::info("IPC: show status screen {}", toString(*kind));
+        bus_.publish<Topic::STATUS_SCREEN>(StatusScreenEvent{kind, msg.data.value("version", "")});
+        return nlohmann::json::object();
+    }
+
+    case IpcMessageType::HideStatusScreen:
+        spdlog::info("IPC: hide status screen");
+        bus_.publish<Topic::STATUS_SCREEN>(StatusScreenEvent{});
+        return nlohmann::json::object();
+
     default:
         return nlohmann::json::object();
     }

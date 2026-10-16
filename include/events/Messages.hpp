@@ -1,5 +1,6 @@
 #pragma once
 #include "events/Topic.hpp"
+#include "ipc/StatusScreenKind.hpp"
 #include "settings/PlaybackOrder.hpp"
 #include <nlohmann/json.hpp>
 #include <string>
@@ -52,3 +53,12 @@ struct ApSetupStateEvent
     bool operator==(const ApSetupStateEvent&) const = default;
 };
 template <> struct TopicMessage<Topic::AP_SETUP_STATE> { using type = ApSetupStateEvent; };
+
+// No kind hides the status screen again.
+struct StatusScreenEvent
+{
+    std::optional<StatusScreenKind> kind;
+    std::string version;
+    bool operator==(const StatusScreenEvent&) const = default;
+};
+template <> struct TopicMessage<Topic::STATUS_SCREEN> { using type = StatusScreenEvent; };

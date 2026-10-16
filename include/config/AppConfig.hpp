@@ -68,6 +68,9 @@ struct DisplayConfig
     std::string wifiModePath = "/run/shareframe/wifi-mode.json";
     std::string setupUrl = "http://192.168.4.1";
     std::string setupFontPath = "assets/font/DejaVuSans.ttf";
+    std::string boldFontPath = "assets/font/DejaVuSans-Bold.ttf";
+    // Hides a status screen whose reboot never came; outlasts the longest rauc install.
+    int statusScreenTimeoutSecs = 2400;
 };
 
 struct UpdateConfig

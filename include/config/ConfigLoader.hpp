@@ -137,7 +137,9 @@ struct glz::meta<DisplayConfig>
         "night_blank", &T::nightBlank,
         "wifi_mode_path", &T::wifiModePath,
         "setup_url", &T::setupUrl,
-        "setup_font_path", &T::setupFontPath
+        "setup_font_path", &T::setupFontPath,
+        "bold_font_path", &T::boldFontPath,
+        "status_screen_timeout_secs", &T::statusScreenTimeoutSecs
     );
 };
 
