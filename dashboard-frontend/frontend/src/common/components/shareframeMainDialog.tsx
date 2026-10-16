@@ -114,7 +114,7 @@ const ShareframeMainDialog: React.FC<ReusableDialogProps> = ({
                 <BottomFloatingActions
                     actionPrimary={actionPrimary}
                     actionsAdditional={actionsAdditional}
-                    disabled={actionsDisabled}
+                    allActionsdisabled={actionsDisabled}
                     position={"absolute"}
                 />
             )}
