@@ -3,9 +3,9 @@ import { RootState } from '@/store';
 import { fetchWithTimeout } from '@/common/utils/fetch';
 import { getConnectionModeUrl } from '@/assets/endpoints/api/frame';
 
-// Network mode published by the board's wifi-mode-manager daemon and exposed
-// (publicly) at GET /api/connection/mode. Drives the status banner and the
-// offline AP-setup flow.
+// Network mode published by the board's wifi-mode-manager daemon plus the
+// websocket's server link, exposed (publicly) at GET /api/connection/mode.
+// Drives the status banner and the offline AP-setup flow.
 export type WifiMode = 'connecting' | 'connected' | 'ap';
 
 export interface ConnectionModeState {
@@ -14,6 +14,10 @@ export interface ConnectionModeState {
     internet: boolean;
     ap_ssid: string;
     ap_password: string;
+    // null while the board can't tell; server_last_contact_at is unix seconds, 0 = never connected.
+    server_connected: boolean | null;
+    server_offline_secs: number;
+    server_last_contact_at: number;
     loaded: boolean;
 }
 
@@ -23,6 +27,9 @@ const initialState: ConnectionModeState = {
     internet: false,
     ap_ssid: '',
     ap_password: '',
+    server_connected: null,
+    server_offline_secs: 0,
+    server_last_contact_at: 0,
     loaded: false,
 };
 
@@ -55,6 +62,9 @@ export const connectionModeSlice = createSlice({
             state.internet = !!d.internet;
             state.ap_ssid = d.ap_ssid ?? '';
             state.ap_password = d.ap_password ?? '';
+            state.server_connected = d.server_connected ?? null;
+            state.server_offline_secs = d.server_offline_secs ?? 0;
+            state.server_last_contact_at = d.server_last_contact_at ?? 0;
             state.loaded = true;
         });
     },
