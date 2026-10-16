@@ -66,6 +66,8 @@ struct DisplayConfig
     int nightIntervalSecs = 3600;
     bool nightBlank = true;
     std::string wifiModePath = "/run/shareframe/wifi-mode.json";
+    // With saved networks the setup QR only shows this long after boot, before the first connection.
+    int apSetupBootWindowSecs = 600;
     std::string setupUrl = "http://192.168.4.1";
     std::string setupFontPath = "assets/font/DejaVuSans.ttf";
     std::string boldFontPath = "assets/font/DejaVuSans-Bold.ttf";

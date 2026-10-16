@@ -23,11 +23,9 @@ public:
     nlohmann::json setApPassword(const std::string& password) const;
 
 private:
-    [[nodiscard]] bool _isProtected(const std::string& name) const;
     [[nodiscard]] std::string _aliasIfProtected(const std::string& name) const;
 
     std::shared_ptr<spdlog::logger> logger_;
     std::string wifiModePath_;
-    static const std::vector<std::string> protectedNetworks_;
     static constexpr const char* protectedAlias_ = "VOREINGESTELLT";
 };

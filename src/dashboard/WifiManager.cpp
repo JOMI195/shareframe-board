@@ -1,32 +1,17 @@
 #include "dashboard/WifiManager.hpp"
 #include "util/Subprocess.hpp"
 #include "util/WifiMode.hpp"
-#include <algorithm>
 #include <fstream>
 #include <sstream>
-
-const std::vector<std::string> WifiManager::protectedNetworks_ = {"preconfigured", "Jomi"};
 
 WifiManager::WifiManager(std::string wifiModePath)
     : logger_(spdlog::default_logger()->clone("WifiManager")), wifiModePath_(std::move(wifiModePath))
 {
 }
 
-bool WifiManager::_isProtected(const std::string& name) const
-{
-    return std::ranges::any_of(protectedNetworks_, [&](const std::string& p)
-    {
-        return std::ranges::equal(p, name, [](char a, char b)
-        {
-            return std::tolower(static_cast<unsigned char>(a)) ==
-                   std::tolower(static_cast<unsigned char>(b));
-        });
-    });
-}
-
 std::string WifiManager::_aliasIfProtected(const std::string& name) const
 {
-    return _isProtected(name) ? protectedAlias_ : name;
+    return WifiMode::isProtectedNetwork(name) ? protectedAlias_ : name;
 }
 
 nlohmann::json WifiManager::getCurrentConnection() const
@@ -57,7 +42,7 @@ nlohmann::json WifiManager::getCurrentConnection() const
 
     return {
         {"connection_name", _aliasIfProtected(ssid)},
-        {"is_protected", _isProtected(ssid)}
+        {"is_protected", WifiMode::isProtectedNetwork(ssid)}
     };
 }
 
@@ -87,7 +72,7 @@ nlohmann::json WifiManager::getSavedNetworks() const
         std::string ssid = line.substr(
             t1 + 1, (t2 == std::string::npos ? line.size() : t2) - (t1 + 1));
 
-        if (ssid.empty() || _isProtected(ssid)) continue;
+        if (ssid.empty() || WifiMode::isProtectedNetwork(ssid)) continue;
         networks.push_back(ssid);
     }
 
@@ -96,7 +81,7 @@ nlohmann::json WifiManager::getSavedNetworks() const
 
 nlohmann::json WifiManager::connect(const std::string& ssid, const std::string& password) const
 {
-    if (_isProtected(ssid))
+    if (WifiMode::isProtectedNetwork(ssid))
         return {{"error", "Cannot modify protected network"}};
 
     // `add` hashes the PSK, enables the network and saves the config; wpa
@@ -127,7 +112,7 @@ nlohmann::json WifiManager::getWifiMode() const
 
 nlohmann::json WifiManager::forget(const std::string& ssid) const
 {
-    if (_isProtected(ssid))
+    if (WifiMode::isProtectedNetwork(ssid))
         return {{"error", "Cannot delete protected network"}};
 
     // Refuse to drop the network we're currently associated with.

@@ -4,6 +4,7 @@
 #include "net/WsIpc.hpp"
 #include "support/TestDb.hpp"
 #include <ctime>
+#include <fstream>
 #include <gtest/gtest.h>
 
 // Dashboard connection mode → nng → websocket service's server link.
@@ -38,6 +39,15 @@ TEST_F(DashboardWsTest, ConnectionModeCarriesTheServerLink)
     EXPECT_EQ(mode["server_connected"], false);
     EXPECT_EQ(mode["server_last_contact_at"], now);
     EXPECT_NEAR(mode["server_offline_secs"].get<int64_t>(), 3600, 5);
+}
+
+TEST_F(DashboardWsTest, ConnectionModeHidesSavedNetworks)
+{
+    std::ofstream(db.dir() / "wifi-mode.json") << R"({"mode":"ap","known_ssids":["Jomi","HomeNet"]})";
+
+    const auto mode = handlers.connectionMode();
+    EXPECT_EQ(mode["mode"], "ap");
+    EXPECT_FALSE(mode.contains("known_ssids"));
 }
 
 TEST_F(DashboardWsTest, StillAnswersHealthProbes)

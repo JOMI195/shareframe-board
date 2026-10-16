@@ -27,6 +27,7 @@ ix::HttpResponsePtr WifiHandlers::handleStatus(const ix::HttpRequestPtr& /*req*/
 nlohmann::json WifiHandlers::connectionMode() const
 {
     auto mode = wifi_.getWifiMode();
+    mode.erase("known_ssids");
     const auto server = queryServerConnection(wsIpc_);
     mode["server_connected"] = server ? nlohmann::json(server->connected) : nlohmann::json();
     mode["server_offline_secs"] = server && !server->connected && server->since > 0

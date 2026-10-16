@@ -37,6 +37,7 @@ night_end_hour = 6
 night_interval_secs = 3600
 night_blank = true
 wifi_mode_path = "/run/shareframe/wifi-mode.json"
+ap_setup_boot_window_secs = 600
 setup_url = "http://192.168.4.1"
 setup_font_path = "assets/font/DejaVuSans.ttf"
 bold_font_path = "assets/font/DejaVuSans-Bold.ttf"

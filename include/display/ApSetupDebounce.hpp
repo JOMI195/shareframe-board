@@ -1,36 +1,33 @@
 #pragma once
-#include <string>
+#include <cstdint>
 #include <string_view>
 
 /// Decides from the Wi-Fi daemon's mode whether the panel shows the AP setup screen.
-/// Once a network was joined, setup waits until a station retry has failed too, so a
-/// short outage (router reboot) never costs a panel refresh. Station retries
-/// (`connecting`) keep the verdict, so they don't flap the panel.
+/// A frame without saved networks always shows it in AP mode. With saved networks it
+/// shows only within the boot window and before the first connection, so outages keep
+/// the photos up. Station retries (`connecting`) keep the verdict, so they don't flap the panel.
 class ApSetupDebounce
 {
 public:
-    bool update(const std::string_view mode)
+    explicit ApSetupDebounce(const int64_t bootWindowSecs) : bootWindowSecs_(bootWindowSecs) {}
+
+    bool update(const std::string_view mode, const bool knownNetworks, const int64_t uptimeSecs)
     {
+        const bool allowed = !knownNetworks || (!seenConnected_ && uptimeSecs < bootWindowSecs_);
         if (mode == "connected")
         {
             seenConnected_ = true;
-            apEntries_ = 0;
             required_ = false;
         }
         else if (mode == "ap")
-        {
-            if (lastMode_ != "ap")
-                ++apEntries_;
-            if (!seenConnected_ || apEntries_ >= 2)
-                required_ = true;
-        }
-        lastMode_ = mode;
+            required_ = allowed;
+        else
+            required_ = required_ && allowed;
         return required_;
     }
 
 private:
-    std::string lastMode_;
+    int64_t bootWindowSecs_;
     bool seenConnected_ = false;
-    int apEntries_ = 0;
     bool required_ = false;
 };
