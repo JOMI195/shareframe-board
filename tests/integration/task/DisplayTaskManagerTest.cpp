@@ -204,6 +204,32 @@ TEST_F(DisplayTaskManagerTest, NightEndingOnAStoppedSlideshowClearsTheNightScree
     EXPECT_TRUE(waitFor([&] { return panel().value("state", "") == "cleared"; }));
 }
 
+TEST_F(DisplayTaskManagerTest, NightScreenComesBackAfterTheDailyClear)
+{
+    start();
+    const auto [from, to] = nightNow();
+    bus.publish<Topic::UPDATE_NIGHT_MODE>({true, from, to, 3600, true});
+    ASSERT_TRUE(waitFor([&] { return showsNight(); }));
+
+    display.clear();
+    cfg.display.minRefreshSecs = 1;
+    bus.publish<Topic::SCHEDULED_CLEAR>({});
+    std::this_thread::sleep_for(300ms);
+    EXPECT_EQ(panel().value("state", ""), "cleared") << "repainted inside the refresh interval";
+    EXPECT_TRUE(waitFor([&] { return showsNight(); }, 3000ms));
+}
+
+TEST_F(DisplayTaskManagerTest, StatusScreenComesBackAfterTheDailyClear)
+{
+    start();
+    status(StatusScreenKind::Update, "1.3.0");
+    ASSERT_TRUE(waitFor([&] { return source() == "status:update"; }));
+
+    display.clear();
+    bus.publish<Topic::SCHEDULED_CLEAR>({});
+    EXPECT_TRUE(waitFor([&] { return source() == "status:update"; }));
+}
+
 TEST_F(DisplayTaskManagerTest, StatusScreenOutranksTheSetupScreen)
 {
     start();

@@ -44,6 +44,8 @@ void DisplayImageLoop::subscribe()
         [this](const UpdatePlaybackOrderEvent& evt) { _onUpdatePlaybackOrder(evt); });
     bus_.subscribe<Topic::SET_SLIDESHOW_ACTIVE>(
         [this](const SetSlideshowActiveEvent& evt) { _onSetSlideshowActive(evt); });
+    bus_.subscribe<Topic::SCHEDULED_CLEAR>(
+        [this](const ScheduledClearEvent&) { _onScheduledClear(); });
 }
 
 void DisplayImageLoop::start()
@@ -173,7 +175,8 @@ void DisplayImageLoop::_run(const std::stop_token st)
                         defaultImageIdx_ = 0;
 
                     refreshing_ = true;
-                    if (const auto& path = defaultImages[defaultImageIdx_]; _paint(path, st))
+                    const auto path = defaultImages[defaultImageIdx_];
+                    if (_paint(path, st))
                     {
                         ready_.store(true);
                         logger_->info("Displaying default image ({})", path.string());
@@ -186,12 +189,13 @@ void DisplayImageLoop::_run(const std::stop_token st)
                     ++defaultImageIdx_;
 
                     _armNextChange();
-                    std::unique_lock lk(mtx_);
-                    skipCurrent_ = false;
-                    newImage_ = false;
-                    refreshing_ = false;
-                    cv_.wait_for(lk, std::chrono::seconds(settings_.getEffectiveInterval()),
-                                 [&st, this] { return st.stop_requested() || (newImage_ && !settings_.isNightNow()) || skipCurrent_ || !settings_.isSlideshowActive(); });
+                    {
+                        std::lock_guard lk(mtx_);
+                        skipCurrent_ = false;
+                        newImage_ = false;
+                        refreshing_ = false;
+                    }
+                    _waitForNext(st, path, [this] { return (newImage_ && !settings_.isNightNow()) || skipCurrent_ || !settings_.isSlideshowActive(); });
                 }
                 continue;
             }
@@ -220,14 +224,13 @@ void DisplayImageLoop::_run(const std::stop_token st)
             currentImageId_ = nextId;
 
             // Wait for interval or skip signal
+            _armNextChange();
             {
-                _armNextChange();
-                std::unique_lock lk(mtx_);
+                std::lock_guard lk(mtx_);
                 skipCurrent_ = false;
                 refreshing_ = false;
-                cv_.wait_for(lk, std::chrono::seconds(settings_.getEffectiveInterval()),
-                             [&st, this] { return st.stop_requested() || skipCurrent_ || pendingShowId_ != 0 || !settings_.isSlideshowActive(); });
             }
+            _waitForNext(st, image.imagePath, [this] { return skipCurrent_ || pendingShowId_ != 0 || !settings_.isSlideshowActive(); });
         }
         catch (const std::exception& e)
         {
@@ -265,6 +268,47 @@ bool DisplayImageLoop::_paint(const std::filesystem::path& path, const std::stop
         }
     }
     return display_.displayBuffer(buffer, path.string(), st);
+}
+
+void DisplayImageLoop::_waitForNext(const std::stop_token& st, const std::filesystem::path& current,
+                                    const std::function<bool()>& wake)
+{
+    using Clock = std::chrono::steady_clock;
+    const Clock::time_point due{std::chrono::milliseconds(nextChangeAtMs_.load())};
+    std::unique_lock lk(mtx_);
+    while (true)
+    {
+        cv_.wait_until(lk, st, due, [&] { return wake() || restoreCurrent_; });
+        if (!std::exchange(restoreCurrent_, false) || st.stop_requested() || wake())
+            return;
+        if (!display_.isCleared())
+            continue;
+
+        const auto readyAt = Clock::now() + std::chrono::seconds(display_.secondsUntilRefreshReady());
+        if (readyAt >= due)
+        {
+            logger_->info("Panel cleared, next image due before a repaint is allowed");
+            continue;
+        }
+        if (cv_.wait_until(lk, st, readyAt, wake) || st.stop_requested())
+            return;
+
+        refreshing_ = true;
+        lk.unlock();
+        if (_paint(current, st))
+            logger_->info("Repainted {} after the daily clear", current.string());
+        else if (!st.stop_requested())
+            logger_->error("Failed to repaint {} after the daily clear", current.string());
+        lk.lock();
+        refreshing_ = false;
+    }
+}
+
+void DisplayImageLoop::_onScheduledClear()
+{
+    std::lock_guard lk(mtx_);
+    restoreCurrent_ = true;
+    cv_.notify_one();
 }
 
 void DisplayImageLoop::_onImageNew()

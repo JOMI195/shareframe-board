@@ -64,3 +64,7 @@ struct StatusScreenEvent
     bool operator==(const StatusScreenEvent&) const = default;
 };
 template <> struct TopicMessage<Topic::STATUS_SCREEN> { using type = StatusScreenEvent; };
+
+// The daily maintenance clear wiped the panel; whoever owns it paints its screen again.
+struct ScheduledClearEvent {};
+template <> struct TopicMessage<Topic::SCHEDULED_CLEAR> { using type = ScheduledClearEvent; };

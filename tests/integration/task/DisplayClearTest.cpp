@@ -59,3 +59,16 @@ TEST_F(DisplayClearTest, RequestArrivingBeforeTheTaskWaitsIsNotLost)
     task.start();
     EXPECT_TRUE(waitFor([&] { return state() == "cleared"; }));
 }
+
+TEST_F(DisplayClearTest, RequestedClearLeavesThePanelBlank)
+{
+    task.subscribe();
+    Recorder<Topic::SCHEDULED_CLEAR> restores(bus);
+    task.start();
+    bus.start();
+    bus.publish<Topic::CLEAR_DISPLAY>(nlohmann::json::object());
+    ASSERT_TRUE(waitFor([&] { return state() == "cleared"; }));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    EXPECT_EQ(restores.size(), 0u);
+}
