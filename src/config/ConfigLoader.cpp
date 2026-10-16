@@ -137,6 +137,7 @@ void ConfigLoader::validate(const AppConfig& cfg)
     req(cfg.display.nightStartHour != cfg.display.nightEndHour,
         "display.night_start_hour and display.night_end_hour must differ");
     req(cfg.display.nightIntervalSecs > 0, "display.night_interval_secs must be > 0");
+    req(cfg.display.offlineBadgeAfterSecs >= 0, "display.offline_badge_after_secs must be >= 0");
     req(cfg.dashboardApplication.port > 0 && cfg.dashboardApplication.port <= 65535,
         "dashboard_application.port must be in 1..65535");
 

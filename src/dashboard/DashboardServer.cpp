@@ -22,7 +22,7 @@ const std::string kNotConfiguredMsg =
 DashboardServer::DashboardServer(AppConfig& cfg, IpcClient& ipc,
                                  HTTPClient& http, SessionManager& sessions,
                                  AuthTokenManager& authTokenManager, WifiManager& wifi,
-                                 IpcClient& updateIpc, SettingsRepository& settings,
+                                 IpcClient& updateIpc, IpcClient& wsIpc, SettingsRepository& settings,
                                  IImageRepository& images)
     : cfg_(cfg), http_(http), sessions_(sessions),
       authTokenManager_(authTokenManager),
@@ -30,7 +30,7 @@ DashboardServer::DashboardServer(AppConfig& cfg, IpcClient& ipc,
       server_(cfg.dashboardApplication.port, cfg.dashboardApplication.host),
       logger_(spdlog::default_logger()->clone("DashboardServer")),
       diagnostics_(cfg, http, authTokenManager),
-      wifiHandlers_(wifi),
+      wifiHandlers_(wifi, wsIpc),
       frameHandlers_(ipc, cfg),
       slideshowImageHandlers_(ipc, images),
       systemHandlers_(cfg, wifi, diagnostics_, ipc),
@@ -88,6 +88,7 @@ void DashboardServer::_initRoutes()
         {"POST", "/api/frame/slideshow/interval", [this](auto& req, auto&) { return frameHandlers_.handleUpdateInterval(req); }},
         {"POST", "/api/frame/slideshow/night-mode", [this](auto& req, auto&) { return frameHandlers_.handleUpdateNightMode(req); }},
         {"POST", "/api/frame/slideshow/skip",     [this](auto& req, auto&) { return frameHandlers_.handleSkip(req); }},
+        {"POST", "/api/frame/slideshow/show",     [this](auto& req, auto&) { return frameHandlers_.handleShow(req); }},
         {"POST", "/api/frame/clear",              [this](auto& req, auto&) { return frameHandlers_.handleClear(req); }},
         {"GET",  "/api/frame/display/stats",      [this](auto& req, auto&) { return frameHandlers_.handleDisplayStats(req); }},
         {"POST", "/api/frame/slideshow/order",    [this](auto& req, auto&) { return slideshowImageHandlers_.handleUpdateOrder(req); }},
@@ -341,7 +342,7 @@ ix::HttpResponsePtr DashboardServer::_handleLogout(const ix::HttpRequestPtr& req
 
 ix::HttpResponsePtr DashboardServer::_handleConnectionMode(const ix::HttpRequestPtr& req) const
 {
-    auto mode = wifi_.getWifiMode();
+    auto mode = wifiHandlers_.connectionMode();
     // AP clients + a logged-in owner may read the AP password; nobody else on the LAN.
     if (mode.value("mode", "") != "ap" && !_hasValidSession(req))
         mode["ap_password"] = "";

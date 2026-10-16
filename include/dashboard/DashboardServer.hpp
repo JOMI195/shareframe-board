@@ -25,7 +25,7 @@ class DashboardServer
 public:
     DashboardServer(AppConfig& cfg, IpcClient& ipc, HTTPClient& http,
                     SessionManager& sessions, AuthTokenManager& authTokenManager,
-                    WifiManager& wifi, IpcClient& updateIpc,
+                    WifiManager& wifi, IpcClient& updateIpc, IpcClient& wsIpc,
                     SettingsRepository& settings, IImageRepository& images);
 
     void start();

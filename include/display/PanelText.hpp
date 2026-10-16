@@ -34,6 +34,7 @@ public:
     explicit Canvas(std::vector<uint8_t> buffer = std::vector<uint8_t>(DisplayManager::BUFFER_SIZE, 0xFF));
 
     void black(int x, int y);
+    void white(int x, int y);
     std::vector<uint8_t> take() { return std::move(buffer_); }
 
 private:

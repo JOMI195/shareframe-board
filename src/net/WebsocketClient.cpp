@@ -5,8 +5,9 @@
 #include "net/WsProtocol.hpp"
 #include <nlohmann/json.hpp>
 
-WebsocketClient::WebsocketClient(EventBus& bus, const AppConfig& cfg, AuthTokenManager& authMgr)
-    : Task(bus, "WebSocket"), cfg_(cfg), authMgr_(authMgr)
+WebsocketClient::WebsocketClient(EventBus& bus, const AppConfig& cfg, AuthTokenManager& authMgr,
+                                 ServerContact& contact)
+    : Task(bus, "WebSocket"), cfg_(cfg), authMgr_(authMgr), contact_(contact)
 {
 }
 
@@ -40,6 +41,7 @@ void WebsocketClient::_setupWebsocket()
         if (msg->type == ix::WebSocketMessageType::Open)
         {
             logger_->info("WebSocket connected");
+            contact_.onOpen();
             reconnectCount_.store(0);
             _flushSendQueue();
             bus_.publish<Topic::WS_CONNECTED>({});
@@ -47,17 +49,24 @@ void WebsocketClient::_setupWebsocket()
         else if (msg->type == ix::WebSocketMessageType::Close)
         {
             logger_->info("WebSocket disconnected: code={} reason={}", msg->closeInfo.code, msg->closeInfo.reason);
+            contact_.onClose();
             _handleReconnect(msg->closeInfo.code);
         }
         else if (msg->type == ix::WebSocketMessageType::Error)
         {
             logger_->error("WebSocket error: http_status={} reason={}",
                            msg->errorInfo.http_status, msg->errorInfo.reason);
+            contact_.onClose();
             _handleReconnect(0);
         }
         else if (msg->type == ix::WebSocketMessageType::Message)
         {
+            contact_.touch();
             _processMessage(msg->str);
+        }
+        else if (msg->type == ix::WebSocketMessageType::Pong)
+        {
+            contact_.touch();
         }
     });
 }

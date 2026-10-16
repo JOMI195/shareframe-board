@@ -47,7 +47,9 @@ int main(int argc, char* argv[])
 
     // Display tasks subscribe to the bus — wire them before eventBus.start(). The
     // manager boots the panel and starts/stops the content tasks itself.
-    DisplayImageLoop displayImageLoop(eventBus, cfg, imageRepo, displayManager, runtimeSettings);
+    IpcClient wsIpc(cfg.ipc.wsRep);
+    DisplayImageLoop displayImageLoop(eventBus, cfg, imageRepo, displayManager, runtimeSettings,
+                                      [&] { return queryServerConnection(wsIpc); });
     ApNetworkSetupScreen apNetworkSetupScreen(eventBus, cfg, displayManager);
     NightBlankScreen nightBlankScreen(eventBus, displayManager);
     StatusScreen statusScreen(eventBus, cfg, displayManager);

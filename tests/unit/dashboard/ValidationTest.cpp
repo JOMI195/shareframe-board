@@ -47,3 +47,14 @@ TEST(Validation, IntervalAndHourBounds)
     EXPECT_FALSE(isValidHour(24));
     EXPECT_FALSE(isValidHour(-1));
 }
+
+TEST(Validation, ImageIdMustBeAPositiveInteger)
+{
+    EXPECT_EQ(parseImageId(7), 7);
+    EXPECT_EQ(parseImageId(int64_t{1} << 40), int64_t{1} << 40);
+    EXPECT_FALSE(parseImageId(0));
+    EXPECT_FALSE(parseImageId(-3));
+    EXPECT_FALSE(parseImageId("7"));
+    EXPECT_FALSE(parseImageId(1.5));
+    EXPECT_FALSE(parseImageId(nlohmann::json()));
+}

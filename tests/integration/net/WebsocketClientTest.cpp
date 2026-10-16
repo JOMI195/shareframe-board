@@ -40,7 +40,9 @@ protected:
     Recorder<Topic::CLEAR_IMAGES> clearImages{bus};
     Recorder<Topic::CLEAR_DISPLAY> clearDisplay{bus};
     Recorder<Topic::REMOTE_COMMAND> commands{bus};
-    WebsocketClient client{bus, cfg, auth};
+    SettingsRepository settingsRepo{db.get()};
+    ServerContact contact{settingsRepo};
+    WebsocketClient client{bus, cfg, auth, contact};
 };
 }
 
@@ -50,6 +52,7 @@ TEST_F(WebsocketClientTest, ConnectsWithTheFrameTokenAndAnnouncesIt)
     connect();
     EXPECT_EQ(server.openHeaders().at(0).at("Authorization"), "Frame-Access-Token test-token");
     EXPECT_TRUE(waitFor([&] { return connected.size() == 1; }));
+    EXPECT_TRUE(contact.snapshot().connected);
 }
 
 TEST_F(WebsocketClientTest, ServerMessagesAreRoutedByType)

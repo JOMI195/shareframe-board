@@ -24,6 +24,29 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
         bus_.publish<Topic::SKIP_IMAGE>(SkipImageEvent{});
         return {{"refreshing", false}};
 
+    case IpcMessageType::ShowImage:
+    {
+        const int64_t id = msg.data.is_object() ? msg.data.value("id", int64_t{0}) : 0;
+        if (loop_.isRefreshing())
+        {
+            spdlog::info("IPC: show image {} rejected, panel refreshing", id);
+            return {{"refreshing", true}};
+        }
+        if (!settings_.isSlideshowActive())
+        {
+            spdlog::info("IPC: show image {} rejected, slideshow paused", id);
+            return {{"inactive", true}};
+        }
+        if (images_.getByIds({id}).empty())
+        {
+            spdlog::info("IPC: show image {} rejected, not stored", id);
+            return {{"found", false}};
+        }
+        spdlog::info("IPC: show image {}", id);
+        bus_.publish<Topic::SHOW_IMAGE>(ShowImageEvent{id});
+        return {{"refreshing", false}, {"found", true}};
+    }
+
     case IpcMessageType::UpdateDisplayInterval:
     {
         const int secs = msg.data.value("interval_secs", 0);

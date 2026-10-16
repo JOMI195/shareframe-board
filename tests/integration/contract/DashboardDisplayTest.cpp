@@ -42,6 +42,7 @@ protected:
     DisplayIpc displayIpc{bus, settings, loop, repo, display};
 
     Recorder<Topic::SKIP_IMAGE> skips{bus};
+    Recorder<Topic::SHOW_IMAGE> shows{bus};
     Recorder<Topic::SET_SLIDESHOW_ACTIVE> active{bus};
     Recorder<Topic::UPDATE_DISPLAY_INTERVAL> intervals{bus};
     Recorder<Topic::UPDATE_NIGHT_MODE> nightModes{bus};
@@ -89,6 +90,22 @@ TEST_F(DashboardDisplayTest, SkipIsRejectedWhileThePanelRefreshes)
     EXPECT_EQ(body["success"], false);
     EXPECT_EQ(result(frame.handleStatus(httpRequest("GET", "/"))).body["data"]["refreshing"], true);
     EXPECT_EQ(skips.size(), 0u);
+}
+
+TEST_F(DashboardDisplayTest, ShowNowReachesTheLoopWithItsId)
+{
+    picture(4, 100);
+    EXPECT_EQ(result(frame.handleShow(httpRequest("POST", "/", {{"id", 4}}))).status, 200);
+    ASSERT_TRUE(waitFor([&] { return shows.size() == 1; }));
+    EXPECT_EQ(shows.get()[0].id, 4);
+
+    EXPECT_EQ(result(frame.handleShow(httpRequest("POST", "/", {{"id", 9}}))).status, 404);
+    EXPECT_EQ(result(frame.handleShow(httpRequest("POST", "/", {{"id", "4"}}))).status, 400);
+    EXPECT_EQ(result(frame.handleShow(httpRequest("POST", "/", {}))).status, 400);
+
+    settings.setSlideshowActive(false);
+    EXPECT_EQ(result(frame.handleShow(httpRequest("POST", "/", {{"id", 4}}))).status, 409);
+    EXPECT_EQ(shows.size(), 1u);
 }
 
 TEST_F(DashboardDisplayTest, StartAndStopSetSlideshowActive)

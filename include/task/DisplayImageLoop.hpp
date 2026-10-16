@@ -1,24 +1,30 @@
 #pragma once
 #include "display/DisplayManager.hpp"
+#include "net/ServerConnection.hpp"
 #include "repository/ImageRepository.hpp"
 #include "settings/PlaybackOrder.hpp"
 #include "task/Task.hpp"
 #include <atomic>
 #include <filesystem>
+#include <functional>
 #include <mutex>
 #include <vector>
 
 class RuntimeSettings;
 struct SetSlideshowActiveEvent;
+struct ShowImageEvent;
 struct UpdateNightModeEvent;
 struct UpdatePlaybackOrderEvent;
 
 class DisplayImageLoop : public Task
 {
 public:
+    /// The websocket's server link; nullopt when it can't be asked.
+    using ServerConnectionProvider = std::function<std::optional<ServerConnection>()>;
+
     DisplayImageLoop(EventBus& bus, const AppConfig& cfg,
                      ImageRepository& repo, DisplayManager& display,
-                     RuntimeSettings& settings);
+                     RuntimeSettings& settings, ServerConnectionProvider serverConnection = {});
 
     /// Bus handlers stay registered across stop/start; call once before the bus starts.
     void subscribe();
@@ -50,6 +56,9 @@ private:
     void _onImageRemoved(const std::vector<int64_t>& removedIds);
     void _onImageNew();
     void _onSkipImage();
+    void _onShowImage(const ShowImageEvent& evt);
+    /// The id asked for via show-now if it is still in `images`, else the regular next one.
+    [[nodiscard]] int64_t _takeNext(const std::vector<Image>& images);
     void _onUpdateInterval(const UpdateDisplayIntervalEvent& evt) const;
     void _onUpdateNightMode(const UpdateNightModeEvent& evt) const;
     void _onUpdatePlaybackOrder(const UpdatePlaybackOrderEvent& evt) const;
@@ -61,10 +70,12 @@ private:
     ImageRepository& repo_;
     DisplayManager& display_;
     RuntimeSettings& settings_;
+    ServerConnectionProvider serverConnection_;
     std::atomic<int64_t> currentImageId_{0};
     mutable std::mutex shuffleMtx_;
     playback::ShuffleBag shuffle_;
     bool skipCurrent_ = false;
+    int64_t pendingShowId_ = 0;
     bool newImage_ = false;
     size_t defaultImageIdx_ = 0;
     // steady_clock ms at which the next image change is due; 0 = none scheduled.

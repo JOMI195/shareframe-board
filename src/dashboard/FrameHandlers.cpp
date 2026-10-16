@@ -146,6 +146,31 @@ ix::HttpResponsePtr FrameHandlers::handleSkip(const ix::HttpRequestPtr& /*req*/)
     return jsonResponse(200, "OK", nlohmann::json::object());
 }
 
+ix::HttpResponsePtr FrameHandlers::handleShow(const ix::HttpRequestPtr& req) const
+{
+    nlohmann::json body;
+    try { body = nlohmann::json::parse(req->body); }
+    catch (...) { return errorResponse(400, "Bad Request", "Invalid JSON"); }
+
+    const auto id = Validation::parseImageId(body.value("id", nlohmann::json()));
+    if (!id)
+        return errorResponse(400, "Bad Request", "id must be a positive integer");
+
+    const auto result = ipc_.sendAndReceive(IpcMessage{IpcMessageType::ShowImage, {{"id", *id}}});
+    if (!result)
+    {
+        logger_->error("Failed to send show_image via IPC");
+        return errorResponse(500, "Internal Server Error", "IPC error");
+    }
+    if (result->value("refreshing", false))
+        return errorResponse(409, "Conflict", "Display is refreshing");
+    if (result->value("inactive", false))
+        return errorResponse(409, "Conflict", "Slideshow is paused");
+    if (!result->value("found", false))
+        return errorResponse(404, "Not Found", "Picture not found");
+    return jsonResponse(200, "OK", nlohmann::json::object());
+}
+
 ix::HttpResponsePtr FrameHandlers::handleClear(const ix::HttpRequestPtr& /*req*/) const
 {
     if (!ipc_.send(IpcMessage{IpcMessageType::ClearDisplay, {}}))
