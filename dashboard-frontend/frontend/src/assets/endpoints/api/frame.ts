@@ -24,6 +24,7 @@ export const getSlideshowStatusUrl = () => `${frameBaseUrl()}/slideshow/status`;
 export const getSlideshowIntervalUrl = () => `${frameBaseUrl()}/slideshow/interval`;
 export const getSlideshowNightModeUrl = () => `${frameBaseUrl()}/slideshow/night-mode`;
 export const getSkipSlideshowImageUrl = () => `${frameBaseUrl()}/slideshow/skip`;
+export const getShowSlideshowImageUrl = () => `${frameBaseUrl()}/slideshow/show`;
 export const getClearDisplayUrl = () => `${frameBaseUrl()}/clear`;
 export const getDisplayStatsUrl = () => `${frameBaseUrl()}/display/stats`;
 export const getSlideshowOrderUrl = () => `${frameBaseUrl()}/slideshow/order`;

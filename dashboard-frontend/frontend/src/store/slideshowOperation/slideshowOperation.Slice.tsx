@@ -5,7 +5,8 @@ import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '../
 import { fetchWithTimeout } from '@/common/utils/fetch';
 import { IServerResponse } from '@/types';
 import { addTimer, resetTimer, startTimer } from '../timers/timers.Slice';
-import { getClearDisplayUrl, getSlideshowIntervalUrl, getSlideshowNightModeUrl, getSkipSlideshowImageUrl, getSlideshowStatusUrl, getSlideshowUrl } from '@/assets/endpoints/api/frame';
+import { fetchSlideshowImages } from '../slideshowImages/slideshowImages.Slice';
+import { getClearDisplayUrl, getSlideshowIntervalUrl, getSlideshowNightModeUrl, getSkipSlideshowImageUrl, getShowSlideshowImageUrl, getSlideshowStatusUrl, getSlideshowUrl } from '@/assets/endpoints/api/frame';
 
 
 const MAX_OPERATION_WAIT_TIME = 10 * 60 * 1000; // 10 minutes
@@ -15,6 +16,7 @@ interface SlideshowOperationState {
     isToggling: boolean;
     isClearingDisplay: boolean;
     isSkippingImage: boolean;
+    isShowingImage: boolean;
     isUpdatingInterval: boolean;
     isFetchingInterval: boolean;
     isUpdatingNightMode: boolean;
@@ -35,6 +37,7 @@ const initialState: SlideshowOperationState = {
     isToggling: false,
     isClearingDisplay: false,
     isSkippingImage: false,
+    isShowingImage: false,
     isUpdatingInterval: false,
     isFetchingInterval: false,
     isUpdatingNightMode: false,
@@ -72,6 +75,12 @@ export const slideshowOperationSlice = createSlice({
         }>) => {
             state.isSkippingImage = action.payload.isSkippingImage;
             state.startTime = action.payload.isSkippingImage ? Date.now() : null;
+        },
+        setShowImageStatus: (state, action: PayloadAction<{
+            isShowingImage: boolean;
+        }>) => {
+            state.isShowingImage = action.payload.isShowingImage;
+            state.startTime = action.payload.isShowingImage ? Date.now() : null;
         },
         setUpdateIntervalStatus: (state, action: PayloadAction<{
             isUpdatingInterval: boolean;
@@ -121,6 +130,7 @@ export const slideshowOperationSlice = createSlice({
             state.isToggling = false;
             state.isClearingDisplay = false;
             state.isSkippingImage = false;
+            state.isShowingImage = false;
             state.isUpdatingInterval = false;
             state.isFetchingInterval = false;
             state.isUpdatingNightMode = false;
@@ -188,7 +198,7 @@ export const updateDisplayImagesLoopInterval = (intervalMins: number) => async (
 
     // Prevent multiple simultaneous operations
     if (currentState.isToggling || currentState.isClearingDisplay ||
-        currentState.isSkippingImage || currentState.isUpdatingInterval) {
+        currentState.isSkippingImage || currentState.isShowingImage || currentState.isUpdatingInterval) {
         return;
     }
 
@@ -424,7 +434,7 @@ export const skipImageThunk = () => async (
 
     // Prevent multiple simultaneous operations
     if (currentState.isToggling || currentState.isClearingDisplay ||
-        currentState.isSkippingImage || currentState.isUpdatingInterval) {
+        currentState.isSkippingImage || currentState.isShowingImage || currentState.isUpdatingInterval) {
         return;
     }
 
@@ -492,6 +502,58 @@ export const skipImageThunk = () => async (
     }
 };
 
+const SHOW_WHILE_PAUSED = 'Die Diashow ist pausiert, starte sie zuerst';
+
+export const showImageThunk = (id: number) => async (
+    dispatch: AppDispatch,
+    getState: () => RootState
+) => {
+    const currentState = getState().slideshowOperation;
+
+    if (currentState.isToggling || currentState.isClearingDisplay ||
+        currentState.isSkippingImage || currentState.isShowingImage || currentState.isUpdatingInterval) {
+        return;
+    }
+
+    const actionId = uuid();
+
+    try {
+        dispatch(slideshowOperationSlice.actions.setShowImageStatus({ isShowingImage: true }));
+        dispatch(addLoadingSnackbar(actionId, 'Bild wird angezeigt'));
+
+        const response = await fetchWithTimeout(getShowSlideshowImageUrl(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id }),
+        });
+        const data: IServerResponse = await response.json();
+
+        if (response.status === 409) {
+            throw new Error(data.message === 'Slideshow is paused' ? SHOW_WHILE_PAUSED : SKIP_WHILE_REFRESHING);
+        }
+        if (!data.success) {
+            throw new Error('Bild anzeigen fehlgeschlagen');
+        }
+
+        dispatch(addAlertSnackbar(uuid(), 'Bild wird auf dem Bilderrahmen angezeigt', 'success'));
+
+        dispatch(resetTimer('slideshow-actions-timer'));
+        dispatch(startTimer('slideshow-actions-timer'));
+        dispatch(fetchSlideshowImages());
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unbekannter Fehler';
+        dispatch(slideshowOperationSlice.actions.setError(message));
+        dispatch(addAlertSnackbar(
+            uuid(),
+            message === SKIP_WHILE_REFRESHING || message === SHOW_WHILE_PAUSED ? message : 'Bild anzeigen fehlgeschlagen',
+            'error'
+        ));
+    } finally {
+        dispatch(slideshowOperationSlice.actions.setShowImageStatus({ isShowingImage: false }));
+        dispatch(removeLoadingSnackbar(actionId));
+    }
+};
+
 export const clearDisplayThunk = () => async (
     dispatch: AppDispatch,
     getState: () => RootState
@@ -500,7 +562,7 @@ export const clearDisplayThunk = () => async (
 
     // Prevent multiple simultaneous operations
     if (currentState.isToggling || currentState.isClearingDisplay ||
-        currentState.isSkippingImage || currentState.isUpdatingInterval) {
+        currentState.isSkippingImage || currentState.isShowingImage || currentState.isUpdatingInterval) {
         return;
     }
 
@@ -577,7 +639,7 @@ export const toggleSlideshowThunk = () => async (
 
     // Prevent multiple simultaneous operations
     if (currentState.isToggling || currentState.isClearingDisplay ||
-        currentState.isSkippingImage || currentState.isUpdatingInterval) {
+        currentState.isSkippingImage || currentState.isShowingImage || currentState.isUpdatingInterval) {
         return;
     }
 

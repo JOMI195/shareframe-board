@@ -21,6 +21,7 @@ describe('API endpoints', () => {
     [api.getSlideshowIntervalUrl(), '/api/frame/slideshow/interval'],
     [api.getSlideshowNightModeUrl(), '/api/frame/slideshow/night-mode'],
     [api.getSkipSlideshowImageUrl(), '/api/frame/slideshow/skip'],
+    [api.getShowSlideshowImageUrl(), '/api/frame/slideshow/show'],
     [api.getClearDisplayUrl(), '/api/frame/clear'],
     [api.getDisplayStatsUrl(), '/api/frame/display/stats'],
     [api.getSlideshowOrderUrl(), '/api/frame/slideshow/order'],
