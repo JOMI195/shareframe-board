@@ -1,3 +1,5 @@
+import type { NightStyle } from '@/store/slideshowOperation/slideshowOperation.Slice';
+
 // Wire shape of GET /api/frame/slideshow/status `data`, not the slice state.
 export interface SlideshowStatusPayload {
   active: boolean;
@@ -11,7 +13,7 @@ export interface SlideshowStatusPayload {
     start_hour: number;
     end_hour: number;
     interval_seconds: number;
-    blank: boolean;
+    style: NightStyle;
     active_now: boolean;
   };
   now_showing: {
@@ -29,7 +31,7 @@ export const makeSlideshowStatus = (over: Partial<SlideshowStatusPayload> = {}):
   image_count: 12,
   interval_seconds: 900,
   seconds_until_next: 300,
-  night_mode: { enabled: false, start_hour: 2, end_hour: 5, interval_seconds: 3600, blank: false, active_now: false },
+  night_mode: { enabled: false, start_hour: 2, end_hour: 5, interval_seconds: 3600, style: 'slower', active_now: false },
   now_showing: { seq: 1, state: 'image', image_id: 0, sender: '' },
   ...over,
 });

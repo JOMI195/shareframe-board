@@ -166,7 +166,7 @@ describe('slideshow settings', () => {
     server.use(
       ...withSlideshowStatus({
         interval_seconds: 1800,
-        night_mode: { enabled: true, start_hour: 23, end_hour: 6, interval_seconds: 7200, blank: false, active_now: false },
+        night_mode: { enabled: true, start_hour: 23, end_hour: 6, interval_seconds: 7200, style: 'hold', active_now: false },
       }),
     );
     const store = boardStore();
@@ -180,7 +180,7 @@ describe('slideshow settings', () => {
       nightStartHour: 23,
       nightEndHour: 6,
       nightIntervalMins: 120,
-      nightBlank: false,
+      nightStyle: 'hold',
       isFetchingInterval: false,
       isFetchingNightMode: false,
     });
