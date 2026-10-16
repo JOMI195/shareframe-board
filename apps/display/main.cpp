@@ -60,7 +60,7 @@ int main(int argc, char* argv[])
     DisplayImageLoop displayImageLoop(eventBus, cfg, imageRepo, displayManager, runtimeSettings,
                                       [&] { return queryServerConnection(wsIpc); });
     ApNetworkSetupScreen apNetworkSetupScreen(eventBus, cfg, displayManager);
-    NightBlankScreen nightBlankScreen(eventBus, displayManager);
+    NightBlankScreen nightBlankScreen(eventBus, cfg, displayManager);
     StatusScreen statusScreen(eventBus, cfg, displayManager);
     DisplayTaskManager displayTaskManager(eventBus, cfg, displayManager, displayImageLoop,
                                           apNetworkSetupScreen, nightBlankScreen, statusScreen, runtimeSettings);

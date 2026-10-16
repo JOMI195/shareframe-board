@@ -56,6 +56,7 @@ private:
     StatusScreenEvent latestStatus_;
     std::chrono::steady_clock::time_point statusSince_;
     StatusScreenEvent shownStatus_;
+    int shownNightEnd_ = -1;
     bool changed_ = true;
     bool booted_ = false;
     std::atomic<DisplayState> state_{DisplayState::Boot};

@@ -122,7 +122,9 @@ void DisplayTaskManager::_apply(const ApSetupStateEvent& apSetup, const StatusSc
         : apSetup.required ? DisplayState::ApSetup
         : settings_.isNightBlankNow() ? DisplayState::NightBlank
         : DisplayState::Slideshow;
-    if (target == current && !(target == DisplayState::Status && status != shownStatus_))
+    const bool stale = (target == DisplayState::Status && status != shownStatus_)
+        || (target == DisplayState::NightBlank && settings_.getNightEndHour() != shownNightEnd_);
+    if (target == current && !stale)
     {
         if (target == DisplayState::ApSetup)
             apSetup_.setCredentials(apSetup.ssid, apSetup.password);
@@ -131,8 +133,8 @@ void DisplayTaskManager::_apply(const ApSetupStateEvent& apSetup, const StatusSc
 
     logger_->info("State {} -> {}", name(current), name(target));
     _stopActive();
-    const bool leavesScreen = (current == DisplayState::ApSetup || current == DisplayState::Status)
-        && target != DisplayState::ApSetup && target != DisplayState::Status;
+    const bool leavesScreen = current != DisplayState::Boot && current != DisplayState::Slideshow
+        && target == DisplayState::Slideshow;
     if (leavesScreen && !settings_.isSlideshowActive())
         display_.clear();
 
@@ -148,7 +150,11 @@ void DisplayTaskManager::_apply(const ApSetupStateEvent& apSetup, const StatusSc
         apSetup_.start();
     }
     else if (target == DisplayState::NightBlank)
+    {
+        shownNightEnd_ = settings_.getNightEndHour();
+        nightBlank_.set(shownNightEnd_);
         nightBlank_.start();
+    }
     else
         slideshow_.start();
     state_.store(target);
