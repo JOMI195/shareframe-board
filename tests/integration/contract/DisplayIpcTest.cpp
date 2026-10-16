@@ -63,11 +63,12 @@ TEST_F(DisplayIpcTest, NightModeQueryReportsWhetherTheWindowIsActive)
     const std::time_t now = std::time(nullptr);
     std::tm local{};
     localtime_r(&now, &local);
-    settings.setNightMode(true, local.tm_hour, (local.tm_hour + 1) % 24, 3600, false);
+    settings.setNightMode(true, local.tm_hour, (local.tm_hour + 1) % 24, 3600, NightStyle::Slower);
 
     const auto night = ipc.handle({IpcMessageType::GetNightMode, {}});
     EXPECT_EQ(night["active_now"], true);
     EXPECT_EQ(night["interval_secs"], 3600);
+    EXPECT_EQ(night["style"], "slower");
 }
 
 TEST_F(DisplayIpcTest, UnknownStatusScreenIsIgnored)

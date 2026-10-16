@@ -5,7 +5,7 @@ import { card, expect, signIn, skipActionLock, test } from '../support/fixtures'
 
 test.afterEach(async ({ board }) => {
   await board.post('/api/frame/slideshow/interval', { interval_seconds: 900 });
-  await board.post('/api/frame/slideshow/night-mode', { enabled: false, start_hour: 1, end_hour: 6, interval_seconds: 3600, blank: false });
+  await board.post('/api/frame/slideshow/night-mode', { enabled: false, start_hour: 1, end_hour: 6, interval_seconds: 3600, style: 'slower' });
 });
 
 test('the status card shows what the board reports', async ({ page, server }) => {
@@ -91,13 +91,14 @@ test('the interval reaches the display and survives a restart', async ({ page, b
 test('night mode reaches the display and survives a restart', async ({ page, board }) => {
   await signIn(page);
   await page.getByLabel('Nachtmodus aktivieren').check();
-  await page.getByLabel('Bildschirm nachts ausschalten').check();
+  await page.getByRole('combobox', { name: 'Verhalten in der Nacht' }).click();
+  await page.getByRole('option', { name: 'Aktuelles Bild behalten' }).click();
   await page.getByRole('button', { name: 'Nachtmodus speichern' }).click();
   await expect(page.getByText(/Nachtmodus aktiv von/)).toBeVisible();
 
   await expect.poll(async () => (await board.slideshowStatus()).night_mode.enabled).toBe(true);
   await board.restartService('display');
-  expect((await board.slideshowStatus()).night_mode).toMatchObject({ enabled: true, blank: true });
+  expect((await board.slideshowStatus()).night_mode).toMatchObject({ enabled: true, style: 'hold' });
 });
 
 test('a stopped slideshow stays stopped across a display restart', async ({ board }) => {

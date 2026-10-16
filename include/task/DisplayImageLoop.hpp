@@ -53,6 +53,11 @@ protected:
 private:
     void _armNextChange(); // schedule next change = now + interval
     [[nodiscard]] bool _paint(const std::filesystem::path& path, const std::stop_token& st) const;
+    /// Waits until the armed change is due or `wake` holds (checked under the lock). Repaints
+    /// `current` once the refresh interval allows if the daily clear wiped it before then.
+    void _waitForNext(const std::stop_token& st, const std::filesystem::path& current,
+                      const std::function<bool()>& wake);
+    void _onScheduledClear();
     void _onImageRemoved(const std::vector<int64_t>& removedIds);
     void _onImageNew();
     void _onSkipImage();
@@ -77,6 +82,7 @@ private:
     bool skipCurrent_ = false;
     int64_t pendingShowId_ = 0;
     bool newImage_ = false;
+    bool restoreCurrent_ = false;
     size_t defaultImageIdx_ = 0;
     // steady_clock ms at which the next image change is due; 0 = none scheduled.
     std::atomic<int64_t> nextChangeAtMs_{0};

@@ -1,5 +1,34 @@
 #pragma once
 #include <ctime>
+#include <optional>
+#include <string>
+
+/// What the panel does inside the quiet-hours window.
+enum class NightStyle
+{
+    Slower,
+    Hold,
+    Pause
+};
+
+inline std::string toString(const NightStyle style)
+{
+    switch (style)
+    {
+    case NightStyle::Slower: return "slower";
+    case NightStyle::Hold:   return "hold";
+    case NightStyle::Pause:  return "pause";
+    }
+    return "hold";
+}
+
+inline std::optional<NightStyle> nightStyleFromString(const std::string& s)
+{
+    if (s == "slower") return NightStyle::Slower;
+    if (s == "hold")   return NightStyle::Hold;
+    if (s == "pause")  return NightStyle::Pause;
+    return std::nullopt;
+}
 
 namespace night
 {

@@ -22,6 +22,8 @@ protected:
         cfg.display.minRefreshSecs = 0;
         cfg.display.mockOutputDir = (db.dir() / "panel").string();
         cfg.display.defaultImagesPath = std::string(SHAREFRAME_ASSETS_DIR) + "/image/default";
+        // The migrated DB holds new pictures back from 1 to 6, whatever the wall clock says here.
+        settings.setNightMode(false, 1, 6, 3600, NightStyle::Slower);
     }
 
     void TearDown() override
@@ -52,6 +54,8 @@ protected:
     }
 
     int64_t seq() const { return panel().value("seq", int64_t{0}); }
+    std::string source() const { return panel().value("source", ""); }
+    bool cleared() const { return panel().value("state", "") == "cleared"; }
 
     SettingsRepository settingsRepo{db.get()};
     RuntimeSettings settings{settingsRepo, cfg};
@@ -223,4 +227,46 @@ TEST_F(DisplayImageLoopTest, PaintWaitingForThePanelCountsAsRefreshing)
 
     EXPECT_TRUE(waitFor([&] { return loop.isRefreshing(); }));
     EXPECT_EQ(seq(), 0);
+}
+
+TEST_F(DisplayImageLoopTest, DailyClearRepaintsTheCurrentPictureAfterTheRefreshInterval)
+{
+    start();
+    ASSERT_TRUE(waitFor([&] { return seq() >= 1; }));
+    const auto shown = source();
+
+    display.clear();
+    cfg.display.minRefreshSecs = 1;
+    bus.publish<Topic::SCHEDULED_CLEAR>({});
+    std::this_thread::sleep_for(300ms);
+    EXPECT_TRUE(cleared()) << "repainted inside the refresh interval";
+    EXPECT_TRUE(waitFor([&] { return !cleared() && seq() > 0; }, 3000ms));
+    EXPECT_EQ(source(), shown);
+}
+
+TEST_F(DisplayImageLoopTest, DailyClearLeavesTheRepaintToAPictureDueFirst)
+{
+    settings.setDisplayInterval(2);
+    start();
+    ASSERT_TRUE(waitFor([&] { return seq() >= 1; }));
+    const auto shown = source();
+
+    display.clear();
+    cfg.display.minRefreshSecs = 4;
+    bus.publish<Topic::SCHEDULED_CLEAR>({});
+    ASSERT_TRUE(waitFor([&] { return !cleared(); }, 6000ms));
+    EXPECT_NE(source(), shown);
+}
+
+TEST_F(DisplayImageLoopTest, DailyClearLeavesAStoppedSlideshowBlank)
+{
+    start();
+    ASSERT_TRUE(waitFor([&] { return seq() >= 1; }));
+    bus.publish<Topic::SET_SLIDESHOW_ACTIVE>({false});
+    ASSERT_TRUE(waitFor([&] { return !settings.isSlideshowActive(); }));
+
+    display.clear();
+    bus.publish<Topic::SCHEDULED_CLEAR>({});
+    std::this_thread::sleep_for(500ms);
+    EXPECT_TRUE(cleared());
 }

@@ -24,7 +24,7 @@ protected:
         cfg.display.setupFontPath = std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans.ttf";
         cfg.display.boldFontPath = std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans-Bold.ttf";
         // The migrated DB blanks the panel from 1 to 6, whatever the wall clock says here.
-        settings.setNightMode(false, 1, 6, 3600, false);
+        settings.setNightMode(false, 1, 6, 3600, NightStyle::Slower);
     }
 
     void TearDown() override
@@ -70,6 +70,16 @@ protected:
     std::string source() const { return panel().value("source", ""); }
     int64_t seq() const { return panel().value("seq", int64_t{0}); }
     bool showsDefault() const { return source().find("/image/default/") != std::string::npos; }
+    bool showsNight() const { return source() == NightBlankScreen::SOURCE; }
+
+    // A window starting this hour, so the night is active whatever the wall clock says.
+    std::pair<int, int> nightNow(const int hours = 1) const
+    {
+        const std::time_t now = std::time(nullptr);
+        std::tm local{};
+        localtime_r(&now, &local);
+        return {local.tm_hour, (local.tm_hour + hours) % 24};
+    }
 
     SettingsRepository settingsRepo{db.get()};
     RuntimeSettings settings{settingsRepo, cfg};
@@ -77,7 +87,7 @@ protected:
     DisplayManager display{cfg, metrics};
     DisplayImageLoop loop{bus, cfg, repo, display, settings};
     ApNetworkSetupScreen setupScreen{bus, cfg, display};
-    NightBlankScreen nightBlank{bus, display};
+    NightBlankScreen nightBlank{bus, cfg, display};
     StatusScreen statusScreen{bus, cfg, display};
     DisplayTaskManager manager{bus, cfg, display, loop, setupScreen, nightBlank, statusScreen, settings};
 };
@@ -148,13 +158,9 @@ TEST_F(DisplayTaskManagerTest, BlankNightPausesTheSlideshowAndYieldsOnlyToTheSet
     start();
     ASSERT_TRUE(waitFor([&] { return showsDefault(); }));
 
-    const std::time_t now = std::time(nullptr);
-    std::tm local{};
-    localtime_r(&now, &local);
-    const int from = local.tm_hour;
-    const int to = (local.tm_hour + 1) % 24;
-    bus.publish<Topic::UPDATE_NIGHT_MODE>({true, from, to, 3600, true});
-    ASSERT_TRUE(waitFor([&] { return panel().value("state", "") == "cleared"; }));
+    const auto [from, to] = nightNow();
+    bus.publish<Topic::UPDATE_NIGHT_MODE>({true, from, to, 3600, NightStyle::Pause});
+    ASSERT_TRUE(waitFor([&] { return showsNight(); }));
     EXPECT_EQ(manager.state(), DisplayState::NightBlank);
     const auto blankedAt = seq();
 
@@ -165,12 +171,63 @@ TEST_F(DisplayTaskManagerTest, BlankNightPausesTheSlideshowAndYieldsOnlyToTheSet
     apSetup(true);
     ASSERT_TRUE(waitFor([&] { return source() == "ap-setup"; }));
     apSetup(false);
-    ASSERT_TRUE(waitFor([&] { return panel().value("state", "") == "cleared"; }));
+    ASSERT_TRUE(waitFor([&] { return showsNight(); }));
     EXPECT_EQ(manager.state(), DisplayState::NightBlank);
 
-    bus.publish<Topic::UPDATE_NIGHT_MODE>({false, from, to, 3600, true});
+    bus.publish<Topic::UPDATE_NIGHT_MODE>({false, from, to, 3600, NightStyle::Pause});
     EXPECT_TRUE(waitFor([&] { return showsDefault(); }));
     EXPECT_EQ(manager.state(), DisplayState::Slideshow);
+}
+
+TEST_F(DisplayTaskManagerTest, NewNightEndRepaintsTheNightScreen)
+{
+    start();
+    const auto [from, to] = nightNow();
+    bus.publish<Topic::UPDATE_NIGHT_MODE>({true, from, to, 3600, NightStyle::Pause});
+    ASSERT_TRUE(waitFor([&] { return showsNight(); }));
+    const auto shownAt = seq();
+
+    bus.publish<Topic::UPDATE_NIGHT_MODE>({true, from, nightNow(2).second, 3600, NightStyle::Pause});
+    EXPECT_TRUE(waitFor([&] { return seq() > shownAt; }));
+    EXPECT_TRUE(showsNight());
+}
+
+TEST_F(DisplayTaskManagerTest, NightEndingOnAStoppedSlideshowClearsTheNightScreen)
+{
+    settings.setSlideshowActive(false);
+    start();
+    const auto [from, to] = nightNow();
+    bus.publish<Topic::UPDATE_NIGHT_MODE>({true, from, to, 3600, NightStyle::Pause});
+    ASSERT_TRUE(waitFor([&] { return showsNight(); }));
+
+    bus.publish<Topic::UPDATE_NIGHT_MODE>({false, from, to, 3600, NightStyle::Pause});
+    EXPECT_TRUE(waitFor([&] { return panel().value("state", "") == "cleared"; }));
+}
+
+TEST_F(DisplayTaskManagerTest, NightScreenComesBackAfterTheDailyClear)
+{
+    start();
+    const auto [from, to] = nightNow();
+    bus.publish<Topic::UPDATE_NIGHT_MODE>({true, from, to, 3600, NightStyle::Pause});
+    ASSERT_TRUE(waitFor([&] { return showsNight(); }));
+
+    display.clear();
+    cfg.display.minRefreshSecs = 1;
+    bus.publish<Topic::SCHEDULED_CLEAR>({});
+    std::this_thread::sleep_for(300ms);
+    EXPECT_EQ(panel().value("state", ""), "cleared") << "repainted inside the refresh interval";
+    EXPECT_TRUE(waitFor([&] { return showsNight(); }, 3000ms));
+}
+
+TEST_F(DisplayTaskManagerTest, StatusScreenComesBackAfterTheDailyClear)
+{
+    start();
+    status(StatusScreenKind::Update, "1.3.0");
+    ASSERT_TRUE(waitFor([&] { return source() == "status:update"; }));
+
+    display.clear();
+    bus.publish<Topic::SCHEDULED_CLEAR>({});
+    EXPECT_TRUE(waitFor([&] { return source() == "status:update"; }));
 }
 
 TEST_F(DisplayTaskManagerTest, StatusScreenOutranksTheSetupScreen)

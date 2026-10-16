@@ -1,6 +1,7 @@
 #pragma once
 #include "events/Topic.hpp"
 #include "ipc/StatusScreenKind.hpp"
+#include "settings/NightWindow.hpp"
 #include "settings/PlaybackOrder.hpp"
 #include <nlohmann/json.hpp>
 #include <string>
@@ -35,7 +36,7 @@ template <> struct TopicMessage<Topic::IMAGE_NEW>     { using type = int64_t; };
 struct SkipImageEvent {};
 struct ShowImageEvent { int64_t id; };
 struct UpdateDisplayIntervalEvent { int intervalSecs; };
-struct UpdateNightModeEvent { bool enabled; int startHour; int endHour; int intervalSecs; bool blank; };
+struct UpdateNightModeEvent { bool enabled; int startHour; int endHour; int intervalSecs; NightStyle style; };
 struct UpdatePlaybackOrderEvent { PlaybackMode mode; std::vector<int64_t> customOrder; };
 struct SetSlideshowActiveEvent { bool active; };
 
@@ -64,3 +65,7 @@ struct StatusScreenEvent
     bool operator==(const StatusScreenEvent&) const = default;
 };
 template <> struct TopicMessage<Topic::STATUS_SCREEN> { using type = StatusScreenEvent; };
+
+// The daily maintenance clear wiped the panel; whoever owns it paints its screen again.
+struct ScheduledClearEvent {};
+template <> struct TopicMessage<Topic::SCHEDULED_CLEAR> { using type = ScheduledClearEvent; };

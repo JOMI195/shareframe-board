@@ -3,6 +3,7 @@
 #include "util/DailyTime.hpp"
 #include <chrono>
 #include <ctime>
+#include <utility>
 
 DisplayClear::DisplayClear(EventBus& bus, const AppConfig& cfg, DisplayManager& display)
     : Task(bus, "DisplayClear"), cfg_(cfg), display_(display)
@@ -38,13 +39,14 @@ void DisplayClear::_run(std::stop_token st)
         const int waitSecs = _secsUntilNextTarget();
         logger_->info("Next display clear in {}s", waitSecs);
 
+        bool requested;
         {
             std::unique_lock lock(mtx_);
             cv_.wait_for(lock, std::chrono::seconds(waitSecs), [&st, this]
             {
                 return st.stop_requested() || clearRequested_;
             });
-            clearRequested_ = false;
+            requested = std::exchange(clearRequested_, false);
         }
 
         if (st.stop_requested())
@@ -54,6 +56,8 @@ void DisplayClear::_run(std::stop_token st)
         {
             logger_->info("Clearing display");
             display_.clear();
+            if (!requested && display_.isCleared())
+                bus_.publish<Topic::SCHEDULED_CLEAR>({});
         }
         catch (const std::exception& e)
         {

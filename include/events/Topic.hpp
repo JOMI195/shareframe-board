@@ -17,4 +17,5 @@ enum class Topic {
     SET_SLIDESHOW_ACTIVE,
     AP_SETUP_STATE,
     STATUS_SCREEN,
+    SCHEDULED_CLEAR,
 };

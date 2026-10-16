@@ -2,6 +2,7 @@
 #include "display/LogoScreenRenderer.hpp"
 #include "settings/RuntimeSettings.hpp"
 #include "Version.hpp"
+#include <utility>
 
 namespace
 {
@@ -49,6 +50,15 @@ void DisplayTaskManager::subscribe()
         }
         cv_.notify_one();
     });
+    bus_.subscribe<Topic::SCHEDULED_CLEAR>([this](const ScheduledClearEvent&)
+    {
+        {
+            std::lock_guard lk(mtx_);
+            restore_ = true;
+            changed_ = true;
+        }
+        cv_.notify_one();
+    });
     // Runs after the slideshow's handler stored the new night mode, as long as
     // the slideshow subscribes first.
     bus_.subscribe<Topic::UPDATE_NIGHT_MODE>([this](const UpdateNightModeEvent&)
@@ -73,6 +83,7 @@ void DisplayTaskManager::_run(const std::stop_token st)
     {
         ApSetupStateEvent apSetup;
         StatusScreenEvent status;
+        bool restore;
         {
             std::unique_lock lk(mtx_);
             const auto statusTimeout = std::chrono::seconds(cfg_.display.statusScreenTimeoutSecs);
@@ -96,9 +107,10 @@ void DisplayTaskManager::_run(const std::stop_token st)
             }
             apSetup = latest_;
             status = latestStatus_;
+            restore = std::exchange(restore_, false);
             changed_ = false;
         }
-        _apply(apSetup, status);
+        _apply(apSetup, status, restore);
     }
     _stopActive();
 }
@@ -115,14 +127,17 @@ void DisplayTaskManager::_boot(const std::stop_token& st)
         logger_->error("Failed to display loading image");
 }
 
-void DisplayTaskManager::_apply(const ApSetupStateEvent& apSetup, const StatusScreenEvent& status)
+void DisplayTaskManager::_apply(const ApSetupStateEvent& apSetup, const StatusScreenEvent& status,
+                                const bool restore)
 {
     const auto current = state_.load();
     const auto target = status.kind ? DisplayState::Status
         : apSetup.required ? DisplayState::ApSetup
         : settings_.isNightBlankNow() ? DisplayState::NightBlank
         : DisplayState::Slideshow;
-    if (target == current && !(target == DisplayState::Status && status != shownStatus_))
+    const bool stale = (target == DisplayState::Status && (restore || status != shownStatus_))
+        || (target == DisplayState::NightBlank && (restore || settings_.getNightEndHour() != shownNightEnd_));
+    if (target == current && !stale)
     {
         if (target == DisplayState::ApSetup)
             apSetup_.setCredentials(apSetup.ssid, apSetup.password);
@@ -131,8 +146,8 @@ void DisplayTaskManager::_apply(const ApSetupStateEvent& apSetup, const StatusSc
 
     logger_->info("State {} -> {}", name(current), name(target));
     _stopActive();
-    const bool leavesScreen = (current == DisplayState::ApSetup || current == DisplayState::Status)
-        && target != DisplayState::ApSetup && target != DisplayState::Status;
+    const bool leavesScreen = current != DisplayState::Boot && current != DisplayState::Slideshow
+        && target == DisplayState::Slideshow;
     if (leavesScreen && !settings_.isSlideshowActive())
         display_.clear();
 
@@ -148,7 +163,11 @@ void DisplayTaskManager::_apply(const ApSetupStateEvent& apSetup, const StatusSc
         apSetup_.start();
     }
     else if (target == DisplayState::NightBlank)
+    {
+        shownNightEnd_ = settings_.getNightEndHour();
+        nightBlank_.set(shownNightEnd_);
         nightBlank_.start();
+    }
     else
         slideshow_.start();
     state_.store(target);

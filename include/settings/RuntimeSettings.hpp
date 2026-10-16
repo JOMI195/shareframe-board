@@ -1,5 +1,6 @@
 #pragma once
 #include "config/AppConfig.hpp"
+#include "settings/NightWindow.hpp"
 #include "settings/PlaybackOrder.hpp"
 #include "repository/SettingsRepository.hpp"
 #include <mutex>
@@ -20,8 +21,8 @@ public:
     [[nodiscard]] int getNightStartHour() const;
     [[nodiscard]] int getNightEndHour() const;
     [[nodiscard]] int getNightInterval() const;
-    [[nodiscard]] bool isNightBlank() const;
-    void setNightMode(bool enabled, int startHour, int endHour, int intervalSecs, bool blank);
+    [[nodiscard]] NightStyle getNightStyle() const;
+    void setNightMode(bool enabled, int startHour, int endHour, int intervalSecs, NightStyle style);
 
     [[nodiscard]] PlaybackMode getPlaybackMode() const;
     [[nodiscard]] std::vector<int64_t> getCustomOrder() const;
@@ -30,14 +31,14 @@ public:
     /// True while the wall clock sits inside an enabled quiet-hours window.
     [[nodiscard]] bool isNightNow() const;
 
-    /// True while the panel has to stay blank for the quiet-hours window.
+    /// True while the panel has to stay paused for the quiet-hours window.
     [[nodiscard]] bool isNightBlankNow() const;
 
-    /// Seconds until isNightBlankNow() flips, -1 when blanking is off.
+    /// Seconds until isNightBlankNow() flips, -1 when pausing is off.
     [[nodiscard]] int secsUntilNightBlankChange() const;
 
     /// Interval to use right now: the night one clamped to the end of the
-    /// window while inside it, the day one otherwise.
+    /// window while inside it (the whole rest of it when holding), the day one otherwise.
     [[nodiscard]] int getEffectiveInterval() const;
 
 private:
@@ -55,7 +56,7 @@ private:
     int nightStartHour_;
     int nightEndHour_;
     int nightIntervalSecs_;
-    bool nightBlank_;
+    NightStyle nightStyle_;
     PlaybackMode playbackMode_ = PlaybackMode::Chronological;
     std::vector<int64_t> customOrder_;
 };

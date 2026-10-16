@@ -83,7 +83,7 @@ TEST_F(ConfigLoaderTest, ReleaseFileWithoutVersionFallsBackToDev)
 
 TEST_F(ConfigLoaderTest, ValidationListsEveryProblem)
 {
-    write(dir / "config.dev.toml", "base_url = \"\"\n[display]\nnight_start_hour = 4\nnight_end_hour = 4\n");
+    write(dir / "config.dev.toml", "base_url = \"\"\n[display]\nnight_start_hour = 4\nnight_end_hour = 4\nnight_style = \"dim\"\n");
     try
     {
         load();
@@ -94,6 +94,7 @@ TEST_F(ConfigLoaderTest, ValidationListsEveryProblem)
         const std::string msg = e.what();
         EXPECT_NE(msg.find("base_url"), std::string::npos) << msg;
         EXPECT_NE(msg.find("must differ"), std::string::npos) << msg;
+        EXPECT_NE(msg.find("night_style"), std::string::npos) << msg;
     }
 }
 

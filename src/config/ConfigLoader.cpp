@@ -1,5 +1,6 @@
 #include "config/ConfigLoader.hpp"
 #include "auth/FrameIdentity.hpp"
+#include "settings/NightWindow.hpp"
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -137,6 +138,8 @@ void ConfigLoader::validate(const AppConfig& cfg)
     req(cfg.display.nightStartHour != cfg.display.nightEndHour,
         "display.night_start_hour and display.night_end_hour must differ");
     req(cfg.display.nightIntervalSecs > 0, "display.night_interval_secs must be > 0");
+    req(nightStyleFromString(cfg.display.nightStyle).has_value(),
+        "display.night_style must be one of slower, hold, pause");
     req(cfg.display.offlineBadgeAfterSecs >= 0, "display.offline_badge_after_secs must be >= 0");
     req(cfg.display.apSetupBootWindowSecs >= 0, "display.ap_setup_boot_window_secs must be >= 0");
     req(cfg.dashboardApplication.port > 0 && cfg.dashboardApplication.port <= 65535,

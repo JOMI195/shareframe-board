@@ -56,7 +56,7 @@ describe('slideshowOperation slice', () => {
 
   it('stores interval and night mode', () => {
     let state = reducer(initial(), setDisplayRefreshInterval(30));
-    state = reducer(state, setNightMode({ enabled: true, startHour: 22, endHour: 6, intervalMins: 120, blank: false, activeNow: true }));
+    state = reducer(state, setNightMode({ enabled: true, startHour: 22, endHour: 6, intervalMins: 120, style: 'hold', activeNow: true }));
 
     expect(state).toMatchObject({
       displayImagesIntervalMins: 30,
@@ -64,14 +64,14 @@ describe('slideshowOperation slice', () => {
       nightStartHour: 22,
       nightEndHour: 6,
       nightIntervalMins: 120,
-      nightBlank: false,
+      nightStyle: 'hold',
       nightModeActiveNow: true,
     });
   });
 
   it('keeps the active-now flag when the update does not report it', () => {
-    let state = reducer(initial(), setNightMode({ enabled: true, startHour: 1, endHour: 2, intervalMins: 60, blank: false, activeNow: true }));
-    state = reducer(state, setNightMode({ enabled: false, startHour: 1, endHour: 2, intervalMins: 60, blank: false }));
+    let state = reducer(initial(), setNightMode({ enabled: true, startHour: 1, endHour: 2, intervalMins: 60, style: 'slower', activeNow: true }));
+    state = reducer(state, setNightMode({ enabled: false, startHour: 1, endHour: 2, intervalMins: 60, style: 'slower' }));
 
     expect(state.nightModeActiveNow).toBe(true);
   });

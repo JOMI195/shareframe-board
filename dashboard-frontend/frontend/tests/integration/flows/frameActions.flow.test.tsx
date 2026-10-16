@@ -174,21 +174,25 @@ describe('frame actions', () => {
     await user.click(screen.getByRole('button', { name: 'Nachtmodus speichern' }));
 
     expect(await screen.findByText('Nachtmodus aktiv von 2:00 bis 5:00 Uhr mit 60 Minuten Intervall')).toBeInTheDocument();
-    expect(await night.calls[0].json()).toEqual({ enabled: true, start_hour: 2, end_hour: 5, interval_seconds: 3600, blank: false });
+    expect(await night.calls[0].json()).toEqual({ enabled: true, start_hour: 2, end_hour: 5, interval_seconds: 3600, style: 'slower' });
   });
 
-  it('blanks the panel at night instead of slowing down', async () => {
+  it.each([
+    ['Bildschirm pausieren', 'pause', 'ausgeschaltetem Bildschirm'],
+    ['Aktuelles Bild behalten', 'hold', 'angehaltenem Bild'],
+  ])('can %s at night instead of slowing down', async (option, style, suffix) => {
     const night = spyOnRequests('post', api.getSlideshowNightModeUrl());
     server.use(night.handler);
     const { user } = await openHome();
 
     await user.click(screen.getByLabelText('Nachtmodus aktivieren'));
-    await user.click(screen.getByLabelText('Bildschirm nachts ausschalten'));
+    await user.click(screen.getByRole('combobox', { name: 'Verhalten in der Nacht' }));
+    await user.click(await screen.findByRole('option', { name: option }));
     expect(within(card('Nachtmodus')).getByLabelText('Intervall in der Nacht (Minuten)')).toBeDisabled();
     await user.click(screen.getByRole('button', { name: 'Nachtmodus speichern' }));
 
-    expect(await screen.findByText('Nachtmodus aktiv von 2:00 bis 5:00 Uhr mit ausgeschaltetem Bildschirm')).toBeInTheDocument();
-    expect(await night.calls[0].json()).toMatchObject({ enabled: true, blank: true });
+    expect(await screen.findByText(`Nachtmodus aktiv von 2:00 bis 5:00 Uhr mit ${suffix}`)).toBeInTheDocument();
+    expect(await night.calls[0].json()).toMatchObject({ enabled: true, style });
   });
 
   it('saving night mode does not lock the display actions', async () => {
@@ -229,7 +233,7 @@ describe('frame actions', () => {
   it('marks night mode while it is active', async () => {
     server.use(
       ...withSlideshowStatus({
-        night_mode: { enabled: true, start_hour: 22, end_hour: 6, interval_seconds: 7200, blank: false, active_now: true },
+        night_mode: { enabled: true, start_hour: 22, end_hour: 6, interval_seconds: 7200, style: 'slower', active_now: true },
       }),
     );
     await openHome();

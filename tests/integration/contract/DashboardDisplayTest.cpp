@@ -127,7 +127,7 @@ TEST_F(DashboardDisplayTest, IntervalInSecondsArrivesUnchanged)
 TEST_F(DashboardDisplayTest, NightModeFieldsArriveUnchanged)
 {
     const auto r = result(frame.handleUpdateNightMode(httpRequest("POST", "/",
-        {{"enabled", true}, {"start_hour", 22}, {"end_hour", 6}, {"interval_seconds", 7200}, {"blank", true}})));
+        {{"enabled", true}, {"start_hour", 22}, {"end_hour", 6}, {"interval_seconds", 7200}, {"style", "hold"}})));
     EXPECT_EQ(r.status, 200);
     ASSERT_TRUE(waitFor([&] { return nightModes.size() == 1; }));
     const auto e = nightModes.get()[0];
@@ -135,7 +135,7 @@ TEST_F(DashboardDisplayTest, NightModeFieldsArriveUnchanged)
     EXPECT_EQ(e.startHour, 22);
     EXPECT_EQ(e.endHour, 6);
     EXPECT_EQ(e.intervalSecs, 7200);
-    EXPECT_TRUE(e.blank);
+    EXPECT_EQ(e.style, NightStyle::Hold);
 }
 
 TEST_F(DashboardDisplayTest, ClearReachesTheDisplay)
@@ -149,7 +149,9 @@ TEST_F(DashboardDisplayTest, InvalidRequestsNeverReachTheDisplay)
     EXPECT_EQ(result(frame.handleControl(httpRequest("POST", "/", {{"action", "pause"}}))).status, 400);
     EXPECT_EQ(result(frame.handleUpdateInterval(httpRequest("POST", "/", {{"interval_seconds", 60}}))).status, 400);
     EXPECT_EQ(result(frame.handleUpdateNightMode(httpRequest("POST", "/",
-        {{"enabled", true}, {"start_hour", 3}, {"end_hour", 3}, {"interval_seconds", 3600}}))).status, 400);
+        {{"enabled", true}, {"start_hour", 3}, {"end_hour", 3}, {"interval_seconds", 3600}, {"style", "hold"}}))).status, 400);
+    EXPECT_EQ(result(frame.handleUpdateNightMode(httpRequest("POST", "/",
+        {{"enabled", true}, {"start_hour", 22}, {"end_hour", 6}, {"interval_seconds", 3600}, {"style", "dim"}}))).status, 400);
     EXPECT_EQ(result(slideshowImages.handleUpdateOrder(httpRequest("POST", "/", {{"mode", "random"}}))).status, 400);
     EXPECT_EQ(result(slideshowImages.handleUpdateOrder(httpRequest("POST", "/",
         {{"mode", "custom"}, {"custom_order", {1, "2"}}}))).status, 400);
@@ -162,7 +164,7 @@ TEST_F(DashboardDisplayTest, StatusAggregatesTheDisplayState)
 {
     settings.setDisplayInterval(1200);
     settings.setSlideshowActive(false);
-    settings.setNightMode(true, 22, 6, 7200, false);
+    settings.setNightMode(true, 22, 6, 7200, NightStyle::Slower);
     repo.save({7, "alice", "/x.jpg", 0});
 
     const auto [status, body] = result(frame.handleStatus(httpRequest("GET", "/")));
@@ -177,7 +179,7 @@ TEST_F(DashboardDisplayTest, StatusAggregatesTheDisplayState)
     EXPECT_EQ(d["night_mode"]["start_hour"], 22);
     EXPECT_EQ(d["night_mode"]["end_hour"], 6);
     EXPECT_EQ(d["night_mode"]["interval_seconds"], 7200);
-    EXPECT_EQ(d["night_mode"]["blank"], false);
+    EXPECT_EQ(d["night_mode"]["style"], "slower");
 }
 
 TEST_F(DashboardDisplayTest, DisplayStatsDeriveWearFromRefreshCount)

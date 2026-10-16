@@ -12,6 +12,8 @@ import { getClearDisplayUrl, getSlideshowIntervalUrl, getSlideshowNightModeUrl, 
 const MAX_OPERATION_WAIT_TIME = 10 * 60 * 1000; // 10 minutes
 
 // Types for Slideshow Operation State
+export type NightStyle = 'slower' | 'hold' | 'pause';
+
 interface SlideshowOperationState {
     isToggling: boolean;
     isClearingDisplay: boolean;
@@ -27,7 +29,7 @@ interface SlideshowOperationState {
     nightStartHour: number;
     nightEndHour: number;
     nightIntervalMins: number;
-    nightBlank: boolean;
+    nightStyle: NightStyle;
     error: string | null;
     startTime: number | null;
 }
@@ -48,7 +50,7 @@ const initialState: SlideshowOperationState = {
     nightStartHour: 2,
     nightEndHour: 5,
     nightIntervalMins: 60,
-    nightBlank: true,
+    nightStyle: 'hold',
     error: null,
     startTime: null,
 };
@@ -111,14 +113,14 @@ export const slideshowOperationSlice = createSlice({
             startHour: number;
             endHour: number;
             intervalMins: number;
-            blank: boolean;
+            style: NightStyle;
             activeNow?: boolean;
         }>) => {
             state.nightModeEnabled = action.payload.enabled;
             state.nightStartHour = action.payload.startHour;
             state.nightEndHour = action.payload.endHour;
             state.nightIntervalMins = action.payload.intervalMins;
-            state.nightBlank = action.payload.blank;
+            state.nightStyle = action.payload.style;
             if (action.payload.activeNow !== undefined) {
                 state.nightModeActiveNow = action.payload.activeNow;
             }
@@ -294,7 +296,7 @@ export const fetchNightMode = () => async (
                     start_hour: number;
                     end_hour: number;
                     interval_seconds: number;
-                    blank: boolean;
+                    style: NightStyle;
                     active_now: boolean;
                 }
             }
@@ -307,7 +309,7 @@ export const fetchNightMode = () => async (
                 startHour: night.start_hour,
                 endHour: night.end_hour,
                 intervalMins: Math.round(night.interval_seconds / 60),
-                blank: night.blank,
+                style: night.style,
                 activeNow: night.active_now,
             }));
         } else {
@@ -335,12 +337,18 @@ export const fetchNightMode = () => async (
     }
 };
 
+const NIGHT_STYLE_SUFFIX: Record<NightStyle, (intervalMins: number) => string> = {
+    slower: (intervalMins) => `${intervalMins} Minuten Intervall`,
+    hold: () => 'angehaltenem Bild',
+    pause: () => 'ausgeschaltetem Bildschirm',
+};
+
 export const updateNightMode = (
     enabled: boolean,
     startHour: number,
     endHour: number,
     intervalMins: number,
-    blank: boolean
+    style: NightStyle
 ) => async (
     dispatch: AppDispatch,
     getState: () => RootState
@@ -371,7 +379,7 @@ export const updateNightMode = (
                 start_hour: startHour,
                 end_hour: endHour,
                 interval_seconds: intervalMins * 60,
-                blank,
+                style,
             })
         });
 
@@ -383,16 +391,14 @@ export const updateNightMode = (
                 startHour,
                 endHour,
                 intervalMins,
-                blank,
+                style,
             }));
 
             dispatch(addAlertSnackbar(
                 uuid(),
                 !enabled
                     ? 'Nachtmodus deaktiviert'
-                    : blank
-                        ? `Nachtmodus aktiv von ${startHour}:00 bis ${endHour}:00 Uhr mit ausgeschaltetem Bildschirm`
-                        : `Nachtmodus aktiv von ${startHour}:00 bis ${endHour}:00 Uhr mit ${intervalMins} Minuten Intervall`,
+                    : `Nachtmodus aktiv von ${startHour}:00 bis ${endHour}:00 Uhr mit ${NIGHT_STYLE_SUFFIX[style](intervalMins)}`,
                 'success'
             ));
         } else {
@@ -783,7 +789,7 @@ export const selectNightModeActiveNow = (state: RootState) => state.slideshowOpe
 export const selectNightStartHour = (state: RootState) => state.slideshowOperation.nightStartHour;
 export const selectNightEndHour = (state: RootState) => state.slideshowOperation.nightEndHour;
 export const selectNightIntervalMins = (state: RootState) => state.slideshowOperation.nightIntervalMins;
-export const selectNightBlank = (state: RootState) => state.slideshowOperation.nightBlank;
+export const selectNightStyle = (state: RootState) => state.slideshowOperation.nightStyle;
 export const selectIsUpdatingNightMode = (state: RootState) => state.slideshowOperation.isUpdatingNightMode;
 export const selectIsFetchingNightMode = (state: RootState) => state.slideshowOperation.isFetchingNightMode;
 export const selectIsAnyOperationActive = (state: RootState) => {
