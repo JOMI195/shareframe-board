@@ -163,18 +163,25 @@ bool DisplayManager::displayBuffer(const std::vector<uint8_t>& buffer, const std
         _logger->debug("Display of {} cancelled", source);
         return false;
     }
-    return _sendBufferHw(buffer, source);
-}
-
-bool DisplayManager::_sendBufferHw(const std::vector<uint8_t>& buffer, const std::string& source)
-{
     // Shutdown may have interrupted the wait; don't start a new refresh now.
     if (_shuttingDown.load())
     {
         _logger->info("Shutdown in progress, skipping display of {}", source);
         return false;
     }
+    return _sendBufferHw(buffer, source);
+}
 
+bool DisplayManager::paintForShutdown(const std::vector<uint8_t>& buffer, const std::string& source)
+{
+    std::lock_guard lock(_hwMutex);
+    // No _waitMinRefresh(): like clearForShutdown, this is the one final refresh.
+    _logger->info("Showing {} before shutdown", source);
+    return _sendBufferHw(buffer, source);
+}
+
+bool DisplayManager::_sendBufferHw(const std::vector<uint8_t>& buffer, const std::string& source)
+{
     if (buffer.size() != BUFFER_SIZE)
     {
         _logger->error("Refusing to display {}: buffer has {} bytes, expected {}",

@@ -38,6 +38,7 @@ export const showsImage = (id: number) => (p: Panel) => p.state === 'image' && p
 export const showsDefault = (p: Panel) => p.state === 'image' && p.source.includes('/assets/image/default/');
 export const isCleared = (p: Panel) => p.state === 'cleared';
 export const showsApSetup = (p: Panel) => p.state === 'image' && p.source === 'ap-setup';
+export const showsStatus = (screen: string) => (p: Panel) => p.state === 'image' && p.source === `status:${screen}`;
 
 /** The 1-bit frame the e-paper would get, decoded from the PBM the mock display writes. */
 export class Frame {

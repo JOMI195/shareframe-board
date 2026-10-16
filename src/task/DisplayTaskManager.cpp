@@ -1,6 +1,7 @@
 #include "task/DisplayTaskManager.hpp"
-#include "display/PhotoRenderer.hpp"
+#include "display/LogoScreenRenderer.hpp"
 #include "settings/RuntimeSettings.hpp"
+#include "Version.hpp"
 
 namespace
 {
@@ -12,6 +13,7 @@ const char* name(const DisplayState state)
     case DisplayState::Slideshow: return "Slideshow";
     case DisplayState::NightBlank: return "NightBlank";
     case DisplayState::ApSetup: return "ApSetup";
+    case DisplayState::Status: return "Status";
     }
     return "?";
 }
@@ -19,9 +21,10 @@ const char* name(const DisplayState state)
 
 DisplayTaskManager::DisplayTaskManager(EventBus& bus, const AppConfig& cfg, DisplayManager& display,
                                        DisplayImageLoop& slideshow, ApNetworkSetupScreen& apSetup,
-                                       NightBlankScreen& nightBlank, const RuntimeSettings& settings)
+                                       NightBlankScreen& nightBlank, StatusScreen& status,
+                                       const RuntimeSettings& settings)
     : Task(bus, "DisplayTaskManager"), cfg_(cfg), display_(display), slideshow_(slideshow),
-      apSetup_(apSetup), nightBlank_(nightBlank), settings_(settings)
+      apSetup_(apSetup), nightBlank_(nightBlank), status_(status), settings_(settings)
 {
 }
 
@@ -32,6 +35,16 @@ void DisplayTaskManager::subscribe()
         {
             std::lock_guard lk(mtx_);
             latest_ = evt;
+            changed_ = true;
+        }
+        cv_.notify_one();
+    });
+    bus_.subscribe<Topic::STATUS_SCREEN>([this](const StatusScreenEvent& evt)
+    {
+        {
+            std::lock_guard lk(mtx_);
+            latestStatus_ = evt;
+            statusSince_ = std::chrono::steady_clock::now();
             changed_ = true;
         }
         cv_.notify_one();
@@ -59,18 +72,33 @@ void DisplayTaskManager::_run(const std::stop_token st)
     while (!st.stop_requested())
     {
         ApSetupStateEvent apSetup;
+        StatusScreenEvent status;
         {
             std::unique_lock lk(mtx_);
+            const auto statusTimeout = std::chrono::seconds(cfg_.display.statusScreenTimeoutSecs);
+            std::optional<std::chrono::steady_clock::time_point> wakeAt;
             if (const int untilNightChange = settings_.secsUntilNightBlankChange(); untilNightChange >= 0)
-                cv_.wait_for(lk, st, std::chrono::seconds(untilNightChange), [this] { return changed_; });
+                wakeAt = std::chrono::steady_clock::now() + std::chrono::seconds(untilNightChange);
+            if (latestStatus_.kind)
+                wakeAt = std::min(wakeAt.value_or(std::chrono::steady_clock::time_point::max()),
+                                  statusSince_ + statusTimeout);
+            if (wakeAt)
+                cv_.wait_until(lk, st, *wakeAt, [this] { return changed_; });
             else
                 cv_.wait(lk, st, [this] { return changed_; });
             if (st.stop_requested())
                 break;
+            if (latestStatus_.kind && std::chrono::steady_clock::now() >= statusSince_ + statusTimeout)
+            {
+                logger_->warn("Status screen {} still up after {}s, hiding it", toString(*latestStatus_.kind),
+                              cfg_.display.statusScreenTimeoutSecs);
+                latestStatus_ = {};
+            }
             apSetup = latest_;
+            status = latestStatus_;
             changed_ = false;
         }
-        _apply(apSetup);
+        _apply(apSetup, status);
     }
     _stopActive();
 }
@@ -79,19 +107,22 @@ void DisplayTaskManager::_boot(const std::stop_token& st)
 {
     logger_->info("State Boot");
     display_.init();
-    const auto loadingImage = std::filesystem::path(cfg_.display.loadingImagePath) / "logo-frame-loading-shareframe.jpg";
-    if (!display_.displayBuffer(PhotoRenderer::render(loadingImage), loadingImage.string(), st,
-                                RefreshPolicy::Immediate) && !st.stop_requested())
+    const auto loadingImage = std::filesystem::path(cfg_.display.loadingImagePath) / LogoScreenRenderer::IMAGE;
+    const auto buffer = LogoScreenRenderer::render(loadingImage, "Wird geladen …",
+                                                   LogoScreenRenderer::versionLabel(cfg_.version, shareframe::kAppSha),
+                                                   cfg_.display.boldFontPath, cfg_.display.setupFontPath);
+    if (!display_.displayBuffer(buffer, loadingImage.string(), st, RefreshPolicy::Immediate) && !st.stop_requested())
         logger_->error("Failed to display loading image");
 }
 
-void DisplayTaskManager::_apply(const ApSetupStateEvent& apSetup)
+void DisplayTaskManager::_apply(const ApSetupStateEvent& apSetup, const StatusScreenEvent& status)
 {
     const auto current = state_.load();
-    const auto target = apSetup.required ? DisplayState::ApSetup
+    const auto target = status.kind ? DisplayState::Status
+        : apSetup.required ? DisplayState::ApSetup
         : settings_.isNightBlankNow() ? DisplayState::NightBlank
         : DisplayState::Slideshow;
-    if (target == current)
+    if (target == current && !(target == DisplayState::Status && status != shownStatus_))
     {
         if (target == DisplayState::ApSetup)
             apSetup_.setCredentials(apSetup.ssid, apSetup.password);
@@ -100,10 +131,18 @@ void DisplayTaskManager::_apply(const ApSetupStateEvent& apSetup)
 
     logger_->info("State {} -> {}", name(current), name(target));
     _stopActive();
-    if (current == DisplayState::ApSetup && !settings_.isSlideshowActive())
+    const bool leavesScreen = (current == DisplayState::ApSetup || current == DisplayState::Status)
+        && target != DisplayState::ApSetup && target != DisplayState::Status;
+    if (leavesScreen && !settings_.isSlideshowActive())
         display_.clear();
 
-    if (target == DisplayState::ApSetup)
+    if (target == DisplayState::Status)
+    {
+        status_.set(*status.kind, status.version);
+        status_.start();
+        shownStatus_ = status;
+    }
+    else if (target == DisplayState::ApSetup)
     {
         apSetup_.setCredentials(apSetup.ssid, apSetup.password);
         apSetup_.start();
@@ -122,6 +161,7 @@ void DisplayTaskManager::_stopActive()
     case DisplayState::Slideshow: slideshow_.stop(); break;
     case DisplayState::NightBlank: nightBlank_.stop(); break;
     case DisplayState::ApSetup: apSetup_.stop(); break;
+    case DisplayState::Status: status_.stop(); break;
     case DisplayState::Boot: break;
     }
 }

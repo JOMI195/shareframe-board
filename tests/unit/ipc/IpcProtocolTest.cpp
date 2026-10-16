@@ -3,7 +3,7 @@
 
 TEST(IpcProtocol, EveryTypeRoundTripsThroughString)
 {
-    for (int i = 0; i <= static_cast<int>(IpcMessageType::UpdateHistory); ++i)
+    for (int i = 0; i <= static_cast<int>(IpcMessageType::HideStatusScreen); ++i)
     {
         const auto t = static_cast<IpcMessageType>(i);
         EXPECT_EQ(ipcMessageTypeFromString(ipcMessageTypeToString(t)), t) << i;

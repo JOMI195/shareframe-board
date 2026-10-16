@@ -31,7 +31,8 @@ protected:
     TokenRepository tokens{db.get()};
     HTTPClient http{5, 5};
     AuthTokenManager auth{cfg, tokens, http};
-    UpdateManager updates{cfg, http, auth};
+    IpcClient displayIpc{"ipc://" + (db.dir() / "display.sock").string()};
+    UpdateManager updates{cfg, http, auth, displayIpc};
     UpdateIpc updateIpc{updates};
     std::string url = "ipc://" + (db.dir() / "update.sock").string();
     NngRepServer server{url, [this](const IpcMessage& m) { return updateIpc.handle(m); }};

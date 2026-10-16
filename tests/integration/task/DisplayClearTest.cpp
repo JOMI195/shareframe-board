@@ -16,7 +16,7 @@ protected:
         cfg.display.mockDisplay = true;
         cfg.display.minRefreshSecs = 0;
         cfg.display.mockOutputDir = (db.dir() / "panel").string();
-        const std::string image = std::string(SHAREFRAME_ASSETS_DIR) + "/image/loading/logo-frame-loading-shareframe.jpg";
+        const std::string image = std::string(SHAREFRAME_ASSETS_DIR) + "/image/loading/logo-frame-generic-shareframe.jpg";
         EXPECT_TRUE(display.displayBuffer(PhotoRenderer::render(image), image));
     }
 

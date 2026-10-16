@@ -33,7 +33,7 @@ DashboardServer::DashboardServer(AppConfig& cfg, IpcClient& ipc,
       wifiHandlers_(wifi),
       frameHandlers_(ipc, cfg),
       slideshowImageHandlers_(ipc, images),
-      systemHandlers_(cfg, wifi, diagnostics_),
+      systemHandlers_(cfg, wifi, diagnostics_, ipc),
       serviceHandlers_(cfg),
       updateHandlers_(updateIpc)
 {

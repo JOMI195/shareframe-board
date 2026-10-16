@@ -15,4 +15,5 @@ enum class Topic {
     UPDATE_PLAYBACK_ORDER,
     SET_SLIDESHOW_ACTIVE,
     AP_SETUP_STATE,
+    STATUS_SCREEN,
 };

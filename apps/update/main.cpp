@@ -1,6 +1,7 @@
 #include "app/Bootstrap.hpp"
 #include "auth/AuthTokenManager.hpp"
 #include "db/Database.hpp"
+#include "ipc/IpcClient.hpp"
 #include "ipc/NngRepServer.hpp"
 #include "net/HTTPClient.hpp"
 #include "repository/TokenRepository.hpp"
@@ -25,7 +26,9 @@ int main(int argc, char* argv[])
     TokenRepository tokenRepo(db.get());
     AuthTokenManager authTokenManager(cfg, tokenRepo, http);
 
-    UpdateManager updates(cfg, http, authTokenManager);
+    // REQ to the display: the status screen while an update installs.
+    IpcClient displayIpc(cfg.ipc.displayRep);
+    UpdateManager updates(cfg, http, authTokenManager, displayIpc);
     updates.startPeriodicCheck();
 
     // REP server: dashboard proxies its /api/system/updates/* routes here.

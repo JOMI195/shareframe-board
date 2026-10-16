@@ -20,8 +20,9 @@ nlohmann::json coerceScalar(const std::string& v)
 }
 } // namespace
 
-SystemHandlers::SystemHandlers(const AppConfig& cfg, WifiManager& wifi, const DiagnosticsUploader& diagnostics)
-    : cfg_(cfg), wifi_(wifi), diagnostics_(diagnostics),
+SystemHandlers::SystemHandlers(const AppConfig& cfg, WifiManager& wifi, const DiagnosticsUploader& diagnostics,
+                               IpcClient& displayIpc)
+    : cfg_(cfg), wifi_(wifi), diagnostics_(diagnostics), displayIpc_(displayIpc),
       logger_(spdlog::default_logger()->clone("SystemHandlers")),
       // Stable short ids = the public log contract; mapped to files in handleLogs.
       allowedServiceNames_({"websocket", "display", "dashboard", "heartbeat", "update", "system", "events"})
@@ -85,13 +86,8 @@ ix::HttpResponsePtr SystemHandlers::handleRestart(const ix::HttpRequestPtr& /*re
 {
     logger_->info("System reboot requested");
     // /sbin/reboot is the s6 clean wrapper (shutdownd -> rc.shutdown), not busybox.
-    auto result = Subprocess::run({"reboot"}, 5);
-
-    if (result.exitCode != 0)
-    {
-        logger_->error("Reboot failed: {}", result.stdErr);
+    if (!_runWithStatusScreen(StatusScreenKind::Reboot, {"reboot"}))
         return errorResponse(500, "Internal Server Error", "Reboot failed");
-    }
 
     return jsonResponse(200, "OK", nlohmann::json::object(), "Rebooting...");
 }
@@ -113,13 +109,8 @@ ix::HttpResponsePtr SystemHandlers::handleShutdown(const ix::HttpRequestPtr& /*r
 ix::HttpResponsePtr SystemHandlers::handleFactoryReset(const ix::HttpRequestPtr& /*req*/) const
 {
     logger_->info("Factory reset requested");
-    auto result = Subprocess::run({"shareframe-factory-reset", "--yes"}, 5);
-
-    if (result.exitCode != 0)
-    {
-        logger_->error("Factory reset failed: {}", result.stdErr);
+    if (!_runWithStatusScreen(StatusScreenKind::FactoryReset, {"shareframe-factory-reset", "--yes"}))
         return errorResponse(500, "Internal Server Error", "Factory reset failed");
-    }
 
     return jsonResponse(200, "OK", nlohmann::json::object(), "Resetting to factory defaults...");
 }
@@ -189,3 +180,13 @@ ix::HttpResponsePtr SystemHandlers::handleLogs(
     });
 }
 
+bool SystemHandlers::_runWithStatusScreen(const StatusScreenKind kind, const std::vector<std::string>& command) const
+{
+    displayIpc_.send({IpcMessageType::ShowStatusScreen, {{"screen", toString(kind)}}});
+    const auto result = Subprocess::run(command, 5);
+    if (result.exitCode == 0)
+        return true;
+    logger_->error("{} failed: {}", command.front(), result.stdErr);
+    displayIpc_.send({IpcMessageType::HideStatusScreen, {}});
+    return false;
+}

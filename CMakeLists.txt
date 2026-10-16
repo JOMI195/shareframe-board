@@ -205,6 +205,9 @@ set(DISPLAY_SOURCES
         src/display/DisplayManager.cpp
         src/display/PhotoRenderer.cpp
         src/display/ApNetworkSetupScreenRenderer.cpp
+        src/display/PanelText.cpp
+        src/display/LogoScreenRenderer.cpp
+        src/task/StatusScreen.cpp
         src/task/DisplayImageLoop.cpp
         src/task/DisplayClear.cpp
         src/task/ApNetworkSetupScreen.cpp

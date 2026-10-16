@@ -1,5 +1,6 @@
 #include "update/UpdateManager.hpp"
 #include "auth/TokenAuth.hpp"
+#include "ipc/StatusScreenKind.hpp"
 #include "util/FileHash.hpp"
 #include "util/Subprocess.hpp"
 #include <algorithm>
@@ -42,8 +43,9 @@ std::string readFirstLine(const std::string& path)
 }
 } // namespace
 
-UpdateManager::UpdateManager(const AppConfig& cfg, HTTPClient& http, AuthTokenManager& authTokenManager)
-    : cfg_(cfg), http_(http), authTokenManager_(authTokenManager),
+UpdateManager::UpdateManager(const AppConfig& cfg, HTTPClient& http, AuthTokenManager& authTokenManager,
+                             IpcClient& displayIpc)
+    : cfg_(cfg), http_(http), authTokenManager_(authTokenManager), displayIpc_(displayIpc),
       logger_(spdlog::default_logger()->clone("UpdateManager"))
 {
 }
@@ -207,13 +209,14 @@ void UpdateManager::_worker(nlohmann::json release)
         meta << nlohmann::json{{"from_version", cfg_.version}, {"to_version", version}}.dump() << "\n";
     }
 
-    fs::create_directories(kCacheDir, ec);
-    // stale bundles from skipped/aborted updates would pile up on /data
-    for (const auto& e : fs::directory_iterator(kCacheDir, ec))
-        if (e.path().extension() == ".raucb" || e.path().extension() == ".part")
-            fs::remove(e.path(), ec);
     const std::string bundle = std::string(kCacheDir) + "/shareframe-" + version + ".raucb";
     const std::string part = bundle + ".part";
+    fs::create_directories(kCacheDir, ec);
+    // stale bundles from skipped/aborted updates would pile up on /data; this
+    // version's partial download stays so the transfer resumes
+    for (const auto& e : fs::directory_iterator(kCacheDir, ec))
+        if ((e.path().extension() == ".raucb" || e.path().extension() == ".part") && e.path() != part)
+            fs::remove(e.path(), ec);
 
     {
         std::lock_guard lock(mutex_);
@@ -268,11 +271,14 @@ void UpdateManager::_worker(nlohmann::json release)
     }
     logger_->info("Installing update {} via rauc", version);
     Subprocess::run({"shareframe-led", "updating"}, 5);
+    displayIpc_.send({IpcMessageType::ShowStatusScreen,
+                      {{"screen", toString(StatusScreenKind::Update)}, {"version", version}}});
     auto inst = Subprocess::run({"rauc", "install", bundle}, 1800);
     fs::remove(bundle, ec);
     if (inst.exitCode != 0)
     {
         Subprocess::run({"shareframe-led", "error"}, 5);
+        displayIpc_.send({IpcMessageType::HideStatusScreen, {}});
         _fail("rauc install failed: " + inst.stdErr, version);
         return;
     }

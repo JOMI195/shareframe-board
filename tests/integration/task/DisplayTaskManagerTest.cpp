@@ -2,6 +2,7 @@
 #include "settings/RuntimeSettings.hpp"
 #include "support/ImageFixture.hpp"
 #include "support/Wait.hpp"
+#include "display/LogoScreenRenderer.hpp"
 #include "task/DisplayTaskManager.hpp"
 #include <fstream>
 #include <gtest/gtest.h>
@@ -21,6 +22,7 @@ protected:
         cfg.display.loadingImagePath = std::string(SHAREFRAME_ASSETS_DIR) + "/image/loading";
         cfg.display.defaultImagesPath = std::string(SHAREFRAME_ASSETS_DIR) + "/image/default";
         cfg.display.setupFontPath = std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans.ttf";
+        cfg.display.boldFontPath = std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans-Bold.ttf";
         // The migrated DB blanks the panel from 1 to 6, whatever the wall clock says here.
         settings.setNightMode(false, 1, 6, 3600, false);
     }
@@ -43,6 +45,13 @@ protected:
     {
         bus.publish<Topic::AP_SETUP_STATE>({required, required ? "shareframe-board" : "", required ? password : ""});
     }
+
+    void status(const std::optional<StatusScreenKind> kind, const std::string& version = "")
+    {
+        bus.publish<Topic::STATUS_SCREEN>({kind, version});
+    }
+
+    bool showsBoot() const { return source().ends_with(LogoScreenRenderer::IMAGE); }
 
     nlohmann::json panel() const
     {
@@ -69,7 +78,8 @@ protected:
     DisplayImageLoop loop{bus, cfg, repo, display, settings};
     ApNetworkSetupScreen setupScreen{bus, cfg, display};
     NightBlankScreen nightBlank{bus, display};
-    DisplayTaskManager manager{bus, cfg, display, loop, setupScreen, nightBlank, settings};
+    StatusScreen statusScreen{bus, cfg, display};
+    DisplayTaskManager manager{bus, cfg, display, loop, setupScreen, nightBlank, statusScreen, settings};
 };
 }
 
@@ -89,7 +99,7 @@ TEST_F(DisplayTaskManagerTest, SetupScreenReplacesPendingPhotoAtOnce)
     cfg.display.minRefreshSecs = 1;
     start();
     ASSERT_TRUE(waitFor([&] { return manager.state() == DisplayState::Slideshow; }));
-    ASSERT_TRUE(source().ends_with("logo-frame-loading-shareframe.jpg"));
+    ASSERT_TRUE(showsBoot());
 
     apSetup(true);
     ASSERT_TRUE(waitFor([&] { return source() == "ap-setup"; }, 500ms)) << "setup screen waited for the refresh interval";
@@ -161,4 +171,105 @@ TEST_F(DisplayTaskManagerTest, BlankNightPausesTheSlideshowAndYieldsOnlyToTheSet
     bus.publish<Topic::UPDATE_NIGHT_MODE>({false, from, to, 3600, true});
     EXPECT_TRUE(waitFor([&] { return showsDefault(); }));
     EXPECT_EQ(manager.state(), DisplayState::Slideshow);
+}
+
+TEST_F(DisplayTaskManagerTest, StatusScreenOutranksTheSetupScreen)
+{
+    start();
+    ASSERT_TRUE(waitFor([&] { return showsDefault(); }));
+
+    status(StatusScreenKind::Update, "1.3.0");
+    ASSERT_TRUE(waitFor([&] { return source() == "status:update"; }));
+    EXPECT_EQ(manager.state(), DisplayState::Status);
+
+    apSetup(true);
+    std::this_thread::sleep_for(300ms);
+    EXPECT_EQ(source(), "status:update");
+
+    status(std::nullopt);
+    EXPECT_TRUE(waitFor([&] { return source() == "ap-setup"; }));
+}
+
+TEST_F(DisplayTaskManagerTest, HiddenStatusScreenReturnsToTheSlideshow)
+{
+    start();
+    status(StatusScreenKind::Reboot);
+    ASSERT_TRUE(waitFor([&] { return source() == "status:reboot"; }));
+
+    status(std::nullopt);
+    EXPECT_TRUE(waitFor([&] { return showsDefault(); }));
+    EXPECT_EQ(manager.state(), DisplayState::Slideshow);
+}
+
+TEST_F(DisplayTaskManagerTest, AnotherStatusScreenReplacesTheShownOne)
+{
+    start();
+    status(StatusScreenKind::Reboot);
+    ASSERT_TRUE(waitFor([&] { return source() == "status:reboot"; }));
+
+    status(StatusScreenKind::FactoryReset);
+    EXPECT_TRUE(waitFor([&] { return source() == "status:factory_reset"; }));
+}
+
+TEST_F(DisplayTaskManagerTest, StatusScreenWaitsForTheRefreshInterval)
+{
+    cfg.display.minRefreshSecs = 2;
+    start();
+    ASSERT_TRUE(waitFor([&] { return showsBoot(); }));
+    const auto bootSeq = seq();
+
+    status(StatusScreenKind::Update, "1.3.0");
+    std::this_thread::sleep_for(500ms);
+    EXPECT_EQ(seq(), bootSeq) << "status screen painted inside the refresh interval";
+    EXPECT_TRUE(waitFor([&] { return source() == "status:update"; }, 3000ms));
+}
+
+TEST_F(DisplayTaskManagerTest, StatusScreenHiddenWhileWaitingIsNeverPainted)
+{
+    cfg.display.minRefreshSecs = 1;
+    start();
+    ASSERT_TRUE(waitFor([&] { return showsBoot(); }));
+    const auto bootSeq = seq();
+
+    status(StatusScreenKind::Reboot);
+    std::this_thread::sleep_for(200ms);
+    status(std::nullopt);
+    ASSERT_TRUE(waitFor([&] { return showsDefault(); }, 3000ms));
+    EXPECT_EQ(seq(), bootSeq + 1) << "the status screen was painted";
+}
+
+TEST_F(DisplayTaskManagerTest, ForgottenStatusScreenTimesOut)
+{
+    cfg.display.statusScreenTimeoutSecs = 1;
+    start();
+    status(StatusScreenKind::Reboot);
+    ASSERT_TRUE(waitFor([&] { return source() == "status:reboot"; }));
+    EXPECT_TRUE(waitFor([&] { return showsDefault(); }, 3000ms));
+}
+
+TEST_F(DisplayTaskManagerTest, ShutdownPaintsAStatusScreenStillWaitingForTheInterval)
+{
+    cfg.display.minRefreshSecs = 3600;
+    start();
+    ASSERT_TRUE(waitFor([&] { return showsBoot(); }));
+    status(StatusScreenKind::Reboot);
+    ASSERT_TRUE(waitFor([&] { return manager.state() == DisplayState::Status; }));
+
+    display.requestShutdown();
+    manager.stop();
+    statusScreen.finishForShutdown();
+    EXPECT_EQ(source(), "status:reboot");
+}
+
+TEST_F(DisplayTaskManagerTest, ShutdownKeepsAShownStatusScreenWithoutRepainting)
+{
+    start();
+    status(StatusScreenKind::Reboot);
+    ASSERT_TRUE(waitFor([&] { return source() == "status:reboot"; }));
+    const auto shownAt = seq();
+
+    display.requestShutdown();
+    manager.stop();
+    statusScreen.finishForShutdown();
+    EXPECT_EQ(seq(), shownAt);
 }

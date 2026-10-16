@@ -97,7 +97,7 @@ TEST_F(DisplayImageLoopTest, UserPictureReplacesDefaultImage)
     ASSERT_TRUE(waitFor([&] { return seq() >= 1; }));
 
     const auto picture = db.dir() / "user.jpg";
-    std::filesystem::copy_file(std::string(SHAREFRAME_ASSETS_DIR) + "/image/loading/logo-frame-loading-shareframe.jpg", picture);
+    std::filesystem::copy_file(std::string(SHAREFRAME_ASSETS_DIR) + "/image/loading/logo-frame-generic-shareframe.jpg", picture);
     repo.save({42, "alice", picture, std::time(nullptr) + 3600});
     bus.publish<Topic::IMAGE_NEW>(42);
 
@@ -109,7 +109,7 @@ TEST_F(DisplayImageLoopTest, RemovingTheShownPictureMovesOn)
     for (const int64_t id : {1, 2})
     {
         const auto path = db.dir() / (std::to_string(id) + ".jpg");
-        std::filesystem::copy_file(std::string(SHAREFRAME_ASSETS_DIR) + "/image/loading/logo-frame-loading-shareframe.jpg", path);
+        std::filesystem::copy_file(std::string(SHAREFRAME_ASSETS_DIR) + "/image/loading/logo-frame-generic-shareframe.jpg", path);
         repo.save({id, "alice", path, std::time(nullptr) + 3600});
     }
     start();
@@ -125,7 +125,7 @@ TEST_F(DisplayImageLoopTest, PlaybackOrderDecidesWhichPictureComesNext)
     for (const auto& [id, receivedAt] : std::vector<std::pair<int64_t, int64_t>>{{1, 100}, {2, 300}, {3, 200}})
     {
         const auto path = db.dir() / (std::to_string(id) + ".jpg");
-        std::filesystem::copy_file(std::string(SHAREFRAME_ASSETS_DIR) + "/image/loading/logo-frame-loading-shareframe.jpg", path);
+        std::filesystem::copy_file(std::string(SHAREFRAME_ASSETS_DIR) + "/image/loading/logo-frame-generic-shareframe.jpg", path);
         repo.save({id, "alice", path, std::time(nullptr) + 3600, receivedAt});
     }
     settings.setPlaybackOrder(PlaybackMode::NewestFirst, {});
@@ -153,7 +153,7 @@ TEST_F(DisplayImageLoopTest, PaintWaitingForThePanelCountsAsRefreshing)
 {
     cfg.display.minRefreshSecs = 3600;
     const auto picture = db.dir() / "user.jpg";
-    std::filesystem::copy_file(std::string(SHAREFRAME_ASSETS_DIR) + "/image/loading/logo-frame-loading-shareframe.jpg", picture);
+    std::filesystem::copy_file(std::string(SHAREFRAME_ASSETS_DIR) + "/image/loading/logo-frame-generic-shareframe.jpg", picture);
     repo.save({42, "alice", picture, std::time(nullptr) + 3600});
     start();
 
