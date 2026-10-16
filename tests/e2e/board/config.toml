@@ -40,6 +40,8 @@ night_start_hour = 2
 night_end_hour = 5
 night_interval_secs = 3600
 night_blank = false
+# Low enough that a test can watch the badge appear after dropping the server.
+offline_badge_after_secs = 3
 
 [update]
 http_latest_url = "/api/frame-updates/latest/"

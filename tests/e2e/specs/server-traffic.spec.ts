@@ -148,4 +148,30 @@ test.describe('connection', () => {
     const id = await server.sendPicture('left-black.jpg');
     await waitForPanel(showsImage(id), 'picture over the new connection');
   });
+  test('a long outage puts a badge on the photo until the server is back', async ({ server, board }, testInfo) => {
+    const id = await server.sendPicture('top-black.jpg');
+    await waitForPanel(showsImage(id), `picture ${id} on panel`);
+    const badge = async () => (await Frame.read()).blackRatio(470, 400, 710, 430);
+    const repaint = async (message: string) => {
+      const before = (await readPanel())!.seq;
+      await board.skip();
+      await waitForPanel((p) => showsImage(id)(p) && p.seq > before, message);
+    };
+    expect(await badge()).toBeLessThan(0.01);
+
+    await server.outage(true);
+    // The e2e config shows the badge after 3 s without the server.
+    await expect
+      .poll(async () => (await board.get('/api/connection/mode')).server_offline_secs, { message: 'board notices the outage' })
+      .toBeGreaterThanOrEqual(3);
+    expect((await board.get('/api/connection/mode')).server_connected).toBe(false);
+    await repaint('repaint while offline');
+    await attachPanel(testInfo, 'offline-badge');
+    expect(await badge()).toBeGreaterThan(0.05);
+
+    await server.outage(false);
+    await expect.poll(async () => (await board.get('/api/connection/mode')).server_connected, { timeout: 30_000 }).toBe(true);
+    await repaint('repaint after reconnecting');
+    expect(await badge()).toBeLessThan(0.01);
+  });
 });
