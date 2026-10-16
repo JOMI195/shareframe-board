@@ -23,8 +23,9 @@ public:
     [[nodiscard]] HttpResponse post(const std::string& url, const std::string& body, const Headers& headers = {}) const;
 
     // Streams the response body to destPath (no in-memory copy). progress gets
-    // (received, total) with total = Content-Length or 0 if unknown. On any
-    // failure the partial file is removed and the response carries the error.
+    // (received, total) with total = Content-Length or 0 if unknown. An existing
+    // destPath is treated as the start of the same file and resumed with a Range
+    // request; on failure the partial file is kept for the next call.
     using ProgressFn = std::function<void(size_t received, size_t total)>;
     [[nodiscard]] HttpResponse downloadToFile(const std::string& url, const std::string& destPath,
                                               const Headers& headers = {},

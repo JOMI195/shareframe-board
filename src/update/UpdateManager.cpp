@@ -209,13 +209,14 @@ void UpdateManager::_worker(nlohmann::json release)
         meta << nlohmann::json{{"from_version", cfg_.version}, {"to_version", version}}.dump() << "\n";
     }
 
-    fs::create_directories(kCacheDir, ec);
-    // stale bundles from skipped/aborted updates would pile up on /data
-    for (const auto& e : fs::directory_iterator(kCacheDir, ec))
-        if (e.path().extension() == ".raucb" || e.path().extension() == ".part")
-            fs::remove(e.path(), ec);
     const std::string bundle = std::string(kCacheDir) + "/shareframe-" + version + ".raucb";
     const std::string part = bundle + ".part";
+    fs::create_directories(kCacheDir, ec);
+    // stale bundles from skipped/aborted updates would pile up on /data; this
+    // version's partial download stays so the transfer resumes
+    for (const auto& e : fs::directory_iterator(kCacheDir, ec))
+        if ((e.path().extension() == ".raucb" || e.path().extension() == ".part") && e.path() != part)
+            fs::remove(e.path(), ec);
 
     {
         std::lock_guard lock(mutex_);
