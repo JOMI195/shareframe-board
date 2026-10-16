@@ -7,6 +7,7 @@
 #include "net/HTTPClient.hpp"
 #include "util/Subprocess.hpp"
 #include "Version.hpp"
+#include <algorithm>
 #include <arpa/inet.h>
 #include <filesystem>
 #include <fstream>
@@ -24,7 +25,9 @@ Heartbeat::Heartbeat(EventBus& bus, const AppConfig& cfg, const HTTPClient& http
 
 int Heartbeat::intervalSecs() const
 {
-    return cfg_.heartbeat.intervalSecs;
+    if (backendReached_)
+        return cfg_.heartbeat.intervalSecs;
+    return std::min(cfg_.heartbeat.firstContactRetrySecs, cfg_.heartbeat.intervalSecs);
 }
 
 void Heartbeat::execute()
@@ -64,11 +67,11 @@ void Heartbeat::execute()
         // RAM
         "ram_total_bytes", "ram_available_bytes",
         // Storage
-        "storage_data_total_bytes", "storage_data_free_bytes",
+        "storage_data_total_bytes", "storage_data_free_bytes", "data_written_kb", "sd_card",
         // Faults & watermarks
         "health_oom", "health_temp", "health_disk",
         "crash_count", "unclean_resets", "oom_kills", "uv_events",
-        "temp_peak_celsius", "ram_available_min_bytes", "slot_trial",
+        "temp_peak_celsius", "ram_available_min_bytes", "slot_trial", "safe_mode",
         // WiFi (no SSID)
         "wifi_mode", "wlan_connected", "wlan_signal_dbm",
     };
@@ -122,8 +125,17 @@ void Heartbeat::execute()
         return;
     }
     logger_->debug("Heartbeat acknowledged ({})", res.statusCode);
+    if (!backendReached_)
+        _markBackendReached();
     if (!events.empty())
         _saveEventCursor(events.back()["seq"].get<int64_t>());
+}
+
+void Heartbeat::_markBackendReached()
+{
+    backendReached_ = true;
+    if (!std::ofstream{cfg_.heartbeat.backendOkPath})
+        logger_->warn("Could not write {}", cfg_.heartbeat.backendOkPath);
 }
 
 nlohmann::json Heartbeat::_getNewEvents() const

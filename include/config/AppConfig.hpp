@@ -131,6 +131,9 @@ struct HeartbeatConfig
     int intervalSecs = 60;
     std::string httpUrl = "/api/frames/frame-hearbeat/";
     std::string eventCursorPath = "event-cursor";
+    // Until the first acknowledged heartbeat of a boot; the OS update commit gate waits on it.
+    int firstContactRetrySecs = 30;
+    std::string backendOkPath = "/run/shareframe/backend-ok";
 };
 
 struct DiagnosticsConfig

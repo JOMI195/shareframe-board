@@ -174,6 +174,7 @@ void ConfigLoader::resolvePaths(AppConfig& cfg) {
     resolveField(cfg.display.setupFontPath,     base);
     resolveField(cfg.display.boldFontPath,      base);
     resolveField(cfg.heartbeat.eventCursorPath, base);
+    resolveField(cfg.heartbeat.backendOkPath, base);
     resolveField(cfg.diagnostics.pendingPath,   base);
     // update.backupDirName is a bare name fragment, not a path — not resolved here
 }
