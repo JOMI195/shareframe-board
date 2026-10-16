@@ -124,6 +124,7 @@ export class FakeServer {
   }
 
   async reset() {
+    await this.outage(false);
     await this.waitForFrame();
     await this.request.post(`${FAKE_SERVER}/__test/reset`);
   }
@@ -159,6 +160,11 @@ export class FakeServer {
     await this.request.post(`${FAKE_SERVER}/__test/release`, {
       data: { release_notes: 'E2E release', release_date: '2026-10-01T10:00:00Z', criticality: 'normal', ...release },
     });
+  }
+
+  /** While on, the frame is dropped and every reconnect is turned away. */
+  async outage(on: boolean) {
+    await this.request.post(`${FAKE_SERVER}/__test/outage`, { data: { on } });
   }
 
   /** Ends the frame's socket with a close code, or drops it without one. */

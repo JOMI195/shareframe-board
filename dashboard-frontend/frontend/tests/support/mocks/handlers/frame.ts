@@ -44,6 +44,7 @@ export const frameHandlers = [
   }),
   http.post(apiUrl(api.getSlideshowNightModeUrl()), () => ok()),
   http.post(apiUrl(api.getSkipSlideshowImageUrl()), () => ok()),
+  http.post(apiUrl(api.getShowSlideshowImageUrl()), () => ok()),
   http.post(apiUrl(api.getClearDisplayUrl()), () => ok()),
   http.get(apiUrl(api.getDisplayStatsUrl()), () => ok(makeDisplayStats())),
   http.get(apiUrl(api.getSlideshowImagesUrl()), () => ok(board.slideshowImages)),

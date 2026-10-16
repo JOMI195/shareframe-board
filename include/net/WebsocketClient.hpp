@@ -1,6 +1,7 @@
 #pragma once
 #include "auth/AuthTokenManager.hpp"
 #include "config/AppConfig.hpp"
+#include "net/ServerContact.hpp"
 #include "task/Task.hpp"
 #include <atomic>
 #include <ixwebsocket/IXWebSocket.h>
@@ -11,7 +12,7 @@
 class WebsocketClient : public Task
 {
 public:
-    WebsocketClient(EventBus& bus, const AppConfig& cfg, AuthTokenManager& authMgr);
+    WebsocketClient(EventBus& bus, const AppConfig& cfg, AuthTokenManager& authMgr, ServerContact& contact);
 
     void start() override;
 
@@ -35,6 +36,7 @@ private:
 
     const AppConfig& cfg_;
     AuthTokenManager& authMgr_;
+    ServerContact& contact_;
     ix::WebSocket ws_;
     std::atomic<int> reconnectCount_{0};
     std::mutex sendMtx_;

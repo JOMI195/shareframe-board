@@ -25,6 +25,8 @@ enum class IpcMessageType
     UpdateHistory,
     ShowStatusScreen,
     HideStatusScreen,
+    ShowImage,
+    GetServerConnection,
 };
 
 struct IpcMessage
@@ -57,6 +59,8 @@ inline std::string ipcMessageTypeToString(IpcMessageType t)
     case IpcMessageType::UpdateHistory:           return "update_history";
     case IpcMessageType::ShowStatusScreen:        return "show_status_screen";
     case IpcMessageType::HideStatusScreen:        return "hide_status_screen";
+    case IpcMessageType::ShowImage:               return "show_image";
+    case IpcMessageType::GetServerConnection:     return "get_server_connection";
     }
     return "unknown";
 }
@@ -83,6 +87,8 @@ inline std::optional<IpcMessageType> ipcMessageTypeFromString(const std::string&
     if (s == "update_history")          return IpcMessageType::UpdateHistory;
     if (s == "show_status_screen")      return IpcMessageType::ShowStatusScreen;
     if (s == "hide_status_screen")      return IpcMessageType::HideStatusScreen;
+    if (s == "show_image")              return IpcMessageType::ShowImage;
+    if (s == "get_server_connection")   return IpcMessageType::GetServerConnection;
     return std::nullopt;
 }
 

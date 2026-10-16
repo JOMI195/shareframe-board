@@ -187,6 +187,8 @@ target_link_libraries(shareframe-common PUBLIC external stb)
 # --- shareframe-websocket: network + image ingest ---
 set(WEBSOCKET_SOURCES
         src/net/WebsocketClient.cpp
+        src/net/ServerContact.cpp
+        src/net/WsIpc.cpp
         src/image/ImageManager.cpp
         src/task/ImageUpdate.cpp
         src/task/MissingImageCheck.cpp
@@ -206,6 +208,7 @@ set(DISPLAY_SOURCES
         src/display/PhotoRenderer.cpp
         src/display/ApNetworkSetupScreenRenderer.cpp
         src/display/PanelText.cpp
+        src/display/OfflineBadge.cpp
         src/display/LogoScreenRenderer.cpp
         src/task/StatusScreen.cpp
         src/task/DisplayImageLoop.cpp

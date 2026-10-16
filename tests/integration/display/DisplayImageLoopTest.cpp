@@ -1,4 +1,6 @@
 #include "display/DisplayManager.hpp"
+#include "display/OfflineBadge.hpp"
+#include "display/PhotoRenderer.hpp"
 #include "repository/DisplayMetricsRepository.hpp"
 #include "settings/RuntimeSettings.hpp"
 #include "support/ImageFixture.hpp"
@@ -140,6 +142,68 @@ TEST_F(DisplayImageLoopTest, PlaybackOrderDecidesWhichPictureComesNext)
     ASSERT_TRUE(waitFor([&] { return settings.getPlaybackMode() == PlaybackMode::Custom; }));
     bus.publish<Topic::SKIP_IMAGE>({});
     EXPECT_TRUE(waitFor([&] { return panel().value("source", "").ends_with("/2.jpg"); }));
+}
+
+TEST_F(DisplayImageLoopTest, ShowNowPaintsTheRequestedPictureAndContinuesFromIt)
+{
+    for (const int64_t id : {1, 2, 3})
+    {
+        const auto path = db.dir() / (std::to_string(id) + ".jpg");
+        std::filesystem::copy_file(std::string(SHAREFRAME_ASSETS_DIR) + "/image/loading/logo-frame-generic-shareframe.jpg", path);
+        repo.save({id, "alice", path, std::time(nullptr) + 3600, id * 100});
+    }
+    start();
+    ASSERT_TRUE(waitFor([&] { return panel().value("source", "").ends_with("/1.jpg"); }));
+
+    bus.publish<Topic::SHOW_IMAGE>({3});
+    ASSERT_TRUE(waitFor([&] { return panel().value("source", "").ends_with("/3.jpg"); }));
+    EXPECT_EQ(loop.currentImageId(), 3);
+
+    bus.publish<Topic::SKIP_IMAGE>({});
+    EXPECT_TRUE(waitFor([&] { return panel().value("source", "").ends_with("/1.jpg"); }));
+}
+
+TEST_F(DisplayImageLoopTest, ShowNowOfAVanishedPictureFallsBackToTheNextOne)
+{
+    for (const int64_t id : {1, 2})
+    {
+        const auto path = db.dir() / (std::to_string(id) + ".jpg");
+        std::filesystem::copy_file(std::string(SHAREFRAME_ASSETS_DIR) + "/image/loading/logo-frame-generic-shareframe.jpg", path);
+        repo.save({id, "alice", path, std::time(nullptr) + 3600, id * 100});
+    }
+    start();
+    ASSERT_TRUE(waitFor([&] { return panel().value("source", "").ends_with("/1.jpg"); }));
+
+    bus.publish<Topic::SHOW_IMAGE>({99});
+    EXPECT_TRUE(waitFor([&] { return panel().value("source", "").ends_with("/2.jpg"); }));
+}
+
+TEST_F(DisplayImageLoopTest, PhotosCarryABadgeOnceTheServerIsGoneLongEnough)
+{
+    cfg.display.boldFontPath = std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans-Bold.ttf";
+    cfg.display.offlineBadgeAfterSecs = 3600;
+    const auto picture = db.dir() / "user.jpg";
+    std::filesystem::copy_file(std::string(SHAREFRAME_ASSETS_DIR) + "/image/default/sample_2.jpg", picture);
+    repo.save({42, "alice", picture, std::time(nullptr) + 3600});
+    const int64_t lost = std::time(nullptr) - 2 * 3600;
+    DisplayImageLoop offlineLoop{bus, cfg, repo, display, settings, [&] { return ServerConnection{false, lost, lost}; }};
+    offlineLoop.subscribe();
+    offlineLoop.start();
+    bus.start();
+    ASSERT_TRUE(waitFor([&] { return panel().value("source", "") == picture.string(); }));
+    offlineLoop.stop();
+
+    std::ifstream f(std::filesystem::path(cfg.display.mockOutputDir) / "panel.pbm", std::ios::binary);
+    const std::string pbm{std::istreambuf_iterator<char>(f), {}};
+    // PBM stores black as 1, the panel buffer as 0.
+    std::vector<uint8_t> shown(pbm.end() - DisplayManager::BUFFER_SIZE, pbm.end());
+    for (auto& byte : shown)
+        byte = ~byte;
+    const auto plain = PhotoRenderer::render(picture);
+    auto badged = plain;
+    offline::draw(badged, cfg.display.boldFontPath, *offline::badgeText(std::time(nullptr), {false, lost, lost}, 3600));
+    EXPECT_NE(shown, plain);
+    EXPECT_EQ(shown, badged);
 }
 
 TEST_F(DisplayImageLoopTest, ReportsRefreshingOnlyWhilePainting)

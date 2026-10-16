@@ -1,10 +1,13 @@
 #include "task/DisplayImageLoop.hpp"
+#include "display/OfflineBadge.hpp"
 #include "display/PhotoRenderer.hpp"
 #include "events/Messages.hpp"
 #include "settings/RuntimeSettings.hpp"
 #include <algorithm>
 #include <chrono>
+#include <ctime>
 #include <filesystem>
+#include <utility>
 
 namespace
 {
@@ -17,9 +20,9 @@ int64_t steadyNowMs()
 
 DisplayImageLoop::DisplayImageLoop(EventBus& bus, const AppConfig& cfg,
                                    ImageRepository& repo, DisplayManager& display,
-                                   RuntimeSettings& settings)
+                                   RuntimeSettings& settings, ServerConnectionProvider serverConnection)
     : Task(bus, "DisplayImageLoop"), cfg_(cfg), repo_(repo), display_(display),
-      settings_(settings)
+      settings_(settings), serverConnection_(std::move(serverConnection))
 {
 }
 
@@ -31,6 +34,8 @@ void DisplayImageLoop::subscribe()
         [this](const int64_t&) { _onImageNew(); });
     bus_.subscribe<Topic::SKIP_IMAGE>(
         [this](const SkipImageEvent&) { _onSkipImage(); });
+    bus_.subscribe<Topic::SHOW_IMAGE>(
+        [this](const ShowImageEvent& evt) { _onShowImage(evt); });
     bus_.subscribe<Topic::UPDATE_DISPLAY_INTERVAL>(
         [this](const UpdateDisplayIntervalEvent& evt) { _onUpdateInterval(evt); });
     bus_.subscribe<Topic::UPDATE_NIGHT_MODE>(
@@ -191,7 +196,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
                 continue;
             }
 
-            const int64_t nextId = _pickNext(all);
+            const int64_t nextId = _takeNext(all);
             const auto& image = *std::ranges::find(all, nextId, &Image::id);
             if (!std::filesystem::exists(image.imagePath))
             {
@@ -221,7 +226,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
                 skipCurrent_ = false;
                 refreshing_ = false;
                 cv_.wait_for(lk, std::chrono::seconds(settings_.getEffectiveInterval()),
-                             [&st, this] { return st.stop_requested() || skipCurrent_ || !settings_.isSlideshowActive(); });
+                             [&st, this] { return st.stop_requested() || skipCurrent_ || pendingShowId_ != 0 || !settings_.isSlideshowActive(); });
             }
         }
         catch (const std::exception& e)
@@ -247,7 +252,19 @@ void DisplayImageLoop::_run(const std::stop_token st)
 
 bool DisplayImageLoop::_paint(const std::filesystem::path& path, const std::stop_token& st) const
 {
-    return display_.displayBuffer(PhotoRenderer::render(path), path.string(), st);
+    auto buffer = PhotoRenderer::render(path);
+    if (!buffer.empty() && serverConnection_ && cfg_.display.offlineBadgeAfterSecs > 0)
+    {
+        if (const auto connection = serverConnection_())
+        {
+            if (const auto text = offline::badgeText(std::time(nullptr), *connection, cfg_.display.offlineBadgeAfterSecs))
+            {
+                logger_->info("Server unreachable, drawing badge \"{}\"", *text);
+                offline::draw(buffer, cfg_.display.boldFontPath, *text);
+            }
+        }
+    }
+    return display_.displayBuffer(buffer, path.string(), st);
 }
 
 void DisplayImageLoop::_onImageNew()
@@ -284,6 +301,27 @@ void DisplayImageLoop::_onSkipImage()
     logger_->info("Skip image requested via IPC");
     skipCurrent_ = true;
     cv_.notify_one();
+}
+
+void DisplayImageLoop::_onShowImage(const ShowImageEvent& evt)
+{
+    std::lock_guard lk(mtx_);
+    logger_->info("Show image {} requested via IPC", evt.id);
+    pendingShowId_ = evt.id;
+    skipCurrent_ = true;
+    cv_.notify_one();
+}
+
+int64_t DisplayImageLoop::_takeNext(const std::vector<Image>& images)
+{
+    int64_t requested;
+    {
+        std::lock_guard lk(mtx_);
+        requested = std::exchange(pendingShowId_, 0);
+    }
+    if (requested != 0 && std::ranges::find(images, requested, &Image::id) != images.end())
+        return requested;
+    return _pickNext(images);
 }
 
 void DisplayImageLoop::_onUpdateInterval(const UpdateDisplayIntervalEvent& evt) const

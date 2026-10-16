@@ -51,7 +51,10 @@ int main(int argc, char* argv[])
     if (!updateIpc.connect())
         spdlog::warn("Update service IPC endpoint not available yet, will retry on first request");
 
-    DashboardServer server(cfg, ipc, http, sessions, authTokenManager, wifi, updateIpc, settingsRepo, imageRepo);
+    // Server link state for the connection banner
+    IpcClient wsIpc(cfg.ipc.wsRep);
+
+    DashboardServer server(cfg, ipc, http, sessions, authTokenManager, wifi, updateIpc, wsIpc, settingsRepo, imageRepo);
     server.start();
 
     // Health endpoint so other services can probe the dashboard over nng.
@@ -63,6 +66,7 @@ int main(int argc, char* argv[])
     healthRep.stop();
     server.stop();
     updateIpc.disconnect();
+    wsIpc.disconnect();
     ipc.disconnect();
 
     return 0;

@@ -1,11 +1,14 @@
 #include "dashboard/WifiHandlers.hpp"
 #include "dashboard/ResponseUtil.hpp"
 #include "dashboard/Validation.hpp"
+#include "net/ServerConnection.hpp"
+#include <algorithm>
+#include <ctime>
 
 using namespace dashboard;
 
-WifiHandlers::WifiHandlers(WifiManager& wifi)
-    : wifi_(wifi), logger_(spdlog::default_logger()->clone("WifiHandlers"))
+WifiHandlers::WifiHandlers(WifiManager& wifi, IpcClient& wsIpc)
+    : wifi_(wifi), wsIpc_(wsIpc), logger_(spdlog::default_logger()->clone("WifiHandlers"))
 {
 }
 
@@ -21,11 +24,15 @@ ix::HttpResponsePtr WifiHandlers::handleStatus(const ix::HttpRequestPtr& /*req*/
     return wifiResult(wifi_.getCurrentConnection());
 }
 
-ix::HttpResponsePtr WifiHandlers::handleMode(const ix::HttpRequestPtr& /*req*/) const
+nlohmann::json WifiHandlers::connectionMode() const
 {
-    // Public: the SPA reads this before any login to decide between the normal
-    // dashboard and the offline AP-setup view.
-    return jsonResponse(200, "OK", wifi_.getWifiMode());
+    auto mode = wifi_.getWifiMode();
+    const auto server = queryServerConnection(wsIpc_);
+    mode["server_connected"] = server ? nlohmann::json(server->connected) : nlohmann::json();
+    mode["server_offline_secs"] = server && !server->connected && server->since > 0
+        ? std::max<int64_t>(0, std::time(nullptr) - server->since) : 0;
+    mode["server_last_contact_at"] = server ? server->lastContactAt : 0;
+    return mode;
 }
 
 ix::HttpResponsePtr WifiHandlers::handleSavedNetworks(const ix::HttpRequestPtr& /*req*/) const

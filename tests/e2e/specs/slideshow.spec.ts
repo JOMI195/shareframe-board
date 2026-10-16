@@ -55,3 +55,18 @@ test('newest first jumps from the oldest picture to the latest', async ({ page, 
   await board.skip();
   await waitForPanel(showsImage(c), `newest first: ${c} after ${a}`);
 });
+
+test('show now puts the chosen picture on the panel', async ({ page, server }) => {
+  const a = await server.sendPicture('left-black.jpg', { sender: 'anna' });
+  await waitForPanel(showsImage(a), `picture ${a} on panel`);
+  const b = await server.sendPicture('top-black.jpg', { sender: 'ben' });
+  const c = await server.sendPicture('gradient.jpg', { sender: 'carla' });
+
+  await signIn(page);
+  await page.goto('/slideshow/');
+  await page.getByRole('listitem', { name: /Bild von carla/ }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Jetzt anzeigen' }).click();
+
+  await waitForPanel(showsImage(c), `show now: ${c} instead of ${b}`);
+  await expect(page.getByText('Bild wird auf dem Bilderrahmen angezeigt')).toBeVisible();
+});

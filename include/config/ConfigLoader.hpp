@@ -105,7 +105,9 @@ struct glz::meta<HeartbeatConfig>
     static constexpr auto value = glz::object(
         "interval_secs", &T::intervalSecs,
         "http_url", &T::httpUrl,
-        "event_cursor_path", &T::eventCursorPath
+        "event_cursor_path", &T::eventCursorPath,
+        "first_contact_retry_secs", &T::firstContactRetrySecs,
+        "backend_ok_path", &T::backendOkPath
     );
 };
 
@@ -139,7 +141,8 @@ struct glz::meta<DisplayConfig>
         "setup_url", &T::setupUrl,
         "setup_font_path", &T::setupFontPath,
         "bold_font_path", &T::boldFontPath,
-        "status_screen_timeout_secs", &T::statusScreenTimeoutSecs
+        "status_screen_timeout_secs", &T::statusScreenTimeoutSecs,
+        "offline_badge_after_secs", &T::offlineBadgeAfterSecs
     );
 };
 

@@ -22,6 +22,7 @@ export interface DialogAction {
     icon: React.ReactNode;
     onClick: () => void;
     label?: string;
+    tooltip?: string;
     color?: "inherit" | "primary" | "secondary" | "error" | "info" | "success" | "warning";
     disabled?: boolean;
 }

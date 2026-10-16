@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { screen, waitFor, within } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import * as api from '@/assets/endpoints/api/frame';
 import { renderRoute } from '@tests/helpers/renderRoute';
 import { signedInState } from '@tests/helpers/preloadedState';
@@ -93,6 +93,67 @@ describe('slideshow images', () => {
     expect(within(dialog).getByText('Position 2 von 3')).toBeInTheDocument();
     expect(within(dialog).getByText('09.10.2025, 09:03:20')).toBeInTheDocument();
     expect(await within(dialog).findByRole('img', { name: 'Bild von bob' })).toHaveAttribute('src', expect.stringMatching(/^blob:/));
+  });
+
+  it('puts a picture on the panel from its preview', async () => {
+    const show = spyOnRequests('post', api.getShowSlideshowImageUrl());
+    server.use(show.handler);
+    const { user } = await openSlideshowImages();
+
+    await user.click(screen.getByRole('listitem', { name: /Bild von carol/ }));
+    const button = await within(await screen.findByRole('dialog')).findByRole('button', { name: 'Jetzt anzeigen' });
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
+
+    await waitFor(() => expect(show.calls).toHaveLength(1));
+    expect(await show.calls[0].json()).toEqual({ id: 13 });
+    expect(await screen.findByText('Bild wird auf dem Bilderrahmen angezeigt')).toBeInTheDocument();
+  });
+
+  it('cannot show the picture that is already on the panel', async () => {
+    setBoard({ slideshowImages: makeSlideshowImages({ current_image_id: 12 }) });
+    const { user } = await openSlideshowImages();
+
+    await user.click(screen.getByRole('listitem', { name: /Bild von bob/ }));
+
+    expect(await within(await screen.findByRole('dialog')).findByRole('button', { name: 'Jetzt anzeigen' })).toBeDisabled();
+  });
+
+  it('cannot show a picture while the slideshow is paused', async () => {
+    setBoard({ slideshowActive: false });
+    const { user } = await openSlideshowImages();
+
+    await user.click(screen.getByRole('listitem', { name: /Bild von carol/ }));
+
+    expect(await within(await screen.findByRole('dialog')).findByRole('button', { name: 'Jetzt anzeigen' })).toBeDisabled();
+  });
+
+  it('says to retry when the panel is busy refreshing', async () => {
+    server.use(...failsWith('post', api.getShowSlideshowImageUrl(), 409, 'Display is refreshing'));
+    const { user } = await openSlideshowImages();
+
+    await user.click(screen.getByRole('listitem', { name: /Bild von carol/ }));
+    const button = await within(await screen.findByRole('dialog')).findByRole('button', { name: 'Jetzt anzeigen' });
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
+
+    expect(await screen.findByText('Display wird gerade aktualisiert, bitte gleich erneut versuchen')).toBeInTheDocument();
+  });
+
+  it('downloads a picture from its preview', async () => {
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    const { user } = await openSlideshowImages();
+
+    await user.click(screen.getByRole('listitem', { name: /Bild von carol/ }));
+    await within(await screen.findByRole('dialog')).findByRole('button', { name: 'Jetzt anzeigen' });
+    await user.hover(screen.getByRole('button', { name: 'Aktionen' }));
+    const label = await screen.findByText('Foto herunterladen');
+    // In jsdom the open speed dial's actions still report pointer-events: none.
+    fireEvent.click(within(label.closest('.MuiSpeedDialAction-staticTooltip') as HTMLElement).getByRole('menuitem'));
+
+    await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
+    expect((click.mock.instances[0] as unknown as HTMLAnchorElement).download).toBe('carol-13.jpg');
+    click.mockRestore();
   });
 
   it('a saved custom order can be edited again starting from itself', async () => {

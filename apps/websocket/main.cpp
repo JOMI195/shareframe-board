@@ -5,13 +5,14 @@
 #include "image/ImageManager.hpp"
 #include "ipc/EventBridge.hpp"
 #include "ipc/EventPublisher.hpp"
-#include "ipc/HealthCheck.hpp"
 #include "ipc/IpcClient.hpp"
 #include "ipc/NngRepServer.hpp"
 #include "net/DiagnosticsUploader.hpp"
 #include "net/HTTPClient.hpp"
 #include "net/WebsocketClient.hpp"
+#include "net/WsIpc.hpp"
 #include "repository/ImageRepository.hpp"
+#include "repository/SettingsRepository.hpp"
 #include "repository/TokenRepository.hpp"
 #include "task/ExpiredImageCleanup.hpp"
 #include "task/ImageUpdate.hpp"
@@ -22,7 +23,8 @@
 
 // Owns network + image ingest. WebsocketClient parses server messages into the
 // EventBus; ImageUpdate persists images; EventBridge forwards events over nng
-// PUB for the display service; a REP socket answers health probes.
+// PUB for the display service; a REP socket answers health probes and the
+// server link state.
 int main(int argc, char* argv[])
 {
     auto [cfg, profile] = bootstrap(argc, argv);
@@ -34,6 +36,8 @@ int main(int argc, char* argv[])
     database.init(cfg.database, false);
     TokenRepository tokenRepo(database.get());
     ImageRepository imageRepo(database.get());
+    SettingsRepository settingsRepo(database.get());
+    ServerContact serverContact(settingsRepo);
 
     ImageManager imageManager(cfg, imageRepo);
 
@@ -49,7 +53,7 @@ int main(int argc, char* argv[])
     bridge.wire();
 
     // Tasks subscribe to the bus in start() — also before eventBus.start().
-    WebsocketClient wsClient(eventBus, cfg, authTokenManager);
+    WebsocketClient wsClient(eventBus, cfg, authTokenManager, serverContact);
     wsClient.start();
     ImageUpdate imageUpdate(eventBus, imageManager, imageRepo);
     imageUpdate.start();
@@ -65,8 +69,8 @@ int main(int argc, char* argv[])
 
     eventBus.start();
 
-    // REP: this service only answers health probes.
-    NngRepServer repServer(cfg.ipc.wsRep, health::respond);
+    WsIpc wsIpc(serverContact);
+    NngRepServer repServer(cfg.ipc.wsRep, [&](const IpcMessage& msg) { return wsIpc.handle(msg); });
     repServer.start();
 
     const int sig = waitForSignal();

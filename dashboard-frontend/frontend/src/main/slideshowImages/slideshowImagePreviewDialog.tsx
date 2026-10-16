@@ -1,12 +1,19 @@
 import React from 'react';
 import { Box, Grid, ListItemAvatar, ListItemText, Stack, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { VisibilityOutlined } from '@mui/icons-material';
+import { DownloadOutlined, SlideshowOutlined, VisibilityOutlined } from '@mui/icons-material';
+import uuid from 'react-uuid';
 import ShareframeMainDialog from '@/common/components/shareframeMainDialog';
 import AuthenticatedImage from '@/common/components/authenticatedImage';
 import UserAvatar from '@/common/components/userAvatar';
 import { getReadablyFileSize } from '@/common/utils/files/fileSize.helpers';
 import { getImageFileUrl } from '@/assets/endpoints/api/frame';
-import { ISlideshowImage } from '@/types';
+import { DialogAction, ISlideshowImage } from '@/types';
+import { fetchWithTimeout } from '@/common/utils/fetch';
+import { useAppDispatch, useAppSelector } from '@/store';
+import { selectSlideshowStatus } from '@/store/slideshowStatus/slideshowStatus.Slice';
+import { selectSlideshowOperation, showImageThunk } from '@/store/slideshowOperation/slideshowOperation.Slice';
+import { addAlertSnackbar } from '@/store/snackbars/snackbars.Slice';
+import { useTimer } from '@/hooks/useTimer';
 import { formatTimeLeft, formatUnix } from './slideshowImagesUtils';
 
 interface SlideshowImagePreviewDialogProps {
@@ -28,13 +35,63 @@ const MetaItem: React.FC<{ label: string; children: React.ReactNode }> = ({ labe
 const SlideshowImagePreviewDialog: React.FC<SlideshowImagePreviewDialogProps> = ({ image, count, isCurrent, onClose }) => {
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+    const dispatch = useAppDispatch();
+    const { isActive, isRefreshing } = useAppSelector(selectSlideshowStatus);
+    const { isToggling, isClearingDisplay, isSkippingImage, isShowingImage } = useAppSelector(selectSlideshowOperation);
+    const { isActive: isActionsTimerActive } = useTimer({ id: 'slideshow-actions-timer' });
+
+    const showBlockedReason =
+        isCurrent ? 'Wird bereits angezeigt'
+            : !isActive ? 'Diashow pausiert'
+                : isRefreshing || isActionsTimerActive ? 'Display wird gerade aktualisiert'
+                    : undefined;
+
+    const handleShow = () => {
+        if (image) dispatch(showImageThunk(image.id));
+    };
+
+    const handleDownload = async () => {
+        if (!image) return;
+        try {
+            const response = await fetchWithTimeout(getImageFileUrl(image.id));
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const url = URL.createObjectURL(await response.blob());
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${image.sender}-${image.id}.jpg`;
+            link.click();
+            URL.revokeObjectURL(url);
+        } catch {
+            dispatch(addAlertSnackbar(uuid(), 'Foto herunterladen fehlgeschlagen', 'error'));
+        }
+    };
+
+    const primaryAction: DialogAction = {
+        icon: <SlideshowOutlined />,
+        onClick: handleShow,
+        label: 'Jetzt anzeigen',
+        tooltip: showBlockedReason,
+        color: 'primary',
+        disabled: showBlockedReason !== undefined || isToggling || isClearingDisplay || isSkippingImage || isShowingImage,
+    };
+
+    const dialogActions: DialogAction[] = [
+        {
+            icon: <DownloadOutlined />,
+            onClick: handleDownload,
+            label: 'Foto herunterladen',
+        },
+    ];
 
     return (
         <ShareframeMainDialog
             open={image !== null}
             onDialogClose={onClose}
             dialogTitle="Bild auf dem Bilderrahmen"
-            dialogContentSx={{ padding: 2, mb: 0 }}
+            dialogContentSx={{ padding: 2 }}
+            actionsShown={image !== null}
+            actionPrimary={primaryAction}
+            actionsAdditional={dialogActions}
         >
             {image && (
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>

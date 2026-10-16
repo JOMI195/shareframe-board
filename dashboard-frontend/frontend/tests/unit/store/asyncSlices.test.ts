@@ -76,7 +76,10 @@ describe('connectionMode slice', () => {
   it('marks the mode as loaded and normalises missing fields', () => {
     const state = connectionMode(undefined, fetchConnectionMode.fulfilled({ mode: 'ap' }, 'req'));
 
-    expect(state).toEqual({ mode: 'ap', ssid: '', internet: false, ap_ssid: '', ap_password: '', loaded: true });
+    expect(state).toEqual({
+      mode: 'ap', ssid: '', internet: false, ap_ssid: '', ap_password: '',
+      server_connected: null, server_offline_secs: 0, server_last_contact_at: 0, loaded: true,
+    });
   });
 
   it('falls back to connecting when the mode is missing', () => {

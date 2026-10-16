@@ -16,6 +16,14 @@ void Canvas::black(const int x, const int y)
     buffer_[i / 8] &= static_cast<uint8_t>(~(0x80 >> (i % 8)));
 }
 
+void Canvas::white(const int x, const int y)
+{
+    if (x < SAFE_AREA.x0 || x >= SAFE_AREA.x1 || y < SAFE_AREA.y0 || y >= SAFE_AREA.y1)
+        return;
+    const int i = y * DisplayManager::WIDTH + x;
+    buffer_[i / 8] |= static_cast<uint8_t>(0x80 >> (i % 8));
+}
+
 std::u32string decodeUtf8(const std::string& s)
 {
     std::u32string out;

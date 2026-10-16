@@ -107,4 +107,31 @@ describe('network status banner', () => {
     expect(within(banner).getByText(title)).toBeInTheDocument();
     expect(within(banner).getByText(detail)).toBeInTheDocument();
   });
+
+  it('says how long the server has been unreachable', async () => {
+    server.use(...withConnectionMode({ server_connected: false, server_offline_secs: 3 * 3600, server_last_contact_at: 1_760_000_000 }));
+    renderRoute('/', { preloadedState: signedInState() });
+
+    const banner = await screen.findByRole('status');
+    expect(within(banner).getByText('Server nicht erreichbar')).toBeInTheDocument();
+    expect(within(banner).getByText(/^Letzter Kontakt vor 3 Stunden\./)).toBeInTheDocument();
+  });
+
+  it('flags a frame that has never reached the server', async () => {
+    server.use(...withConnectionMode({ server_connected: false, server_offline_secs: 0, server_last_contact_at: 0 }));
+    renderRoute('/', { preloadedState: signedInState() });
+
+    expect(within(await screen.findByRole('status')).getByText(/^Noch keine Verbindung zum Server/)).toBeInTheDocument();
+  });
+
+  it.each([
+    [{ server_connected: false, server_offline_secs: 30 }],
+    [{ server_connected: null }],
+  ])('keeps quiet for a short reconnect or an unknown link: %o', async (over) => {
+    server.use(...withConnectionMode(over));
+    renderRoute('/', { preloadedState: signedInState() });
+    await screen.findByText('Bilderwiedergabe');
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
 });

@@ -26,6 +26,7 @@ private:
     nlohmann::json _getSysInfo() const;
     nlohmann::json _getNewEvents() const;
     void _saveEventCursor(int64_t seq) const;
+    void _markBackendReached();
 
     const HTTPClient& http_;
     AuthTokenManager& auth_;
@@ -33,4 +34,5 @@ private:
     IpcClient& displayIpc_;
     IpcClient& dashboardIpc_;
     IpcClient& updateIpc_;
+    bool backendReached_ = false;
 };

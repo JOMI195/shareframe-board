@@ -16,7 +16,9 @@
 #include "task/NightBlankScreen.hpp"
 #include "task/StatusScreen.hpp"
 #include "task/WifiModeWatcher.hpp"
+#include <algorithm>
 #include <spdlog/spdlog.h>
+#include <string_view>
 
 // Owns all display behavior. Commands/queries arrive over nng REP, broadcast
 // events over nng SUB; both feed the EventBus the display tasks consume.
@@ -42,12 +44,21 @@ int main(int argc, char* argv[])
     EventBus eventBus;
 
     DisplayManager displayManager(cfg, displayMetrics);
+    // Safe mode (OS boot/crash loop guard): blank the panel once and leave it alone.
+    if (std::find(argv + 1, argv + argc, std::string_view("--clear")) != argv + argc)
+    {
+        displayManager.init();
+        spdlog::info("Panel cleared for safe mode");
+        return 0;
+    }
     if (!cfg.display.mockDisplay)
         displayMetrics.increment("app_boot_total");
 
     // Display tasks subscribe to the bus — wire them before eventBus.start(). The
     // manager boots the panel and starts/stops the content tasks itself.
-    DisplayImageLoop displayImageLoop(eventBus, cfg, imageRepo, displayManager, runtimeSettings);
+    IpcClient wsIpc(cfg.ipc.wsRep);
+    DisplayImageLoop displayImageLoop(eventBus, cfg, imageRepo, displayManager, runtimeSettings,
+                                      [&] { return queryServerConnection(wsIpc); });
     ApNetworkSetupScreen apNetworkSetupScreen(eventBus, cfg, displayManager);
     NightBlankScreen nightBlankScreen(eventBus, displayManager);
     StatusScreen statusScreen(eventBus, cfg, displayManager);

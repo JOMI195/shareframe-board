@@ -26,6 +26,7 @@ function freshState() {
 }
 
 const sockets = new Set();
+let outage = false;
 
 function json(res, status, body) {
   res.writeHead(status, { 'Content-Type': 'application/json' });
@@ -138,6 +139,12 @@ const routes = {
     for (const ws of sockets) code ? ws.close(code, 'e2e') : ws.terminate();
     json(res, 200, {});
   },
+  // Server down for good: drops the frame and turns its reconnects away until switched off.
+  'POST /__test/outage': async (req, res) => {
+    ({ on: outage } = await readBody(req));
+    if (outage) for (const ws of sockets) ws.terminate();
+    json(res, 200, {});
+  },
 };
 
 const server = http.createServer(async (req, res) => {
@@ -152,6 +159,10 @@ const server = http.createServer(async (req, res) => {
 
 const wss = new WebSocketServer({ noServer: true });
 server.on('upgrade', (req, socket, head) => {
+  if (outage) {
+    socket.end('HTTP/1.1 503 Service Unavailable\r\n\r\n');
+    return;
+  }
   if (!req.url.startsWith('/ws/frames/') || !tokens.has(tokenFrom(req))) {
     socket.end('HTTP/1.1 401 Unauthorized\r\n\r\n');
     return;

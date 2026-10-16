@@ -29,6 +29,7 @@ protected:
     Recorder<Topic::UPDATE_DISPLAY_INTERVAL> intervals{bus};
     Recorder<Topic::UPDATE_NIGHT_MODE> nightModes{bus};
     Recorder<Topic::STATUS_SCREEN> statusScreens{bus};
+    Recorder<Topic::SHOW_IMAGE> shows{bus};
 };
 }
 
@@ -75,4 +76,20 @@ TEST_F(DisplayIpcTest, UnknownStatusScreenIsIgnored)
     ipc.handle({IpcMessageType::ShowStatusScreen, {{"screen", "update"}, {"version", "1.3.0"}}});
     ASSERT_TRUE(waitFor([&] { return statusScreens.size() == 1; }));
     EXPECT_EQ(statusScreens.get()[0], (StatusScreenEvent{StatusScreenKind::Update, "1.3.0"}));
+}
+
+TEST_F(DisplayIpcTest, ShowImageOnlyPassesForAStoredPictureWhileTheSlideshowRuns)
+{
+    repo.save({5, "alice", db.dir() / "5.jpg", 5000});
+
+    EXPECT_EQ(ipc.handle({IpcMessageType::ShowImage, {{"id", 99}}}).value("found", true), false);
+    EXPECT_EQ(ipc.handle({IpcMessageType::ShowImage, {}}).value("found", true), false);
+
+    settings.setSlideshowActive(false);
+    EXPECT_EQ(ipc.handle({IpcMessageType::ShowImage, {{"id", 5}}}).value("inactive", false), true);
+    settings.setSlideshowActive(true);
+
+    EXPECT_EQ(ipc.handle({IpcMessageType::ShowImage, {{"id", 5}}}).value("found", false), true);
+    ASSERT_TRUE(waitFor([&] { return shows.size() == 1; }));
+    EXPECT_EQ(shows.get()[0].id, 5);
 }

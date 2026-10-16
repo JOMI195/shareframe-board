@@ -88,6 +88,15 @@ inline bool isValidPlaybackMode(const std::string& mode)
     return playbackModeFromString(mode).has_value();
 }
 
+/// A stored picture id: a positive integer, nullopt for anything else.
+inline std::optional<int64_t> parseImageId(const nlohmann::json& j)
+{
+    if (!j.is_number_integer())
+        return std::nullopt;
+    const auto id = j.get<int64_t>();
+    return id > 0 ? std::optional(id) : std::nullopt;
+}
+
 /// Ids of a custom play order, duplicates dropped; nullopt unless `j` is an
 /// array of at most MAX_CUSTOM_ORDER_LENGTH integers.
 inline std::optional<std::vector<int64_t>> parseCustomOrder(const nlohmann::json& j)
