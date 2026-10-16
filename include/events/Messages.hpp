@@ -24,6 +24,7 @@ template <> struct TopicMessage<Topic::WS_CONNECTED> { using type = WsConnectedE
 template <> struct TopicMessage<Topic::PICTURE>       { using type = nlohmann::json; };
 template <> struct TopicMessage<Topic::CLEAR_IMAGES>  { using type = nlohmann::json; };
 template <> struct TopicMessage<Topic::CLEAR_DISPLAY> { using type = nlohmann::json; };
+template <> struct TopicMessage<Topic::REMOTE_COMMAND> { using type = nlohmann::json; };
 
 // Internal events
 template <> struct TopicMessage<Topic::IMAGE_REMOVED> { using type = std::vector<int64_t>; };

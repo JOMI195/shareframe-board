@@ -29,10 +29,11 @@ DashboardServer::DashboardServer(AppConfig& cfg, IpcClient& ipc,
       settings_(settings), wifi_(wifi),
       server_(cfg.dashboardApplication.port, cfg.dashboardApplication.host),
       logger_(spdlog::default_logger()->clone("DashboardServer")),
+      diagnostics_(cfg, http, authTokenManager),
       wifiHandlers_(wifi),
       frameHandlers_(ipc, cfg),
       slideshowImageHandlers_(ipc, images),
-      systemHandlers_(cfg, wifi),
+      systemHandlers_(cfg, wifi, diagnostics_),
       serviceHandlers_(cfg),
       updateHandlers_(updateIpc)
 {
@@ -107,6 +108,7 @@ void DashboardServer::_initRoutes()
         {"POST", "/api/system/shutdown",         [this](auto& req, auto&) { return systemHandlers_.handleShutdown(req); }},
         {"POST", "/api/system/factory-reset",    [this](auto& req, auto&) { return systemHandlers_.handleFactoryReset(req); }},
         {"GET",  "/api/system/logs",             [this](auto& req, auto& qp) { return systemHandlers_.handleLogs(req, qp); }},
+        {"POST", "/api/system/diagnostics",      [this](auto& req, auto&) { return systemHandlers_.handleSendDiagnostics(req); }},
 
         // Updates (A/B image update via RAUC + tryboot)
         {"GET",  "/api/system/updates/latest",         [this](auto& req, auto&) { return updateHandlers_.handleLatest(req); }},

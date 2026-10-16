@@ -6,7 +6,9 @@
 #include "ipc/EventBridge.hpp"
 #include "ipc/EventPublisher.hpp"
 #include "ipc/HealthCheck.hpp"
+#include "ipc/IpcClient.hpp"
 #include "ipc/NngRepServer.hpp"
+#include "net/DiagnosticsUploader.hpp"
 #include "net/HTTPClient.hpp"
 #include "net/WebsocketClient.hpp"
 #include "repository/ImageRepository.hpp"
@@ -14,6 +16,7 @@
 #include "task/ExpiredImageCleanup.hpp"
 #include "task/ImageUpdate.hpp"
 #include "task/MissingImageCheck.hpp"
+#include "task/RemoteCommand.hpp"
 #include "Version.hpp"
 #include <spdlog/spdlog.h>
 
@@ -54,6 +57,11 @@ int main(int argc, char* argv[])
     missingImageCheck.start();
     ExpiredImageCleanup expiredImageCleanup(eventBus, cfg, imageManager);
     expiredImageCleanup.start();
+    IpcClient displayIpc(cfg.ipc.displayRep);
+    IpcClient updateIpc(cfg.ipc.updateRep);
+    DiagnosticsUploader diagnostics(cfg, http, authTokenManager);
+    RemoteCommand remoteCommand(eventBus, displayIpc, updateIpc, diagnostics);
+    remoteCommand.start();
 
     eventBus.start();
 
@@ -66,6 +74,9 @@ int main(int argc, char* argv[])
     repServer.stop();
     eventBus.stop();
     missingImageCheck.stop();
+    remoteCommand.stop();
+    displayIpc.disconnect();
+    updateIpc.disconnect();
     expiredImageCleanup.stop();
     wsClient.stop();
     imageUpdate.stop();

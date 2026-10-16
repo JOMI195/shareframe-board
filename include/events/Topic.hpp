@@ -6,6 +6,7 @@ enum class Topic {
     PICTURE,
     CLEAR_IMAGES,
     CLEAR_DISPLAY,
+    REMOTE_COMMAND,
     IMAGE_REMOVED,
     IMAGE_NEW,
     SKIP_IMAGE,

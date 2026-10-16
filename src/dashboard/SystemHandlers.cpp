@@ -20,11 +20,11 @@ nlohmann::json coerceScalar(const std::string& v)
 }
 } // namespace
 
-SystemHandlers::SystemHandlers(const AppConfig& cfg, WifiManager& wifi)
-    : cfg_(cfg), wifi_(wifi),
+SystemHandlers::SystemHandlers(const AppConfig& cfg, WifiManager& wifi, const DiagnosticsUploader& diagnostics)
+    : cfg_(cfg), wifi_(wifi), diagnostics_(diagnostics),
       logger_(spdlog::default_logger()->clone("SystemHandlers")),
       // Stable short ids = the public log contract; mapped to files in handleLogs.
-      allowedServiceNames_({"websocket", "display", "dashboard", "heartbeat", "update", "system"})
+      allowedServiceNames_({"websocket", "display", "dashboard", "heartbeat", "update", "system", "events"})
 {
 }
 
@@ -124,6 +124,18 @@ ix::HttpResponsePtr SystemHandlers::handleFactoryReset(const ix::HttpRequestPtr&
     return jsonResponse(200, "OK", nlohmann::json::object(), "Resetting to factory defaults...");
 }
 
+ix::HttpResponsePtr SystemHandlers::handleSendDiagnostics(const ix::HttpRequestPtr& /*req*/) const
+{
+    logger_->info("Diagnostics upload requested by owner");
+    const auto result = diagnostics_.collectAndUpload("owner");
+    if (!result.ok)
+    {
+        logger_->error("Diagnostics upload failed: {}", result.error);
+        return errorResponse(502, "Bad Gateway", result.error);
+    }
+    return jsonResponse(200, "OK", nlohmann::json::object(), "Diagnostics sent");
+}
+
 ix::HttpResponsePtr SystemHandlers::handleLogs(
     const ix::HttpRequestPtr& /*req*/,
     const std::unordered_map<std::string, std::string>& queryParams) const
@@ -160,6 +172,8 @@ ix::HttpResponsePtr SystemHandlers::handleLogs(
         path = cfg_.log.logPath + "/" + cfg_.updateApplication.logFile;
     else if (serviceName == "system")
         path = cfg_.log.systemLogPath;
+    else if (serviceName == "events")
+        path = cfg_.log.eventLogPath;
     auto result = Subprocess::run({"tail", "-n", std::to_string(lines), path}, 10);
 
     if (result.exitCode != 0)
