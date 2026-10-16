@@ -467,7 +467,7 @@ const FrameActions: React.FC = () => {
                                                         disabled={isNightModeDisabled || !nightEnabled}
                                                     />
                                                 }
-                                                label="Bildschirm nachts ausschalten"
+                                                label="Bildschirm nachts pausieren"
                                             />
                                             <Box sx={{ display: 'flex', gap: 1 }}>
                                                 <FormControl sx={{ flex: 1 }}>

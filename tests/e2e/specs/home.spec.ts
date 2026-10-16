@@ -91,7 +91,7 @@ test('the interval reaches the display and survives a restart', async ({ page, b
 test('night mode reaches the display and survives a restart', async ({ page, board }) => {
   await signIn(page);
   await page.getByLabel('Nachtmodus aktivieren').check();
-  await page.getByLabel('Bildschirm nachts ausschalten').check();
+  await page.getByLabel('Bildschirm nachts pausieren').check();
   await page.getByRole('button', { name: 'Nachtmodus speichern' }).click();
   await expect(page.getByText(/Nachtmodus aktiv von/)).toBeVisible();
 

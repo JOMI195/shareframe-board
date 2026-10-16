@@ -183,7 +183,7 @@ describe('frame actions', () => {
     const { user } = await openHome();
 
     await user.click(screen.getByLabelText('Nachtmodus aktivieren'));
-    await user.click(screen.getByLabelText('Bildschirm nachts ausschalten'));
+    await user.click(screen.getByLabelText('Bildschirm nachts pausieren'));
     expect(within(card('Nachtmodus')).getByLabelText('Intervall in der Nacht (Minuten)')).toBeDisabled();
     await user.click(screen.getByRole('button', { name: 'Nachtmodus speichern' }));
 
