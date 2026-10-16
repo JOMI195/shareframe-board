@@ -138,6 +138,7 @@ struct glz::meta<DisplayConfig>
         "night_interval_secs", &T::nightIntervalSecs,
         "night_blank", &T::nightBlank,
         "wifi_mode_path", &T::wifiModePath,
+        "ap_setup_boot_window_secs", &T::apSetupBootWindowSecs,
         "setup_url", &T::setupUrl,
         "setup_font_path", &T::setupFontPath,
         "bold_font_path", &T::boldFontPath,
