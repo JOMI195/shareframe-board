@@ -1,13 +1,15 @@
 // Short, stable service ids — must match the backend log contract
 // (SystemHandlers::allowedServiceNames_). "system" = busybox syslog; the
-// others are the split services, each with its own spdlog file.
+// others are the split services, each with its own spdlog file; "events" is
+// the persistent device event log (boots, crashes, updates, remote commands).
 export enum ServiceType {
     WEBSOCKET = 'websocket',
     DISPLAY = 'display',
     DASHBOARD = 'dashboard',
     HEARTBEAT = 'heartbeat',
     UPDATE = 'update',
-    SYSTEM = 'system'
+    SYSTEM = 'system',
+    EVENTS = 'events'
 }
 
 export interface LogEntry {
