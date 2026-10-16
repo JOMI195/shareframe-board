@@ -15,6 +15,8 @@ struct LogConfig
     // General system log (busybox syslogd + klogd) — not a shareframe spdlog
     // file, so it lives outside logPath. Overridable per board/deployment.
     std::string systemLogPath = "/var/log/messages";
+    // Persistent board event log (shareframe-event), survives reboots.
+    std::string eventLogPath = "/data/shareframe/health.log";
 };
 
 struct ShareframeApplicationConfig
@@ -125,6 +127,14 @@ struct HeartbeatConfig
 {
     int intervalSecs = 60;
     std::string httpUrl = "/api/frames/frame-hearbeat/";
+    std::string eventCursorPath = "event-cursor";
+};
+
+struct DiagnosticsConfig
+{
+    std::string httpUrl = "/api/frames/frame-diagnostics/";
+    // Package captured before a remote reboot; kept until it is uploaded.
+    std::string pendingPath = "pre-reboot-diag.gz";
 };
 
 struct ExpiryCleanupConfig
@@ -160,6 +170,7 @@ struct AppConfig
     DisplayApplicationConfig displayApplication;
     HeartbeatApplicationConfig heartbeatApplication;
     HeartbeatConfig heartbeat;
+    DiagnosticsConfig diagnostics;
     ExpiryCleanupConfig expiryCleanup;
     IpcConfig ipc;
 

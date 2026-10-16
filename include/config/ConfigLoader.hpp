@@ -24,7 +24,8 @@ struct glz::meta<LogConfig>
     using T = LogConfig;
     static constexpr auto value = glz::object(
         "log_path", &T::logPath,
-        "system_log_path", &T::systemLogPath
+        "system_log_path", &T::systemLogPath,
+        "event_log_path", &T::eventLogPath
     );
 };
 
@@ -103,7 +104,8 @@ struct glz::meta<HeartbeatConfig>
     using T = HeartbeatConfig;
     static constexpr auto value = glz::object(
         "interval_secs", &T::intervalSecs,
-        "http_url", &T::httpUrl
+        "http_url", &T::httpUrl,
+        "event_cursor_path", &T::eventCursorPath
     );
 };
 
@@ -198,6 +200,16 @@ struct glz::meta<IpcConfig>
 };
 
 template <>
+struct glz::meta<DiagnosticsConfig>
+{
+    using T = DiagnosticsConfig;
+    static constexpr auto value = glz::object(
+        "http_url", &T::httpUrl,
+        "pending_path", &T::pendingPath
+    );
+};
+
+template <>
 struct glz::meta<AppConfig>
 {
     using T = AppConfig;
@@ -219,6 +231,7 @@ struct glz::meta<AppConfig>
         "heartbeat_application", &T::heartbeatApplication,
         "update_application", &T::updateApplication,
         "heartbeat", &T::heartbeat,
+        "diagnostics", &T::diagnostics,
         "expiry_cleanup", &T::expiryCleanup,
         "update", &T::update,
         "ipc", &T::ipc

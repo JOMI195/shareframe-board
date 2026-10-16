@@ -7,6 +7,7 @@
 #include "support/TokenStore.hpp"
 #include "support/Wait.hpp"
 #include "task/Heartbeat.hpp"
+#include <fstream>
 #include <gtest/gtest.h>
 
 using namespace std::chrono_literals;
@@ -23,6 +24,7 @@ protected:
         cfg.baseUrl = backend.baseUrl();
         cfg.frameId = "ABCD-EFGH-IJKL-MNOP";
         cfg.heartbeat.intervalSecs = 3600;
+        cfg.heartbeat.eventCursorPath = (db.dir() / "event-cursor").string();
         storeValidToken(db.get());
         backend.on(std::string("POST ") + kHeartbeat, 200);
         wsHealth.start();
@@ -91,4 +93,66 @@ TEST_F(HeartbeatTest, RejectedHeartbeatDropsTheTokenForRefetch)
     backend.on(std::string("POST ") + kHeartbeat, 401);
     sentPayload();
     EXPECT_TRUE(waitFor([&] { return !tokens.get().has_value(); }));
+}
+
+TEST_F(HeartbeatTest, ForwardsFaultCountersAndPerProcessMemory)
+{
+    shims.add("shareframe-sysinfo", "printf 'crash_count=2\\nwlan_signal_dbm=-61\\nwifi_ssid=Home\\n"
+                                    "proc_display_heap_bytes=1048576\\nproc_update_threads=3\\n'");
+    const auto p = sentPayload();
+
+    EXPECT_EQ(p["crash_count"], 2);
+    EXPECT_EQ(p["wlan_signal_dbm"], -61);
+    EXPECT_EQ(p["proc_display_heap_bytes"], 1048576);
+    EXPECT_EQ(p["proc_update_threads"], 3);
+    EXPECT_FALSE(p.contains("wifi_ssid"));
+}
+
+TEST_F(HeartbeatTest, IncludesDisplayStatsWhenDisplayIsUp)
+{
+    shims.add("shareframe-sysinfo", "exit 0");
+    NngRepServer display{sock("display.sock"), [](const IpcMessage& msg) -> nlohmann::json {
+        if (msg.type == IpcMessageType::GetDisplayStats)
+            return {{"epd_refresh_total", 42}, {"health", "ok"}};
+        return health::respond(msg);
+    }};
+    display.start();
+    const auto p = sentPayload();
+
+    EXPECT_EQ(p["display_running"], true);
+    EXPECT_EQ(p["display_epd_refresh_total"], 42);
+    EXPECT_EQ(p["display_health"], "ok");
+}
+
+TEST_F(HeartbeatTest, SendsEventsSinceCursorAndAdvancesIt)
+{
+    shims.add("shareframe-sysinfo", "exit 0");
+    shims.add("shareframe-event", "[ \"$2\" = 0 ] || exit 0\n"
+                                  "printf '7 2026-10-16T10:00:00 [crash] shareframe-display signal 11\\n"
+                                  "8 2026-10-16T10:01:00 [boot] version=1.2.0 unclean=1\\ngarbage\\n'\n"
+                                  "printf '%s\\n' '9 2026-10-16T10:02:00 [update] failed (\"bad\" sig)'");
+    const auto p = sentPayload();
+
+    ASSERT_EQ(p["events"].size(), 3u);
+    EXPECT_EQ(p["events"][0]["seq"], 7);
+    EXPECT_EQ(p["events"][0]["source"], "crash");
+    EXPECT_EQ(p["events"][0]["message"], "shareframe-display signal 11");
+    EXPECT_EQ(p["events"][1]["time"], "2026-10-16T10:01:00");
+    EXPECT_EQ(p["events"][2]["message"], "failed ( bad  sig)");
+    EXPECT_TRUE(waitFor([&] {
+        int64_t cursor = 0;
+        std::ifstream(cfg.heartbeat.eventCursorPath) >> cursor;
+        return cursor == 9;
+    }));
+}
+
+TEST_F(HeartbeatTest, KeepsEventCursorWhenHeartbeatFails)
+{
+    shims.add("shareframe-sysinfo", "exit 0");
+    shims.add("shareframe-event", "printf '3 2026-10-16T10:00:00 [wifi] connected\\n'");
+    backend.on(std::string("POST ") + kHeartbeat, 500);
+    const auto p = sentPayload();
+
+    EXPECT_EQ(p["events"].size(), 1u);
+    EXPECT_FALSE(std::filesystem::exists(cfg.heartbeat.eventCursorPath));
 }
