@@ -2,6 +2,7 @@
 #include "dashboard/ResponseUtil.hpp"
 #include "dashboard/Validation.hpp"
 #include "ipc/IpcProtocol.hpp"
+#include "settings/NightWindow.hpp"
 
 using namespace dashboard;
 
@@ -33,7 +34,7 @@ ix::HttpResponsePtr FrameHandlers::handleStatus(const ix::HttpRequestPtr& /*req*
         {"start_hour", nightResult ? nightResult->value("start_hour", cfg_.display.nightStartHour) : cfg_.display.nightStartHour},
         {"end_hour", nightResult ? nightResult->value("end_hour", cfg_.display.nightEndHour) : cfg_.display.nightEndHour},
         {"interval_seconds", nightResult ? nightResult->value("interval_secs", cfg_.display.nightIntervalSecs) : cfg_.display.nightIntervalSecs},
-        {"blank", nightResult ? nightResult->value("blank", cfg_.display.nightBlank) : cfg_.display.nightBlank},
+        {"style", nightResult ? nightResult->value("style", cfg_.display.nightStyle) : cfg_.display.nightStyle},
         {"active_now", nightResult && nightResult->value("active_now", false)}
     };
 
@@ -103,7 +104,7 @@ ix::HttpResponsePtr FrameHandlers::handleUpdateNightMode(const ix::HttpRequestPt
     const int startHour = body.value("start_hour", -1);
     const int endHour = body.value("end_hour", -1);
     const int secs = body.value("interval_seconds", 0);
-    const bool blank = body.value("blank", false);
+    const std::string style = body.value("style", "");
 
     if (!Validation::isValidHour(startHour) || !Validation::isValidHour(endHour))
         return errorResponse(400, "Bad Request", "start_hour and end_hour must be between 0 and 23");
@@ -111,13 +112,15 @@ ix::HttpResponsePtr FrameHandlers::handleUpdateNightMode(const ix::HttpRequestPt
         return errorResponse(400, "Bad Request", "start_hour and end_hour must differ");
     if (!Validation::isValidIntervalSecs(secs))
         return errorResponse(400, "Bad Request", "interval_seconds must be between 180 and 86400");
+    if (!nightStyleFromString(style))
+        return errorResponse(400, "Bad Request", "style must be one of slower, hold, pause");
 
     if (!ipc_.send(IpcMessage{IpcMessageType::UpdateNightMode, {
             {"enabled", enabled},
             {"start_hour", startHour},
             {"end_hour", endHour},
             {"interval_secs", secs},
-            {"blank", blank}
+            {"style", style}
         }}))
     {
         logger_->error("Failed to send update_night_mode via IPC");
@@ -129,7 +132,7 @@ ix::HttpResponsePtr FrameHandlers::handleUpdateNightMode(const ix::HttpRequestPt
         {"start_hour", startHour},
         {"end_hour", endHour},
         {"interval_seconds", secs},
-        {"blank", blank}
+        {"style", style}
     });
 }
 

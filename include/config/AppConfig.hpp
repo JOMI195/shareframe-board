@@ -58,13 +58,13 @@ struct DisplayConfig
     std::string loadingImagePath = "assets/image/loading";
     std::string defaultImagesPath = "assets/image/default";
     int clearTargetHour = 2;
-    // Quiet hours: the rotation slows to a longer interval to save panel wear,
-    // or with blank the panel stays white until the window ends.
+    // Quiet hours: the rotation slows to a longer interval, holds the current
+    // picture or pauses the panel until the window ends, to save panel wear.
     bool nightModeEnabled = true;
     int nightStartHour = 1;
     int nightEndHour = 6;
     int nightIntervalSecs = 3600;
-    bool nightBlank = true;
+    std::string nightStyle = "hold";
     std::string wifiModePath = "/run/shareframe/wifi-mode.json";
     // With saved networks the setup QR only shows this long after boot, before the first connection.
     int apSetupBootWindowSecs = 600;

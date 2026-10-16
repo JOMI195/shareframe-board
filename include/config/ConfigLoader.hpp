@@ -136,7 +136,7 @@ struct glz::meta<DisplayConfig>
         "night_start_hour", &T::nightStartHour,
         "night_end_hour", &T::nightEndHour,
         "night_interval_secs", &T::nightIntervalSecs,
-        "night_blank", &T::nightBlank,
+        "night_style", &T::nightStyle,
         "wifi_mode_path", &T::wifiModePath,
         "ap_setup_boot_window_secs", &T::apSetupBootWindowSecs,
         "setup_url", &T::setupUrl,

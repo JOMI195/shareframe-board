@@ -24,7 +24,7 @@ protected:
         cfg.display.setupFontPath = std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans.ttf";
         cfg.display.boldFontPath = std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans-Bold.ttf";
         // The migrated DB blanks the panel from 1 to 6, whatever the wall clock says here.
-        settings.setNightMode(false, 1, 6, 3600, false);
+        settings.setNightMode(false, 1, 6, 3600, NightStyle::Slower);
     }
 
     void TearDown() override
@@ -159,7 +159,7 @@ TEST_F(DisplayTaskManagerTest, BlankNightPausesTheSlideshowAndYieldsOnlyToTheSet
     ASSERT_TRUE(waitFor([&] { return showsDefault(); }));
 
     const auto [from, to] = nightNow();
-    bus.publish<Topic::UPDATE_NIGHT_MODE>({true, from, to, 3600, true});
+    bus.publish<Topic::UPDATE_NIGHT_MODE>({true, from, to, 3600, NightStyle::Pause});
     ASSERT_TRUE(waitFor([&] { return showsNight(); }));
     EXPECT_EQ(manager.state(), DisplayState::NightBlank);
     const auto blankedAt = seq();
@@ -174,7 +174,7 @@ TEST_F(DisplayTaskManagerTest, BlankNightPausesTheSlideshowAndYieldsOnlyToTheSet
     ASSERT_TRUE(waitFor([&] { return showsNight(); }));
     EXPECT_EQ(manager.state(), DisplayState::NightBlank);
 
-    bus.publish<Topic::UPDATE_NIGHT_MODE>({false, from, to, 3600, true});
+    bus.publish<Topic::UPDATE_NIGHT_MODE>({false, from, to, 3600, NightStyle::Pause});
     EXPECT_TRUE(waitFor([&] { return showsDefault(); }));
     EXPECT_EQ(manager.state(), DisplayState::Slideshow);
 }
@@ -183,11 +183,11 @@ TEST_F(DisplayTaskManagerTest, NewNightEndRepaintsTheNightScreen)
 {
     start();
     const auto [from, to] = nightNow();
-    bus.publish<Topic::UPDATE_NIGHT_MODE>({true, from, to, 3600, true});
+    bus.publish<Topic::UPDATE_NIGHT_MODE>({true, from, to, 3600, NightStyle::Pause});
     ASSERT_TRUE(waitFor([&] { return showsNight(); }));
     const auto shownAt = seq();
 
-    bus.publish<Topic::UPDATE_NIGHT_MODE>({true, from, nightNow(2).second, 3600, true});
+    bus.publish<Topic::UPDATE_NIGHT_MODE>({true, from, nightNow(2).second, 3600, NightStyle::Pause});
     EXPECT_TRUE(waitFor([&] { return seq() > shownAt; }));
     EXPECT_TRUE(showsNight());
 }
@@ -197,10 +197,10 @@ TEST_F(DisplayTaskManagerTest, NightEndingOnAStoppedSlideshowClearsTheNightScree
     settings.setSlideshowActive(false);
     start();
     const auto [from, to] = nightNow();
-    bus.publish<Topic::UPDATE_NIGHT_MODE>({true, from, to, 3600, true});
+    bus.publish<Topic::UPDATE_NIGHT_MODE>({true, from, to, 3600, NightStyle::Pause});
     ASSERT_TRUE(waitFor([&] { return showsNight(); }));
 
-    bus.publish<Topic::UPDATE_NIGHT_MODE>({false, from, to, 3600, true});
+    bus.publish<Topic::UPDATE_NIGHT_MODE>({false, from, to, 3600, NightStyle::Pause});
     EXPECT_TRUE(waitFor([&] { return panel().value("state", "") == "cleared"; }));
 }
 
@@ -208,7 +208,7 @@ TEST_F(DisplayTaskManagerTest, NightScreenComesBackAfterTheDailyClear)
 {
     start();
     const auto [from, to] = nightNow();
-    bus.publish<Topic::UPDATE_NIGHT_MODE>({true, from, to, 3600, true});
+    bus.publish<Topic::UPDATE_NIGHT_MODE>({true, from, to, 3600, NightStyle::Pause});
     ASSERT_TRUE(waitFor([&] { return showsNight(); }));
 
     display.clear();

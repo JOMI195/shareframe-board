@@ -69,17 +69,17 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
         const int startHour = msg.data.value("start_hour", -1);
         const int endHour = msg.data.value("end_hour", -1);
         const int secs = msg.data.value("interval_secs", 0);
-        const bool blank = msg.data.value("blank", false);
+        const auto style = nightStyleFromString(msg.data.value("style", ""));
         if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23
-            || startHour == endHour || secs <= 0)
+            || startHour == endHour || secs <= 0 || !style)
         {
             spdlog::warn("IPC: invalid payload in update_night_mode");
             return nlohmann::json::object();
         }
-        spdlog::info("IPC: update night mode to enabled={}, window={}-{}, interval={}s, blank={}",
-                     enabled, startHour, endHour, secs, blank);
+        spdlog::info("IPC: update night mode to enabled={}, window={}-{}, interval={}s, style={}",
+                     enabled, startHour, endHour, secs, toString(*style));
         bus_.publish<Topic::UPDATE_NIGHT_MODE>(
-            UpdateNightModeEvent{enabled, startHour, endHour, secs, blank});
+            UpdateNightModeEvent{enabled, startHour, endHour, secs, *style});
         return nlohmann::json::object();
     }
 
@@ -89,7 +89,7 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
             {"start_hour", settings_.getNightStartHour()},
             {"end_hour", settings_.getNightEndHour()},
             {"interval_secs", settings_.getNightInterval()},
-            {"blank", settings_.isNightBlank()},
+            {"style", toString(settings_.getNightStyle())},
             {"active_now", settings_.isNightNow()}
         };
 

@@ -23,7 +23,7 @@ RuntimeSettings::RuntimeSettings(SettingsRepository& repo, const AppConfig& cfg)
       nightStartHour_(cfg.display.nightStartHour),
       nightEndHour_(cfg.display.nightEndHour),
       nightIntervalSecs_(cfg.display.nightIntervalSecs),
-      nightBlank_(cfg.display.nightBlank)
+      nightStyle_(nightStyleFromString(cfg.display.nightStyle).value_or(NightStyle::Hold))
 {
     // Restore persisted value from DB if available
     auto stored = repo_.get("display_interval");
@@ -78,11 +78,14 @@ RuntimeSettings::RuntimeSettings(SettingsRepository& repo, const AppConfig& cfg)
         catch (...) {}
     }
 
-    if (auto storedBlank = repo_.get("night_blank"))
-        nightBlank_ = (*storedBlank == "1");
+    if (auto storedStyle = repo_.get("night_style"))
+    {
+        if (const auto style = nightStyleFromString(*storedStyle))
+            nightStyle_ = *style;
+    }
 
-    logger_->info("Night mode: enabled={}, window={}-{}, interval={}s, blank={}",
-                  nightModeEnabled_, nightStartHour_, nightEndHour_, nightIntervalSecs_, nightBlank_);
+    logger_->info("Night mode: enabled={}, window={}-{}, interval={}s, style={}",
+                  nightModeEnabled_, nightStartHour_, nightEndHour_, nightIntervalSecs_, toString(nightStyle_));
 
     if (auto storedMode = repo_.get("playback_mode"))
     {
@@ -149,28 +152,28 @@ int RuntimeSettings::getNightInterval() const
     return nightIntervalSecs_;
 }
 
-bool RuntimeSettings::isNightBlank() const
+NightStyle RuntimeSettings::getNightStyle() const
 {
     std::lock_guard lk(mtx_);
-    return nightBlank_;
+    return nightStyle_;
 }
 
 void RuntimeSettings::setNightMode(const bool enabled, const int startHour,
-                                   const int endHour, const int intervalSecs, const bool blank)
+                                   const int endHour, const int intervalSecs, const NightStyle style)
 {
     std::lock_guard lk(mtx_);
     nightModeEnabled_ = enabled;
     nightStartHour_ = startHour;
     nightEndHour_ = endHour;
     nightIntervalSecs_ = intervalSecs;
-    nightBlank_ = blank;
+    nightStyle_ = style;
     repo_.set("night_mode_enabled", enabled ? "1" : "0");
     repo_.set("night_start_hour", std::to_string(startHour));
     repo_.set("night_end_hour", std::to_string(endHour));
     repo_.set("night_interval", std::to_string(intervalSecs));
-    repo_.set("night_blank", blank ? "1" : "0");
-    logger_->info("Night mode updated to enabled={}, window={}-{}, interval={}s, blank={} (persisted)",
-                  enabled, startHour, endHour, intervalSecs, blank);
+    repo_.set("night_style", toString(style));
+    logger_->info("Night mode updated to enabled={}, window={}-{}, interval={}s, style={} (persisted)",
+                  enabled, startHour, endHour, intervalSecs, toString(style));
 }
 
 PlaybackMode RuntimeSettings::getPlaybackMode() const
@@ -204,13 +207,13 @@ bool RuntimeSettings::isNightNow() const
 bool RuntimeSettings::isNightBlankNow() const
 {
     std::lock_guard lk(mtx_);
-    return nightModeEnabled_ && nightBlank_ && _secsUntilNightEnd() > 0;
+    return nightModeEnabled_ && nightStyle_ == NightStyle::Pause && _secsUntilNightEnd() > 0;
 }
 
 int RuntimeSettings::secsUntilNightBlankChange() const
 {
     std::lock_guard lk(mtx_);
-    if (!nightModeEnabled_ || !nightBlank_ || nightStartHour_ == nightEndHour_)
+    if (!nightModeEnabled_ || nightStyle_ != NightStyle::Pause || nightStartHour_ == nightEndHour_)
         return -1;
     if (const int untilEnd = _secsUntilNightEnd(); untilEnd > 0)
         return untilEnd;
@@ -226,6 +229,8 @@ int RuntimeSettings::getEffectiveInterval() const
     const int untilEnd = _secsUntilNightEnd();
     if (untilEnd <= 0)
         return displayIntervalSecs_;
+    if (nightStyle_ == NightStyle::Hold)
+        return untilEnd;
 
     // Clamping to the window end makes the loop resume on time instead of
     // drifting past it, without costing an extra refresh.
