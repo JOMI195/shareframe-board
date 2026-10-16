@@ -22,6 +22,8 @@ protected:
         cfg.display.minRefreshSecs = 0;
         cfg.display.mockOutputDir = (db.dir() / "panel").string();
         cfg.display.defaultImagesPath = std::string(SHAREFRAME_ASSETS_DIR) + "/image/default";
+        // The migrated DB holds new pictures back from 1 to 6, whatever the wall clock says here.
+        settings.setNightMode(false, 1, 6, 3600, false);
     }
 
     void TearDown() override
