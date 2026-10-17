@@ -73,8 +73,6 @@ struct DisplayConfig
     std::string boldFontPath = "assets/font/DejaVuSans-Bold.ttf";
     // Hides a status screen whose reboot never came; outlasts the longest rauc install.
     int statusScreenTimeoutSecs = 2400;
-    // Photos carry an offline badge once the server has been gone this long; 0 = never.
-    int offlineBadgeAfterSecs = 21600;
 };
 
 struct UpdateConfig

@@ -210,6 +210,12 @@ bool RuntimeSettings::isNightBlankNow() const
     return nightModeEnabled_ && nightStyle_ == NightStyle::Pause && _secsUntilNightEnd() > 0;
 }
 
+bool RuntimeSettings::isNightHoldNow() const
+{
+    std::lock_guard lk(mtx_);
+    return nightModeEnabled_ && nightStyle_ == NightStyle::Hold && _secsUntilNightEnd() > 0;
+}
+
 int RuntimeSettings::secsUntilNightBlankChange() const
 {
     std::lock_guard lk(mtx_);

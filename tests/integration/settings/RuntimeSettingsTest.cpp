@@ -114,6 +114,7 @@ TEST(RuntimeSettings, HoldingNightKeepsThePictureUntilTheWindowEnds)
 
     EXPECT_TRUE(s.isNightNow());
     EXPECT_FALSE(s.isNightBlankNow());
+    EXPECT_TRUE(s.isNightHoldNow());
     EXPECT_EQ(s.secsUntilNightBlankChange(), -1);
     EXPECT_GT(s.getEffectiveInterval(), 2 * 3600);
     EXPECT_LE(s.getEffectiveInterval(), 3 * 3600);
@@ -144,6 +145,7 @@ TEST(RuntimeSettings, BlankNightReportsWhenItNextStartsOrEnds)
 
     s.setNightMode(true, hour, (hour + 2) % 24, 600, NightStyle::Pause);
     EXPECT_TRUE(s.isNightBlankNow());
+    EXPECT_FALSE(s.isNightHoldNow());
     EXPECT_GT(s.secsUntilNightBlankChange(), 3600);
 
     s.setNightMode(true, (hour + 2) % 24, (hour + 3) % 24, 600, NightStyle::Pause);

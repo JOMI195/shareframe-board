@@ -1,4 +1,4 @@
-#include "display/OfflineBadge.hpp"
+#include "display/NightBadge.hpp"
 #include <gtest/gtest.h>
 
 namespace
@@ -21,29 +21,31 @@ int count(const std::vector<uint8_t>& buffer, const bool black, const panel_text
 }
 }
 
-TEST(OfflineBadgeDraw, InksOnlyTheBadgeCorner)
+TEST(NightBadgeDraw, InksOnlyTheBadgeCorner)
 {
     std::vector<uint8_t> buffer(DisplayManager::BUFFER_SIZE, 0xFF);
-    offline::draw(buffer, kFont, "Offline seit 3 Tagen");
+    night_badge::draw(buffer, kFont, night_badge::text(23));
 
-    const int inside = count(buffer, true, offline::BADGE_AREA);
+    const int inside = count(buffer, true, night_badge::BADGE_AREA);
     EXPECT_GT(inside, 0);
     EXPECT_EQ(count(buffer, true, {0, 0, DisplayManager::WIDTH, DisplayManager::HEIGHT}), inside);
+    const auto& a = night_badge::BADGE_AREA;
+    EXPECT_EQ(count(buffer, true, {a.x0, a.y0, a.x0 + 1, a.y1}), 0) << "text wider than the badge area";
 }
 
-TEST(OfflineBadgeDraw, StaysReadableOnADarkPhoto)
+TEST(NightBadgeDraw, StaysReadableOnADarkPhoto)
 {
     std::vector<uint8_t> buffer(DisplayManager::BUFFER_SIZE, 0x00);
-    offline::draw(buffer, kFont, "Offline seit 3 Tagen");
+    night_badge::draw(buffer, kFont, night_badge::text(23));
 
-    EXPECT_GT(count(buffer, false, offline::BADGE_AREA), 0);
+    EXPECT_GT(count(buffer, false, night_badge::BADGE_AREA), 0);
     EXPECT_EQ(count(buffer, false, {0, 0, DisplayManager::WIDTH, DisplayManager::HEIGHT}),
-              count(buffer, false, offline::BADGE_AREA));
+              count(buffer, false, night_badge::BADGE_AREA));
 }
 
-TEST(OfflineBadgeDraw, MissingFontLeavesThePhotoAlone)
+TEST(NightBadgeDraw, MissingFontLeavesThePhotoAlone)
 {
     std::vector<uint8_t> buffer(DisplayManager::BUFFER_SIZE, 0xFF);
-    offline::draw(buffer, "/nonexistent.ttf", "Offline seit 3 Tagen");
+    night_badge::draw(buffer, "/nonexistent.ttf", night_badge::text(23));
     EXPECT_EQ(buffer, std::vector<uint8_t>(DisplayManager::BUFFER_SIZE, 0xFF));
 }

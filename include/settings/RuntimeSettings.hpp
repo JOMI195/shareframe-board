@@ -34,6 +34,9 @@ public:
     /// True while the panel has to stay paused for the quiet-hours window.
     [[nodiscard]] bool isNightBlankNow() const;
 
+    /// True while the current picture is held for the quiet-hours window.
+    [[nodiscard]] bool isNightHoldNow() const;
+
     /// Seconds until isNightBlankNow() flips, -1 when pausing is off.
     [[nodiscard]] int secsUntilNightBlankChange() const;
 

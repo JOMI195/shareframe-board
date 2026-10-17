@@ -1,5 +1,5 @@
 #include "display/DisplayManager.hpp"
-#include "display/OfflineBadge.hpp"
+#include "display/NightBadge.hpp"
 #include "display/PhotoRenderer.hpp"
 #include "repository/DisplayMetricsRepository.hpp"
 #include "settings/RuntimeSettings.hpp"
@@ -182,20 +182,20 @@ TEST_F(DisplayImageLoopTest, ShowNowOfAVanishedPictureFallsBackToTheNextOne)
     EXPECT_TRUE(waitFor([&] { return panel().value("source", "").ends_with("/2.jpg"); }));
 }
 
-TEST_F(DisplayImageLoopTest, PhotosCarryABadgeOnceTheServerIsGoneLongEnough)
+TEST_F(DisplayImageLoopTest, HeldPhotosCarryANightBadge)
 {
     cfg.display.boldFontPath = std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans-Bold.ttf";
-    cfg.display.offlineBadgeAfterSecs = 3600;
     const auto picture = db.dir() / "user.jpg";
     std::filesystem::copy_file(std::string(SHAREFRAME_ASSETS_DIR) + "/image/default/sample_2.jpg", picture);
     repo.save({42, "alice", picture, std::time(nullptr) + 3600});
-    const int64_t lost = std::time(nullptr) - 2 * 3600;
-    DisplayImageLoop offlineLoop{bus, cfg, repo, display, settings, [&] { return ServerConnection{false, lost, lost}; }};
-    offlineLoop.subscribe();
-    offlineLoop.start();
-    bus.start();
+    const std::time_t now = std::time(nullptr);
+    std::tm local{};
+    localtime_r(&now, &local);
+    const int endHour = (local.tm_hour + 2) % 24;
+    settings.setNightMode(true, local.tm_hour, endHour, 3600, NightStyle::Hold);
+    start();
     ASSERT_TRUE(waitFor([&] { return panel().value("source", "") == picture.string(); }));
-    offlineLoop.stop();
+    loop.stop();
 
     std::ifstream f(std::filesystem::path(cfg.display.mockOutputDir) / "panel.pbm", std::ios::binary);
     const std::string pbm{std::istreambuf_iterator<char>(f), {}};
@@ -205,7 +205,7 @@ TEST_F(DisplayImageLoopTest, PhotosCarryABadgeOnceTheServerIsGoneLongEnough)
         byte = ~byte;
     const auto plain = PhotoRenderer::render(picture);
     auto badged = plain;
-    offline::draw(badged, cfg.display.boldFontPath, *offline::badgeText(std::time(nullptr), {false, lost, lost}, 3600));
+    night_badge::draw(badged, cfg.display.boldFontPath, night_badge::text(endHour));
     EXPECT_NE(shown, plain);
     EXPECT_EQ(shown, badged);
 }

@@ -1,6 +1,5 @@
 #pragma once
 #include "display/DisplayManager.hpp"
-#include "net/ServerConnection.hpp"
 #include "repository/ImageRepository.hpp"
 #include "settings/PlaybackOrder.hpp"
 #include "task/Task.hpp"
@@ -19,12 +18,9 @@ struct UpdatePlaybackOrderEvent;
 class DisplayImageLoop : public Task
 {
 public:
-    /// The websocket's server link; nullopt when it can't be asked.
-    using ServerConnectionProvider = std::function<std::optional<ServerConnection>()>;
-
     DisplayImageLoop(EventBus& bus, const AppConfig& cfg,
                      ImageRepository& repo, DisplayManager& display,
-                     RuntimeSettings& settings, ServerConnectionProvider serverConnection = {});
+                     RuntimeSettings& settings);
 
     /// Bus handlers stay registered across stop/start; call once before the bus starts.
     void subscribe();
@@ -75,7 +71,6 @@ private:
     ImageRepository& repo_;
     DisplayManager& display_;
     RuntimeSettings& settings_;
-    ServerConnectionProvider serverConnection_;
     std::atomic<int64_t> currentImageId_{0};
     mutable std::mutex shuffleMtx_;
     playback::ShuffleBag shuffle_;
