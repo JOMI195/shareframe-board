@@ -142,8 +142,7 @@ struct glz::meta<DisplayConfig>
         "setup_url", &T::setupUrl,
         "setup_font_path", &T::setupFontPath,
         "bold_font_path", &T::boldFontPath,
-        "status_screen_timeout_secs", &T::statusScreenTimeoutSecs,
-        "offline_badge_after_secs", &T::offlineBadgeAfterSecs
+        "status_screen_timeout_secs", &T::statusScreenTimeoutSecs
     );
 };
 

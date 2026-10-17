@@ -140,7 +140,6 @@ void ConfigLoader::validate(const AppConfig& cfg)
     req(cfg.display.nightIntervalSecs > 0, "display.night_interval_secs must be > 0");
     req(nightStyleFromString(cfg.display.nightStyle).has_value(),
         "display.night_style must be one of slower, hold, pause");
-    req(cfg.display.offlineBadgeAfterSecs >= 0, "display.offline_badge_after_secs must be >= 0");
     req(cfg.display.apSetupBootWindowSecs >= 0, "display.ap_setup_boot_window_secs must be >= 0");
     req(cfg.dashboardApplication.port > 0 && cfg.dashboardApplication.port <= 65535,
         "dashboard_application.port must be in 1..65535");

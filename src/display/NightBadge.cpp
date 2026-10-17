@@ -1,7 +1,7 @@
-#include "display/OfflineBadge.hpp"
+#include "display/NightBadge.hpp"
 #include <spdlog/spdlog.h>
 
-namespace offline
+namespace night_badge
 {
 namespace
 {
@@ -10,21 +10,9 @@ constexpr int kPadding = 8;
 constexpr int kBorder = 2;
 } // namespace
 
-std::optional<std::string> badgeText(const int64_t nowUnix, const ServerConnection& connection,
-                                     const int thresholdSecs)
+std::string text(const int endHour)
 {
-    if (thresholdSecs <= 0 || connection.connected || connection.since <= 0)
-        return std::nullopt;
-    const int64_t secs = nowUnix - connection.since;
-    if (secs < thresholdSecs)
-        return std::nullopt;
-
-    const int64_t hours = secs / 3600;
-    if (hours < 1)
-        return "Offline seit " + std::to_string(secs / 60) + " Min.";
-    if (hours < 48)
-        return "Offline seit " + std::to_string(hours) + " Std.";
-    return "Offline seit " + std::to_string(hours / 24) + " Tagen";
+    return "Nachtmodus bis " + std::to_string(endHour) + " Uhr";
 }
 
 void draw(std::vector<uint8_t>& buffer, const std::string& fontPath, const std::string& text)
@@ -32,7 +20,7 @@ void draw(std::vector<uint8_t>& buffer, const std::string& fontPath, const std::
     panel_text::Font font;
     if (!font.load(fontPath))
     {
-        spdlog::error("Failed to load font {}, no offline badge", fontPath);
+        spdlog::error("Failed to load font {}, no night badge", fontPath);
         return;
     }
 
@@ -54,4 +42,4 @@ void draw(std::vector<uint8_t>& buffer, const std::string& fontPath, const std::
     font.draw(canvas, line, kPx, x0 + kBorder + kPadding, y0 + kBorder + kPadding + font.ascent(kPx));
     buffer = canvas.take();
 }
-} // namespace offline
+} // namespace night_badge

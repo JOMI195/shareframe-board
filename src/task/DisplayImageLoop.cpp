@@ -1,11 +1,10 @@
 #include "task/DisplayImageLoop.hpp"
-#include "display/OfflineBadge.hpp"
+#include "display/NightBadge.hpp"
 #include "display/PhotoRenderer.hpp"
 #include "events/Messages.hpp"
 #include "settings/RuntimeSettings.hpp"
 #include <algorithm>
 #include <chrono>
-#include <ctime>
 #include <filesystem>
 #include <utility>
 
@@ -20,9 +19,8 @@ int64_t steadyNowMs()
 
 DisplayImageLoop::DisplayImageLoop(EventBus& bus, const AppConfig& cfg,
                                    ImageRepository& repo, DisplayManager& display,
-                                   RuntimeSettings& settings, ServerConnectionProvider serverConnection)
-    : Task(bus, "DisplayImageLoop"), cfg_(cfg), repo_(repo), display_(display),
-      settings_(settings), serverConnection_(std::move(serverConnection))
+                                   RuntimeSettings& settings)
+    : Task(bus, "DisplayImageLoop"), cfg_(cfg), repo_(repo), display_(display), settings_(settings)
 {
 }
 
@@ -256,16 +254,11 @@ void DisplayImageLoop::_run(const std::stop_token st)
 bool DisplayImageLoop::_paint(const std::filesystem::path& path, const std::stop_token& st) const
 {
     auto buffer = PhotoRenderer::render(path);
-    if (!buffer.empty() && serverConnection_ && cfg_.display.offlineBadgeAfterSecs > 0)
+    if (!buffer.empty() && settings_.isNightHoldNow())
     {
-        if (const auto connection = serverConnection_())
-        {
-            if (const auto text = offline::badgeText(std::time(nullptr), *connection, cfg_.display.offlineBadgeAfterSecs))
-            {
-                logger_->info("Server unreachable, drawing badge \"{}\"", *text);
-                offline::draw(buffer, cfg_.display.boldFontPath, *text);
-            }
-        }
+        const auto text = night_badge::text(settings_.getNightEndHour());
+        logger_->info("Holding for the night, drawing badge \"{}\"", text);
+        night_badge::draw(buffer, cfg_.display.boldFontPath, text);
     }
     return display_.displayBuffer(buffer, path.string(), st);
 }
