@@ -69,7 +69,11 @@ FetchContent_Declare(ixwebsocket
         GIT_TAG v11.4.5
         GIT_SHALLOW TRUE
         # Matches any AF_* so an already-patched tree is normalised, not skipped.
-        PATCH_COMMAND sed -i -E "s/hints.ai_family = AF_[A-Z0-9]+/hints.ai_family = ${SHAREFRAME_IP_FAMILY}/" ixwebsocket/IXDNSLookup.cpp
+        # A failed lookup must not reach freeaddrinfo(NULL): musl segfaults on it.
+        PATCH_COMMAND sed -i -E
+            -e "s/hints.ai_family = AF_[A-Z0-9]+/hints.ai_family = ${SHAREFRAME_IP_FAMILY}/"
+            -e "s/return AddrInfoPtr[{] res, freeaddrinfo [}]/return res ? AddrInfoPtr{ res, freeaddrinfo } : nullptr/"
+            ixwebsocket/IXDNSLookup.cpp
         EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(ixwebsocket)
 target_link_libraries(external INTERFACE ixwebsocket)
