@@ -20,7 +20,7 @@ const persistConfig: PersistConfig<ReturnType<typeof rootReducer>> = {
   version: 4,
   storage,
   stateReconciler: autoMergeLevel2,
-  blacklist: ['slideshowImages', 'dialogs'],
+  blacklist: ['slideshowImages', 'dialogs', 'displayCustomization'],
   migrate: createMigrate(migrations, { debug: import.meta.env.VITE_APP_PRODUCTION === "False" ? true : false }),
 };
 
