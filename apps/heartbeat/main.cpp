@@ -8,6 +8,7 @@
 #include "ipc/IpcClient.hpp"
 #include "ipc/NngRepServer.hpp"
 #include "net/HTTPClient.hpp"
+#include "repository/ImageRepository.hpp"
 #include "repository/TokenRepository.hpp"
 #include "task/Heartbeat.hpp"
 #include <spdlog/spdlog.h>
@@ -18,10 +19,11 @@ int main(int argc, char* argv[])
     initLogging(cfg, cfg.heartbeatApplication.logFile);
     spdlog::info("shareframe-heartbeat v{} starting [profile: {}]", cfg.version, profileName(profile));
 
-    // Database (for AuthTokenManager token cache)
+    // Database (AuthTokenManager token cache + stored image count)
     Database db;
     db.init(cfg.database, false);
     TokenRepository tokenRepo(db.get());
+    ImageRepository imageRepo(db.get());
 
     // HTTP client: heartbeat POST + dashboard health probe
     HTTPClient http(60, 600);
@@ -37,7 +39,7 @@ int main(int argc, char* argv[])
     // HTTP, not the bus, so it is intentionally left unstarted.
     EventBus eventBus;
 
-    Heartbeat heartbeat(eventBus, cfg, http, authTokenManager, wsIpc, displayIpc, dashboardIpc, updateIpc);
+    Heartbeat heartbeat(eventBus, cfg, http, authTokenManager, wsIpc, displayIpc, dashboardIpc, updateIpc, imageRepo);
     heartbeat.start();
 
     // SUB: send an immediate heartbeat whenever the websocket service

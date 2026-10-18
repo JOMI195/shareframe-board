@@ -5,6 +5,7 @@
 #include "ipc/HealthCheck.hpp"
 #include "ipc/IpcClient.hpp"
 #include "net/HTTPClient.hpp"
+#include "repository/IImageRepository.hpp"
 #include "util/Subprocess.hpp"
 #include "Version.hpp"
 #include <algorithm>
@@ -17,9 +18,10 @@
 
 Heartbeat::Heartbeat(EventBus& bus, const AppConfig& cfg, const HTTPClient& http,
                      AuthTokenManager& auth, IpcClient& wsIpc, IpcClient& displayIpc,
-                     IpcClient& dashboardIpc, IpcClient& updateIpc)
+                     IpcClient& dashboardIpc, IpcClient& updateIpc, IImageRepository& images)
     : PeriodicTask(bus, cfg, "Heartbeat"), http_(http), auth_(auth),
-      wsIpc_(wsIpc), displayIpc_(displayIpc), dashboardIpc_(dashboardIpc), updateIpc_(updateIpc)
+      wsIpc_(wsIpc), displayIpc_(displayIpc), dashboardIpc_(dashboardIpc), updateIpc_(updateIpc),
+      images_(images)
 {
 }
 
@@ -54,6 +56,8 @@ void Heartbeat::execute()
         {"display_running", displayRunning},
         {"dashboard_running", dashboardRunning},
         {"update_running", updateRunning},
+        // Content
+        {"image_count", static_cast<int64_t>(images_.getAllIds().size())},
     };
 
     const auto sysInfo = _getSysInfo();
