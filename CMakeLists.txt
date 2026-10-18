@@ -208,7 +208,7 @@ set(DISPLAY_SOURCES
         src/display/PhotoRenderer.cpp
         src/display/ApNetworkSetupScreenRenderer.cpp
         src/display/PanelText.cpp
-        src/display/NightBadge.cpp
+        src/display/PanelBadge.cpp
         src/display/LogoScreenRenderer.cpp
         src/task/StatusScreen.cpp
         src/task/DisplayImageLoop.cpp

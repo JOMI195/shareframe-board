@@ -1,5 +1,5 @@
 #include "display/DisplayManager.hpp"
-#include "display/NightBadge.hpp"
+#include "display/PanelBadge.hpp"
 #include "display/PhotoRenderer.hpp"
 #include "repository/DisplayMetricsRepository.hpp"
 #include "settings/RuntimeSettings.hpp"
@@ -56,6 +56,17 @@ protected:
     int64_t seq() const { return panel().value("seq", int64_t{0}); }
     std::string source() const { return panel().value("source", ""); }
     bool cleared() const { return panel().value("state", "") == "cleared"; }
+
+    std::vector<uint8_t> shownBuffer() const
+    {
+        std::ifstream f(std::filesystem::path(cfg.display.mockOutputDir) / "panel.pbm", std::ios::binary);
+        const std::string pbm{std::istreambuf_iterator<char>(f), {}};
+        // PBM stores black as 1, the panel buffer as 0.
+        std::vector<uint8_t> shown(pbm.end() - DisplayManager::BUFFER_SIZE, pbm.end());
+        for (auto& byte : shown)
+            byte = ~byte;
+        return shown;
+    }
 
     SettingsRepository settingsRepo{db.get()};
     RuntimeSettings settings{settingsRepo, cfg};
@@ -197,17 +208,34 @@ TEST_F(DisplayImageLoopTest, HeldPhotosCarryANightBadge)
     ASSERT_TRUE(waitFor([&] { return panel().value("source", "") == picture.string(); }));
     loop.stop();
 
-    std::ifstream f(std::filesystem::path(cfg.display.mockOutputDir) / "panel.pbm", std::ios::binary);
-    const std::string pbm{std::istreambuf_iterator<char>(f), {}};
-    // PBM stores black as 1, the panel buffer as 0.
-    std::vector<uint8_t> shown(pbm.end() - DisplayManager::BUFFER_SIZE, pbm.end());
-    for (auto& byte : shown)
-        byte = ~byte;
+    const auto shown = shownBuffer();
     const auto plain = PhotoRenderer::render(picture);
     auto badged = plain;
-    night_badge::draw(badged, cfg.display.boldFontPath, night_badge::text(endHour));
+    panel_badge::draw(badged, cfg.display.boldFontPath, panel_badge::nightText(endHour),
+                      panel_badge::Corner::BottomRight);
     EXPECT_NE(shown, plain);
     EXPECT_EQ(shown, badged);
+}
+
+TEST_F(DisplayImageLoopTest, SenderBadgeOnlyNamesWhoSentTheUserPicture)
+{
+    cfg.display.boldFontPath = std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans-Bold.ttf";
+    start();
+    bus.publish<Topic::UPDATE_CUSTOMIZATION>({true});
+    ASSERT_TRUE(waitFor([&] { return settings.isShowSender() && seq() >= 1; }));
+    const auto defaultImage = source();
+    EXPECT_EQ(shownBuffer(), PhotoRenderer::render(defaultImage));
+
+    const auto picture = db.dir() / "user.jpg";
+    std::filesystem::copy_file(std::string(SHAREFRAME_ASSETS_DIR) + "/image/default/sample_2.jpg", picture);
+    repo.save({42, "alice", picture, std::time(nullptr) + 3600});
+    bus.publish<Topic::IMAGE_NEW>(42);
+    ASSERT_TRUE(waitFor([&] { return source() == picture.string(); }));
+    loop.stop();
+
+    auto badged = PhotoRenderer::render(picture);
+    panel_badge::draw(badged, cfg.display.boldFontPath, "alice", panel_badge::Corner::TopRight);
+    EXPECT_EQ(shownBuffer(), badged);
 }
 
 TEST_F(DisplayImageLoopTest, ReportsRefreshingOnlyWhilePainting)

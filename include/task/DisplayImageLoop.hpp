@@ -12,6 +12,7 @@
 class RuntimeSettings;
 struct SetSlideshowActiveEvent;
 struct ShowImageEvent;
+struct UpdateCustomizationEvent;
 struct UpdateNightModeEvent;
 struct UpdatePlaybackOrderEvent;
 
@@ -48,10 +49,12 @@ protected:
 
 private:
     void _armNextChange(); // schedule next change = now + interval
-    [[nodiscard]] bool _paint(const std::filesystem::path& path, const std::stop_token& st) const;
+    /// Paints `path` with its badges; an empty `sender` never gets one.
+    [[nodiscard]] bool _paint(const std::filesystem::path& path, const std::string& sender,
+                              const std::stop_token& st) const;
     /// Waits until the armed change is due or `wake` holds (checked under the lock). Repaints
     /// `current` once the refresh interval allows if the daily clear wiped it before then.
-    void _waitForNext(const std::stop_token& st, const std::filesystem::path& current,
+    void _waitForNext(const std::stop_token& st, const std::filesystem::path& current, const std::string& sender,
                       const std::function<bool()>& wake);
     void _onScheduledClear();
     void _onImageRemoved(const std::vector<int64_t>& removedIds);
@@ -63,6 +66,7 @@ private:
     void _onUpdateInterval(const UpdateDisplayIntervalEvent& evt) const;
     void _onUpdateNightMode(const UpdateNightModeEvent& evt) const;
     void _onUpdatePlaybackOrder(const UpdatePlaybackOrderEvent& evt) const;
+    void _onUpdateCustomization(const UpdateCustomizationEvent& evt) const;
     [[nodiscard]] int64_t _pickNext(const std::vector<Image>& images);
     void _onSetSlideshowActive(const SetSlideshowActiveEvent& evt);
     [[nodiscard]] std::vector<std::filesystem::path> _loadDefaultImages() const;

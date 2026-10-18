@@ -98,6 +98,10 @@ RuntimeSettings::RuntimeSettings(SettingsRepository& repo, const AppConfig& cfg)
         catch (...) {}
     }
     logger_->info("Playback order: {} ({} custom entries)", toString(playbackMode_), customOrder_.size());
+
+    if (auto storedShowSender = repo_.get("show_sender"))
+        showSender_ = (*storedShowSender == "1");
+    logger_->info("Show sender: {}", showSender_);
 }
 
 int RuntimeSettings::getDisplayInterval() const
@@ -196,6 +200,20 @@ void RuntimeSettings::setPlaybackOrder(const PlaybackMode mode, const std::vecto
     repo_.set("playback_mode", toString(mode));
     repo_.set("playback_custom_order", nlohmann::json(customOrder).dump());
     logger_->info("Playback order updated to {} ({} custom entries, persisted)", toString(mode), customOrder.size());
+}
+
+bool RuntimeSettings::isShowSender() const
+{
+    std::lock_guard lk(mtx_);
+    return showSender_;
+}
+
+void RuntimeSettings::setShowSender(const bool show)
+{
+    std::lock_guard lk(mtx_);
+    showSender_ = show;
+    repo_.set("show_sender", show ? "1" : "0");
+    logger_->info("Show sender updated to {} (persisted)", show);
 }
 
 bool RuntimeSettings::isNightNow() const

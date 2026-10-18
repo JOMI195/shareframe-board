@@ -91,6 +91,8 @@ void DashboardServer::_initRoutes()
         {"POST", "/api/frame/slideshow/show",     [this](auto& req, auto&) { return frameHandlers_.handleShow(req); }},
         {"POST", "/api/frame/clear",              [this](auto& req, auto&) { return frameHandlers_.handleClear(req); }},
         {"GET",  "/api/frame/display/stats",      [this](auto& req, auto&) { return frameHandlers_.handleDisplayStats(req); }},
+        {"GET",  "/api/frame/display/customization", [this](auto& req, auto&) { return frameHandlers_.handleCustomization(req); }},
+        {"POST", "/api/frame/display/customization", [this](auto& req, auto&) { return frameHandlers_.handleUpdateCustomization(req); }},
         {"POST", "/api/frame/slideshow/order",    [this](auto& req, auto&) { return slideshowImageHandlers_.handleUpdateOrder(req); }},
         {"GET",  "/api/frame/slideshow/images",             [this](auto& req, auto&) { return slideshowImageHandlers_.handleList(req); }},
         {"GET",  "/api/frame/images/file",        [this](auto& req, auto& qp) { return slideshowImageHandlers_.handleFile(req, qp); }},

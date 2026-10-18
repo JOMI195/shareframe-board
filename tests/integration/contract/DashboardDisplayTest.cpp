@@ -49,6 +49,7 @@ protected:
     Recorder<Topic::CLEAR_DISPLAY> clears{bus};
     Recorder<Topic::UPDATE_PLAYBACK_ORDER> orders{bus};
     Recorder<Topic::STATUS_SCREEN> statusScreens{bus};
+    Recorder<Topic::UPDATE_CUSTOMIZATION> customizations{bus};
 
     NngRepServer server{url, [this](const IpcMessage& m) { return displayIpc.handle(m); }};
     IpcClient ipc{url};
@@ -138,6 +139,18 @@ TEST_F(DashboardDisplayTest, NightModeFieldsArriveUnchanged)
     EXPECT_EQ(e.style, NightStyle::Hold);
 }
 
+TEST_F(DashboardDisplayTest, CustomizationReachesTheDisplayAndReadsBack)
+{
+    EXPECT_EQ(result(frame.handleCustomization(httpRequest("GET", "/"))).body["data"]["show_sender"], false);
+
+    EXPECT_EQ(result(frame.handleUpdateCustomization(httpRequest("POST", "/", {{"show_sender", true}}))).status, 200);
+    ASSERT_TRUE(waitFor([&] { return customizations.size() == 1; }));
+    EXPECT_TRUE(customizations.get()[0].showSender);
+
+    settings.setShowSender(true);
+    EXPECT_EQ(result(frame.handleCustomization(httpRequest("GET", "/"))).body["data"]["show_sender"], true);
+}
+
 TEST_F(DashboardDisplayTest, ClearReachesTheDisplay)
 {
     EXPECT_EQ(result(frame.handleClear(httpRequest("POST", "/"))).status, 200);
@@ -155,9 +168,11 @@ TEST_F(DashboardDisplayTest, InvalidRequestsNeverReachTheDisplay)
     EXPECT_EQ(result(slideshowImages.handleUpdateOrder(httpRequest("POST", "/", {{"mode", "random"}}))).status, 400);
     EXPECT_EQ(result(slideshowImages.handleUpdateOrder(httpRequest("POST", "/",
         {{"mode", "custom"}, {"custom_order", {1, "2"}}}))).status, 400);
+    EXPECT_EQ(result(frame.handleUpdateCustomization(httpRequest("POST", "/", {{"show_sender", "yes"}}))).status, 400);
+    EXPECT_EQ(result(frame.handleUpdateCustomization(httpRequest("POST", "/", nlohmann::json::object()))).status, 400);
     EXPECT_EQ(frame.handleSkip(httpRequest("POST", "/"))->statusCode, 200);
     ASSERT_TRUE(waitFor([&] { return skips.size() == 1; }));
-    EXPECT_EQ(active.size() + intervals.size() + nightModes.size() + orders.size(), 0u);
+    EXPECT_EQ(active.size() + intervals.size() + nightModes.size() + orders.size() + customizations.size(), 0u);
 }
 
 TEST_F(DashboardDisplayTest, StatusAggregatesTheDisplayState)

@@ -17,6 +17,8 @@ public:
     ix::HttpResponsePtr handleShow(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleClear(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleDisplayStats(const ix::HttpRequestPtr& req) const;
+    ix::HttpResponsePtr handleCustomization(const ix::HttpRequestPtr& req) const;
+    ix::HttpResponsePtr handleUpdateCustomization(const ix::HttpRequestPtr& req) const;
 
 private:
     IpcClient& ipc_;

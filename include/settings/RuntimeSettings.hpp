@@ -28,6 +28,9 @@ public:
     [[nodiscard]] std::vector<int64_t> getCustomOrder() const;
     void setPlaybackOrder(PlaybackMode mode, const std::vector<int64_t>& customOrder);
 
+    [[nodiscard]] bool isShowSender() const;
+    void setShowSender(bool show);
+
     /// True while the wall clock sits inside an enabled quiet-hours window.
     [[nodiscard]] bool isNightNow() const;
 
@@ -62,4 +65,5 @@ private:
     NightStyle nightStyle_;
     PlaybackMode playbackMode_ = PlaybackMode::Chronological;
     std::vector<int64_t> customOrder_;
+    bool showSender_ = false;
 };

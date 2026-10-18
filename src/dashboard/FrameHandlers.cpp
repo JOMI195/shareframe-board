@@ -194,3 +194,33 @@ ix::HttpResponsePtr FrameHandlers::handleDisplayStats(const ix::HttpRequestPtr& 
     }
     return jsonResponse(200, "OK", *result);
 }
+
+ix::HttpResponsePtr FrameHandlers::handleCustomization(const ix::HttpRequestPtr& /*req*/) const
+{
+    const auto result = ipc_.sendAndReceive(IpcMessage{IpcMessageType::GetCustomization, {}});
+    if (!result)
+    {
+        logger_->error("Failed to query customization via IPC");
+        return errorResponse(500, "Internal Server Error", "Service unavailable");
+    }
+    return jsonResponse(200, "OK", {{"show_sender", result->value("show_sender", false)}});
+}
+
+ix::HttpResponsePtr FrameHandlers::handleUpdateCustomization(const ix::HttpRequestPtr& req) const
+{
+    nlohmann::json body;
+    try { body = nlohmann::json::parse(req->body); }
+    catch (...) { return errorResponse(400, "Bad Request", "Invalid JSON"); }
+
+    const auto showSender = body.find("show_sender");
+    if (showSender == body.end() || !showSender->is_boolean())
+        return errorResponse(400, "Bad Request", "show_sender must be a boolean");
+
+    if (!ipc_.send(IpcMessage{IpcMessageType::UpdateCustomization, {{"show_sender", *showSender}}}))
+    {
+        logger_->error("Failed to send update_customization via IPC");
+        return errorResponse(500, "Internal Server Error", "IPC error");
+    }
+
+    return jsonResponse(200, "OK", {{"show_sender", *showSender}});
+}
