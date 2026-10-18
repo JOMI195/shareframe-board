@@ -1,6 +1,7 @@
 #include "auth/AuthTokenManager.hpp"
 #include "ipc/HealthCheck.hpp"
 #include "ipc/NngRepServer.hpp"
+#include "repository/ImageRepository.hpp"
 #include "support/FakeHttpServer.hpp"
 #include "support/PathShim.hpp"
 #include "support/TestDb.hpp"
@@ -51,6 +52,7 @@ protected:
     TestDb db;
     AppConfig cfg;
     TokenRepository tokens{db.get()};
+    ImageRepository images{db.get()};
     HTTPClient http{5, 5};
     AuthTokenManager auth{cfg, tokens, http};
     EventBus bus;
@@ -60,7 +62,7 @@ protected:
     IpcClient displayIpc{sock("display.sock")};
     IpcClient dashboardIpc{sock("dashboard.sock")};
     IpcClient updateIpc{sock("update.sock")};
-    Heartbeat heartbeat{bus, cfg, http, auth, wsIpc, displayIpc, dashboardIpc, updateIpc};
+    Heartbeat heartbeat{bus, cfg, http, auth, wsIpc, displayIpc, dashboardIpc, updateIpc, images};
 };
 }
 
@@ -75,6 +77,7 @@ TEST_F(HeartbeatTest, ReportsServiceHealthAndTypedSystemMetrics)
     EXPECT_EQ(p["display_running"], false);
     EXPECT_EQ(p["dashboard_running"], false);
     EXPECT_EQ(p["update_running"], true);
+    EXPECT_EQ(p["image_count"], 0);
     EXPECT_EQ(p["uptime_seconds"], 12);
     EXPECT_DOUBLE_EQ(p["cpu_temp_celsius"].get<double>(), 41.5);
     EXPECT_EQ(p["health_state"], "ok");
@@ -130,6 +133,14 @@ TEST_F(HeartbeatTest, IncludesDisplayStatsWhenDisplayIsUp)
     EXPECT_EQ(p["display_running"], true);
     EXPECT_EQ(p["display_epd_refresh_total"], 42);
     EXPECT_EQ(p["display_health"], "ok");
+}
+
+TEST_F(HeartbeatTest, ReportsTheNumberOfStoredImages)
+{
+    shims.add("shareframe-sysinfo", "exit 0");
+    images.save({1, "alice", "/data/images/1.png", 0});
+    images.save({2, "bob", "/data/images/2.png", 0});
+    EXPECT_EQ(sentPayload()["image_count"], 2);
 }
 
 TEST_F(HeartbeatTest, SendsEventsSinceCursorAndAdvancesIt)
