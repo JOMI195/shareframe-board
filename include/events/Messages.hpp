@@ -39,6 +39,7 @@ struct UpdateDisplayIntervalEvent { int intervalSecs; };
 struct UpdateNightModeEvent { bool enabled; int startHour; int endHour; int intervalSecs; NightStyle style; };
 struct UpdatePlaybackOrderEvent { PlaybackMode mode; std::vector<int64_t> customOrder; };
 struct SetSlideshowActiveEvent { bool active; };
+struct UpdateCustomizationEvent { bool showSender; };
 
 template <> struct TopicMessage<Topic::SKIP_IMAGE>                { using type = SkipImageEvent; };
 template <> struct TopicMessage<Topic::SHOW_IMAGE>                { using type = ShowImageEvent; };
@@ -46,6 +47,7 @@ template <> struct TopicMessage<Topic::UPDATE_DISPLAY_INTERVAL>   { using type =
 template <> struct TopicMessage<Topic::UPDATE_NIGHT_MODE>         { using type = UpdateNightModeEvent; };
 template <> struct TopicMessage<Topic::UPDATE_PLAYBACK_ORDER>     { using type = UpdatePlaybackOrderEvent; };
 template <> struct TopicMessage<Topic::SET_SLIDESHOW_ACTIVE>      { using type = SetSlideshowActiveEvent; };
+template <> struct TopicMessage<Topic::UPDATE_CUSTOMIZATION>      { using type = UpdateCustomizationEvent; };
 
 // Wi-Fi setup screen: whether the panel should show it, and the AP to join
 struct ApSetupStateEvent

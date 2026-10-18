@@ -27,6 +27,7 @@ export const getSkipSlideshowImageUrl = () => `${frameBaseUrl()}/slideshow/skip`
 export const getShowSlideshowImageUrl = () => `${frameBaseUrl()}/slideshow/show`;
 export const getClearDisplayUrl = () => `${frameBaseUrl()}/clear`;
 export const getDisplayStatsUrl = () => `${frameBaseUrl()}/display/stats`;
+export const getDisplayCustomizationUrl = () => `${frameBaseUrl()}/display/customization`;
 export const getSlideshowOrderUrl = () => `${frameBaseUrl()}/slideshow/order`;
 export const getSlideshowImagesUrl = () => `${frameBaseUrl()}/slideshow/images`;
 export const getImageFileUrl = (id: number) => `${frameBaseUrl()}/images/file?id=${id}`;

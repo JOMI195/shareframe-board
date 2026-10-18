@@ -1,5 +1,5 @@
 #include "task/DisplayImageLoop.hpp"
-#include "display/NightBadge.hpp"
+#include "display/PanelBadge.hpp"
 #include "display/PhotoRenderer.hpp"
 #include "events/Messages.hpp"
 #include "settings/RuntimeSettings.hpp"
@@ -42,6 +42,8 @@ void DisplayImageLoop::subscribe()
         [this](const UpdatePlaybackOrderEvent& evt) { _onUpdatePlaybackOrder(evt); });
     bus_.subscribe<Topic::SET_SLIDESHOW_ACTIVE>(
         [this](const SetSlideshowActiveEvent& evt) { _onSetSlideshowActive(evt); });
+    bus_.subscribe<Topic::UPDATE_CUSTOMIZATION>(
+        [this](const UpdateCustomizationEvent& evt) { _onUpdateCustomization(evt); });
     bus_.subscribe<Topic::SCHEDULED_CLEAR>(
         [this](const ScheduledClearEvent&) { _onScheduledClear(); });
 }
@@ -174,7 +176,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
 
                     refreshing_ = true;
                     const auto path = defaultImages[defaultImageIdx_];
-                    if (_paint(path, st))
+                    if (_paint(path, "", st))
                     {
                         ready_.store(true);
                         logger_->info("Displaying default image ({})", path.string());
@@ -193,7 +195,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
                         newImage_ = false;
                         refreshing_ = false;
                     }
-                    _waitForNext(st, path, [this] { return (newImage_ && !settings_.isNightNow()) || skipCurrent_ || !settings_.isSlideshowActive(); });
+                    _waitForNext(st, path, "", [this] { return (newImage_ && !settings_.isNightNow()) || skipCurrent_ || !settings_.isSlideshowActive(); });
                 }
                 continue;
             }
@@ -209,7 +211,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
 
             // Display the image (DisplayManager enforces min refresh)
             refreshing_ = true;
-            if (_paint(image.imagePath, st))
+            if (_paint(image.imagePath, image.sender, st))
             {
                 ready_.store(true);
                 logger_->info("Displaying image {} ({})", nextId, image.imagePath.string());
@@ -228,7 +230,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
                 skipCurrent_ = false;
                 refreshing_ = false;
             }
-            _waitForNext(st, image.imagePath, [this] { return skipCurrent_ || pendingShowId_ != 0 || !settings_.isSlideshowActive(); });
+            _waitForNext(st, image.imagePath, image.sender, [this] { return skipCurrent_ || pendingShowId_ != 0 || !settings_.isSlideshowActive(); });
         }
         catch (const std::exception& e)
         {
@@ -251,20 +253,23 @@ void DisplayImageLoop::_run(const std::stop_token st)
     nextChangeAtMs_.store(0);
 }
 
-bool DisplayImageLoop::_paint(const std::filesystem::path& path, const std::stop_token& st) const
+bool DisplayImageLoop::_paint(const std::filesystem::path& path, const std::string& sender,
+                              const std::stop_token& st) const
 {
     auto buffer = PhotoRenderer::render(path);
     if (!buffer.empty() && settings_.isNightHoldNow())
     {
-        const auto text = night_badge::text(settings_.getNightEndHour());
+        const auto text = panel_badge::nightText(settings_.getNightEndHour());
         logger_->info("Holding for the night, drawing badge \"{}\"", text);
-        night_badge::draw(buffer, cfg_.display.boldFontPath, text);
+        panel_badge::draw(buffer, cfg_.display.boldFontPath, text, panel_badge::Corner::BottomRight);
     }
+    if (!buffer.empty() && !sender.empty() && settings_.isShowSender())
+        panel_badge::draw(buffer, cfg_.display.boldFontPath, sender, panel_badge::Corner::TopRight);
     return display_.displayBuffer(buffer, path.string(), st);
 }
 
 void DisplayImageLoop::_waitForNext(const std::stop_token& st, const std::filesystem::path& current,
-                                    const std::function<bool()>& wake)
+                                    const std::string& sender, const std::function<bool()>& wake)
 {
     using Clock = std::chrono::steady_clock;
     const Clock::time_point due{std::chrono::milliseconds(nextChangeAtMs_.load())};
@@ -288,7 +293,7 @@ void DisplayImageLoop::_waitForNext(const std::stop_token& st, const std::filesy
 
         refreshing_ = true;
         lk.unlock();
-        if (_paint(current, st))
+        if (_paint(current, sender, st))
             logger_->info("Repainted {} after the daily clear", current.string());
         else if (!st.stop_requested())
             logger_->error("Failed to repaint {} after the daily clear", current.string());
@@ -375,6 +380,11 @@ void DisplayImageLoop::_onUpdateNightMode(const UpdateNightModeEvent& evt) const
 void DisplayImageLoop::_onUpdatePlaybackOrder(const UpdatePlaybackOrderEvent& evt) const
 {
     settings_.setPlaybackOrder(evt.mode, evt.customOrder);
+}
+
+void DisplayImageLoop::_onUpdateCustomization(const UpdateCustomizationEvent& evt) const
+{
+    settings_.setShowSender(evt.showSender);
 }
 
 void DisplayImageLoop::_onSetSlideshowActive(const SetSlideshowActiveEvent& evt)

@@ -5,6 +5,7 @@ import { expect, signIn, test, trackApiErrors } from '../support/fixtures';
 const pages: [string, string | RegExp][] = [
   ['/', 'Bilderwiedergabe'],
   ['/slideshow/', 'Wiedergabereihenfolge'],
+  ['/customization/', 'Name des Absenders anzeigen'],
   ['/network/', 'Aktuelles Netzwerk'],
   ['/updates/', 'Keine Updates verfügbar'],
   ['/update-history/', 'Update-Verlauf'],

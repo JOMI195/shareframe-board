@@ -28,6 +28,8 @@ TEST(RuntimeSettings, ChangesSurviveRestart)
         s.setSlideshowActive(false);
         s.setNightMode(true, 22, 6, 7200, NightStyle::Pause);
         s.setPlaybackOrder(PlaybackMode::Custom, {3, 1, 2});
+        EXPECT_FALSE(s.isShowSender());
+        s.setShowSender(true);
     }
     RuntimeSettings s(repo, config());
     EXPECT_EQ(s.getDisplayInterval(), 1200);
@@ -39,6 +41,7 @@ TEST(RuntimeSettings, ChangesSurviveRestart)
     EXPECT_EQ(s.getNightStyle(), NightStyle::Pause);
     EXPECT_EQ(s.getPlaybackMode(), PlaybackMode::Custom);
     EXPECT_EQ(s.getCustomOrder(), (std::vector<int64_t>{3, 1, 2}));
+    EXPECT_TRUE(s.isShowSender());
 }
 
 TEST(RuntimeSettings, MigrationHoldsNightsOnceAndTheUserChoiceSticks)

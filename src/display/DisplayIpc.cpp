@@ -117,6 +117,22 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
             {"current_image_id", loop_.currentImageId()}
         };
 
+    case IpcMessageType::UpdateCustomization:
+    {
+        const auto it = msg.data.find("show_sender");
+        if (it == msg.data.end() || !it->is_boolean())
+        {
+            spdlog::warn("IPC: invalid payload in update_customization");
+            return nlohmann::json::object();
+        }
+        spdlog::info("IPC: update customization to show_sender={}", it->get<bool>());
+        bus_.publish<Topic::UPDATE_CUSTOMIZATION>(UpdateCustomizationEvent{it->get<bool>()});
+        return nlohmann::json::object();
+    }
+
+    case IpcMessageType::GetCustomization:
+        return {{"show_sender", settings_.isShowSender()}};
+
     case IpcMessageType::GetScreenInfo:
     {
         const auto screen = display_.screenSnapshot();

@@ -7,6 +7,8 @@ export const getNetworkUrl = () => "network/";
 
 export const getSlideshowPageUrl = () => "slideshow/";
 
+export const getCustomizationUrl = () => "customization/";
+
 export const getUpdatesyUrl = () => "updates/";
 export const getUpdateHistoryPageUrl = () => "update-history/";
 

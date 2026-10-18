@@ -28,6 +28,7 @@ protected:
     DisplayIpc ipc{bus, settings, loop, repo, display};
     Recorder<Topic::UPDATE_DISPLAY_INTERVAL> intervals{bus};
     Recorder<Topic::UPDATE_NIGHT_MODE> nightModes{bus};
+    Recorder<Topic::UPDATE_CUSTOMIZATION> customizations{bus};
     Recorder<Topic::STATUS_SCREEN> statusScreens{bus};
     Recorder<Topic::SHOW_IMAGE> shows{bus};
 };
@@ -46,10 +47,13 @@ TEST_F(DisplayIpcTest, MalformedSettingsAreAckedButIgnored)
              nlohmann::json::object()})
         EXPECT_EQ(ipc.handle({IpcMessageType::UpdateNightMode, data}), nlohmann::json::object()) << data;
 
+    for (const nlohmann::json& data : {nlohmann::json::object(), {{"show_sender", 1}}, nlohmann::json()})
+        EXPECT_EQ(ipc.handle({IpcMessageType::UpdateCustomization, data}), nlohmann::json::object()) << data;
+
     ipc.handle({IpcMessageType::UpdateDisplayInterval, {{"interval_secs", 600}}});
     ASSERT_TRUE(waitFor([&] { return intervals.size() == 1; }));
     EXPECT_EQ(intervals.get()[0].intervalSecs, 600);
-    EXPECT_EQ(nightModes.size(), 0u);
+    EXPECT_EQ(nightModes.size() + customizations.size(), 0u);
 }
 
 TEST_F(DisplayIpcTest, AnswersHealthAndAcksForeignMessages)
