@@ -17,6 +17,19 @@ int64_t nowUnix()
     return std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
 }
+
+#ifdef EPD_HARDWARE_ENABLED
+// pstore keeps this across a warm reset; it names the refresh a reset hit.
+void pmsg(const std::string& what, const std::string& source)
+{
+    std::ofstream out("/dev/pmsg0");
+    if (!out)
+        return;
+    const auto uptimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+    out << fmt::format("[{:.3f}] {} {}\n", static_cast<double>(uptimeMs) / 1000.0, what, source);
+}
+#endif
 } // namespace
 
 DisplayManager::DisplayManager(const AppConfig& cfg, DisplayMetricsRepository& metrics)
@@ -113,6 +126,7 @@ void DisplayManager::_clearHw()
     }
 
 #ifdef EPD_HARDWARE_ENABLED
+    pmsg("paint start", "clear");
     if (!_hwInit())
         return;
 
@@ -122,6 +136,7 @@ void DisplayManager::_clearHw()
         std::chrono::steady_clock::now() - t0).count();
     _lastDisplayTime.store(std::chrono::steady_clock::now());
     _hwSleep();
+    pmsg("paint done", "clear");
     if (rc != 0)
     {
         _metrics.increment("epd_refresh_fail_total");
@@ -201,6 +216,7 @@ bool DisplayManager::_sendBufferHw(const std::vector<uint8_t>& buffer, const std
     }
 
 #ifdef EPD_HARDWARE_ENABLED
+    pmsg("paint start", source);
     if (!_hwInit())
         return false;
 
@@ -211,6 +227,7 @@ bool DisplayManager::_sendBufferHw(const std::vector<uint8_t>& buffer, const std
         std::chrono::steady_clock::now() - t0).count();
     _lastDisplayTime.store(std::chrono::steady_clock::now());
     _hwSleep();
+    pmsg("paint done", source);
     if (rc != 0)
     {
         _metrics.increment("epd_refresh_fail_total");

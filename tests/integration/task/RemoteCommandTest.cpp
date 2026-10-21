@@ -29,7 +29,7 @@ protected:
         backend.on(std::string("POST ") + kDiagnostics, 201);
 
         const auto log = calls.string();
-        for (const auto* tool : {"reboot", "s6-svc", "shareframe-factory-reset", "shareframe-event"})
+        for (const auto* tool : {"reboot", "shutdown", "s6-svc", "shareframe-factory-reset", "shareframe-event"})
             shims.add(tool, "echo \"" + std::string(tool) + " $*\" >> '" + log + "'");
         shims.add("shareframe-remote-gate", "echo \"gate $*\" >> '" + log + "'");
         shims.add("shareframe-diag", "[ \"$1\" = --out ] && printf pkg > \"$2\" || printf pkg");
@@ -165,6 +165,21 @@ TEST_F(RemoteCommandTest, RebootCapturesEvidenceAndMarksTheRateLimit)
     EXPECT_LT(tools.find("gate check"), tools.find("gate mark"));
     EXPECT_LT(tools.find("gate mark"), tools.find("reboot \n"));
     EXPECT_EQ(shownStatusScreens(), std::vector<std::string>{"reboot"});
+    const auto uploads = backend.requests(kDiagnostics);
+    ASSERT_EQ(uploads.size(), 1u);
+    EXPECT_EQ(uploads[0].uri, std::string(kDiagnostics) + "?trigger=pre-reboot&command_id=1");
+}
+
+TEST_F(RemoteCommandTest, ShutdownCapturesEvidenceAndLeavesNoStatusScreen)
+{
+    send("shutdown");
+    ASSERT_TRUE(waitFor([&] { return calledTools().find("shutdown \n") != std::string::npos; }, 5000ms));
+    EXPECT_EQ(statuses(), std::vector<std::string>{"accepted"});
+
+    const auto tools = calledTools();
+    EXPECT_LT(tools.find("gate check"), tools.find("gate mark"));
+    EXPECT_LT(tools.find("gate mark"), tools.find("shutdown \n"));
+    EXPECT_TRUE(shownStatusScreens().empty());
     const auto uploads = backend.requests(kDiagnostics);
     ASSERT_EQ(uploads.size(), 1u);
     EXPECT_EQ(uploads[0].uri, std::string(kDiagnostics) + "?trigger=pre-reboot&command_id=1");

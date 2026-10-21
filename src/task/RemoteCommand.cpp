@@ -18,7 +18,7 @@ bool isKnownService(const std::string& s)
 
 bool isRebootClass(const std::string& command)
 {
-    return command == "reboot" || command == "update_install" || command == "factory_reset";
+    return command == "reboot" || command == "update_install" || command == "factory_reset" || command == "shutdown";
 }
 }
 
@@ -145,6 +145,13 @@ void RemoteCommand::_handle(const nlohmann::json& msg, const std::stop_token& st
 
     Subprocess::run({"shareframe-remote-gate", "mark"}, 5);
     std::this_thread::sleep_for(timing_.settle);
+    // No status screen: the display blanks the panel when it stops, so no image burns in while the frame is off.
+    if (command == "shutdown")
+    {
+        if (const auto res = Subprocess::run({"shutdown"}, 5); res.exitCode != 0)
+            logger_->error("shutdown failed: {}", res.stdErr);
+        return;
+    }
     const auto kind = command == "reboot" ? StatusScreenKind::Reboot : StatusScreenKind::FactoryReset;
     displayIpc_.send({IpcMessageType::ShowStatusScreen, {{"screen", toString(kind)}}});
     const auto res = command == "reboot"
