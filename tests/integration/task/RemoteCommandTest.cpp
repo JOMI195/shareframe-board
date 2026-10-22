@@ -163,6 +163,7 @@ TEST_F(RemoteCommandTest, RebootCapturesEvidenceAndMarksTheRateLimit)
 
     const auto tools = calledTools();
     EXPECT_LT(tools.find("gate check"), tools.find("gate mark"));
+    EXPECT_EQ(tools.find("--no-rate-limit"), std::string::npos);
     EXPECT_LT(tools.find("gate mark"), tools.find("reboot \n"));
     EXPECT_EQ(shownStatusScreens(), std::vector<std::string>{"reboot"});
     const auto uploads = backend.requests(kDiagnostics);
@@ -241,6 +242,7 @@ TEST_F(RemoteCommandTest, UpdateInstallStartsTheUpdateAfterEvidence)
     ASSERT_TRUE(waitStatuses({"accepted"}));
     EXPECT_EQ(backend.requests(kDiagnostics).size(), 1u);
     EXPECT_TRUE(waitFor([&] { return calledTools().find("gate mark") != std::string::npos; }));
+    EXPECT_NE(calledTools().find("gate check --no-rate-limit"), std::string::npos);
 }
 
 TEST_F(RemoteCommandTest, RequestDiagnosticsUploadsWithTheCommandId)

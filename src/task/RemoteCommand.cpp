@@ -102,7 +102,7 @@ void RemoteCommand::_handle(const nlohmann::json& msg, const std::stop_token& st
     }
     if (isRebootClass(command))
     {
-        if (const auto gate = _safeToReboot(st); !gate.ok)
+        if (const auto gate = _safeToReboot(st, command != "update_install"); !gate.ok)
             return reject(gate.reason);
 
         const auto evidence = diagnostics_.captureBeforeReboot(id);
@@ -176,9 +176,12 @@ RemoteCommand::Gate RemoteCommand::_updateIdle()
     return {};
 }
 
-RemoteCommand::Gate RemoteCommand::_safeToReboot(const std::stop_token& st)
+RemoteCommand::Gate RemoteCommand::_safeToReboot(const std::stop_token& st, bool rateLimited)
 {
-    const auto board = Subprocess::run({"shareframe-remote-gate", "check"}, 5);
+    std::vector<std::string> gateCmd{"shareframe-remote-gate", "check"};
+    if (!rateLimited)
+        gateCmd.emplace_back("--no-rate-limit");
+    const auto board = Subprocess::run(gateCmd, 5);
     if (board.exitCode != 0)
     {
         auto reason = board.stdOut;
