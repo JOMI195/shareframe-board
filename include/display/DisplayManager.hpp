@@ -99,7 +99,7 @@ private:
     DisplayMetricsRepository& _metrics;
     std::shared_ptr<spdlog::logger> _logger;
     bool _initialized = false;
-    bool _panelPowered = false;
+    bool _panelAwake = false;
     /// In-memory since boot; atomic so healthSnapshot() reads it without the
     /// hw mutex. Mutated only by the hw threads (already under _hwMutex).
     std::atomic<int> _consecutiveFailures{0};

@@ -29,7 +29,8 @@ protected:
         backend.on(std::string("POST ") + kDiagnostics, 201);
 
         const auto log = calls.string();
-        for (const auto* tool : {"reboot", "shutdown", "s6-svc", "shareframe-factory-reset", "shareframe-event"})
+        for (const auto* tool : {"reboot", "shutdown", "s6-svc", "shareframe-factory-reset", "shareframe-event",
+                                 "shareframe-safe-mode"})
             shims.add(tool, "echo \"" + std::string(tool) + " $*\" >> '" + log + "'");
         shims.add("shareframe-remote-gate", "echo \"gate $*\" >> '" + log + "'");
         shims.add("shareframe-diag", "[ \"$1\" = --out ] && printf pkg > \"$2\" || printf pkg");
@@ -163,6 +164,7 @@ TEST_F(RemoteCommandTest, RebootCapturesEvidenceAndMarksTheRateLimit)
 
     const auto tools = calledTools();
     EXPECT_LT(tools.find("gate check"), tools.find("gate mark"));
+    EXPECT_EQ(tools.find("--no-rate-limit"), std::string::npos);
     EXPECT_LT(tools.find("gate mark"), tools.find("reboot \n"));
     EXPECT_EQ(shownStatusScreens(), std::vector<std::string>{"reboot"});
     const auto uploads = backend.requests(kDiagnostics);
@@ -241,6 +243,7 @@ TEST_F(RemoteCommandTest, UpdateInstallStartsTheUpdateAfterEvidence)
     ASSERT_TRUE(waitStatuses({"accepted"}));
     EXPECT_EQ(backend.requests(kDiagnostics).size(), 1u);
     EXPECT_TRUE(waitFor([&] { return calledTools().find("gate mark") != std::string::npos; }));
+    EXPECT_NE(calledTools().find("gate check --no-rate-limit"), std::string::npos);
 }
 
 TEST_F(RemoteCommandTest, RequestDiagnosticsUploadsWithTheCommandId)
@@ -255,4 +258,51 @@ TEST_F(RemoteCommandTest, FailedFactoryResetHidesTheStatusScreenAgain)
     shims.add("shareframe-factory-reset", "exit 1");
     send("factory_reset");
     EXPECT_TRUE(waitFor([&] { return shownStatusScreens() == std::vector<std::string>{"factory_reset", "hide"}; }, 5000ms));
+}
+
+TEST_F(RemoteCommandTest, EnterSafeModeRunsTheBoardScript)
+{
+    send("enter_safe_mode");
+    ASSERT_TRUE(waitStatuses({"accepted", "done"}));
+    const auto tools = calledTools();
+    EXPECT_NE(tools.find("shareframe-safe-mode enter"), std::string::npos);
+    EXPECT_EQ(tools.find("gate "), std::string::npos);
+    EXPECT_TRUE(backend.requests(kDiagnostics).empty());
+}
+
+TEST_F(RemoteCommandTest, ExitSafeModeRunsTheBoardScript)
+{
+    send("exit_safe_mode");
+    ASSERT_TRUE(waitStatuses({"accepted", "done"}));
+    EXPECT_NE(calledTools().find("shareframe-safe-mode exit"), std::string::npos);
+}
+
+TEST_F(RemoteCommandTest, SafeModeScriptRefusalIsReported)
+{
+    shims.add("shareframe-safe-mode", "echo 'booted slot B is not confirmed yet'; exit 1");
+    send("enter_safe_mode");
+    ASSERT_TRUE(waitStatuses({"accepted", "failed:booted slot B is not confirmed yet"}));
+}
+
+TEST_F(RemoteCommandTest, SafeModeTakesNoArgument)
+{
+    send("enter_safe_mode", "display");
+    ASSERT_TRUE(waitStatuses({"rejected:invalid argument"}));
+    EXPECT_EQ(calledTools().find("shareframe-safe-mode"), std::string::npos);
+}
+
+TEST_F(RemoteCommandTest, SafeModeNoOpIsReportedWithTheResult)
+{
+    shims.add("shareframe-safe-mode", "echo 'not in safe mode'");
+    send("exit_safe_mode");
+    ASSERT_TRUE(waitStatuses({"accepted", "done:not in safe mode"}));
+}
+
+TEST_F(RemoteCommandTest, NeverTogglesSafeModeWhileAnUpdateRuns)
+{
+    updatePhase = "installing";
+    send("enter_safe_mode", "", 1);
+    send("exit_safe_mode", "", 2);
+    ASSERT_TRUE(waitStatuses({"rejected:update installing", "rejected:update installing"}));
+    EXPECT_EQ(calledTools().find("shareframe-safe-mode"), std::string::npos);
 }

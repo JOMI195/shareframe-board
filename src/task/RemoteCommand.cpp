@@ -20,6 +20,18 @@ bool isRebootClass(const std::string& command)
 {
     return command == "reboot" || command == "update_install" || command == "factory_reset" || command == "shutdown";
 }
+
+bool isSafeMode(const std::string& command)
+{
+    return command == "enter_safe_mode" || command == "exit_safe_mode";
+}
+
+std::string trimmed(std::string s)
+{
+    while (!s.empty() && (s.back() == '\n' || s.back() == '\r'))
+        s.pop_back();
+    return s;
+}
 }
 
 RemoteCommand::RemoteCommand(EventBus& bus, IpcClient& displayIpc, IpcClient& updateIpc,
@@ -77,7 +89,8 @@ void RemoteCommand::_handle(const nlohmann::json& msg, const std::stop_token& st
         _reply(id, "rejected", reason);
     };
 
-    const bool known = command == "request_diagnostics" || command == "restart_service" || isRebootClass(command);
+    const bool known = command == "request_diagnostics" || command == "restart_service" || isRebootClass(command)
+        || isSafeMode(command);
     if (id <= 0 || !known)
         return reject("unknown command");
     if (command == "restart_service" ? !isKnownService(arg) : !arg.empty())
@@ -87,7 +100,7 @@ void RemoteCommand::_handle(const nlohmann::json& msg, const std::stop_token& st
     if (now > expiresAt)
         return reject("expired");
 
-    if (isRebootClass(command) || (command == "restart_service" && arg == "update"))
+    if (isRebootClass(command) || isSafeMode(command) || (command == "restart_service" && arg == "update"))
     {
         if (const auto gate = _updateIdle(); !gate.ok)
             return reject(gate.reason);
@@ -102,7 +115,7 @@ void RemoteCommand::_handle(const nlohmann::json& msg, const std::stop_token& st
     }
     if (isRebootClass(command))
     {
-        if (const auto gate = _safeToReboot(st); !gate.ok)
+        if (const auto gate = _safeToReboot(st, command != "update_install"); !gate.ok)
             return reject(gate.reason);
 
         const auto evidence = diagnostics_.captureBeforeReboot(id);
@@ -127,6 +140,16 @@ void RemoteCommand::_handle(const nlohmann::json& msg, const std::stop_token& st
             std::this_thread::sleep_for(timing_.settle);
         const auto res = Subprocess::run({"s6-svc", "-r", "/run/service/shareframe-" + arg}, 10);
         _reply(id, res.exitCode == 0 ? "done" : "failed", res.stdErr);
+        return;
+    }
+    if (isSafeMode(command))
+    {
+        const auto res = Subprocess::run({"shareframe-safe-mode", command == "enter_safe_mode" ? "enter" : "exit"}, 15);
+        if (res.exitCode == 0)
+            return _reply(id, "done", trimmed(res.stdOut));
+        const auto reason = trimmed(res.stdOut.empty() ? res.stdErr : res.stdOut);
+        _event(id, command, arg, "failed (" + reason + ")");
+        _reply(id, "failed", reason);
         return;
     }
     if (command == "update_install")
@@ -176,14 +199,15 @@ RemoteCommand::Gate RemoteCommand::_updateIdle()
     return {};
 }
 
-RemoteCommand::Gate RemoteCommand::_safeToReboot(const std::stop_token& st)
+RemoteCommand::Gate RemoteCommand::_safeToReboot(const std::stop_token& st, bool rateLimited)
 {
-    const auto board = Subprocess::run({"shareframe-remote-gate", "check"}, 5);
+    std::vector<std::string> gateCmd{"shareframe-remote-gate", "check"};
+    if (!rateLimited)
+        gateCmd.emplace_back("--no-rate-limit");
+    const auto board = Subprocess::run(gateCmd, 5);
     if (board.exitCode != 0)
     {
-        auto reason = board.stdOut;
-        while (!reason.empty() && (reason.back() == '\n' || reason.back() == '\r'))
-            reason.pop_back();
+        const auto reason = trimmed(board.stdOut);
         return {false, reason.empty() ? "board gate failed" : reason};
     }
 

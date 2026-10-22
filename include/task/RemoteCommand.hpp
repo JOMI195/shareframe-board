@@ -40,7 +40,7 @@ private:
     };
 
     void _handle(const nlohmann::json& msg, const std::stop_token& st);
-    Gate _safeToReboot(const std::stop_token& st);
+    Gate _safeToReboot(const std::stop_token& st, bool rateLimited);
     Gate _updateIdle();
     void _reply(int64_t id, const std::string& status, const std::string& reason,
                 const nlohmann::json& result = nullptr);

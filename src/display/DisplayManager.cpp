@@ -45,7 +45,7 @@ DisplayManager::~DisplayManager()
 #ifdef EPD_HARDWARE_ENABLED
     if (_initialized && !_cfg.display.mockDisplay)
     {
-        if (_panelPowered)
+        if (_panelAwake)
             _hwSleep();
         DEV_Module_Exit();
         _logger->info("Display hardware cleaned up");
@@ -268,11 +268,8 @@ void DisplayManager::_hwSleep()
 {
 #ifdef EPD_HARDWARE_ENABLED
     EPD_7IN5_V2_Sleep();
-    DEV_Digital_Write(EPD_RST_PIN, 0);
-    DEV_Digital_Write(EPD_DC_PIN, 0);
-    DEV_Digital_Write(EPD_PWR_PIN, 0);
-    _panelPowered = false;
-    _logger->debug("Panel deep sleep + power cut");
+    _panelAwake = false;
+    _logger->debug("Panel deep sleep");
 #endif
 }
 
@@ -314,14 +311,14 @@ bool DisplayManager::_hwInit()
         }
         _initialized = true;
     }
-    DEV_Digital_Write(EPD_PWR_PIN, 1);
-    _panelPowered = true;
+    _panelAwake = true;
     const auto t0 = std::chrono::steady_clock::now();
     if (EPD_7IN5_V2_Init() != 0)
     {
         _metrics.increment("epd_poweron_fail_total");
         ++_consecutiveFailures;
         _logger->error("Panel init failed (power-on BUSY timeout)");
+        _hwSleep();
         return false;
     }
     const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
