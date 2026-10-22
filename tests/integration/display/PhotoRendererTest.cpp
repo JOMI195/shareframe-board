@@ -13,13 +13,14 @@ constexpr int H = DisplayManager::HEIGHT;
 class PhotoRendererTest : public ::testing::Test
 {
 protected:
-    std::filesystem::path writeImage(const std::function<uint8_t(int x)>& shade) const
+    std::filesystem::path writeImage(const std::function<uint8_t(int x)>& shade,
+                                     const int width = W, const int height = H) const
     {
         const auto path = dir / "image.pgm";
         std::ofstream f(path, std::ios::binary);
-        f << "P5\n" << W << " " << H << "\n255\n";
-        for (int y = 0; y < H; ++y)
-            for (int x = 0; x < W; ++x)
+        f << "P5\n" << width << " " << height << "\n255\n";
+        for (int y = 0; y < height; ++y)
+            for (int x = 0; x < width; ++x)
                 f.put(static_cast<char>(shade(x)));
         return path;
     }
@@ -57,4 +58,9 @@ TEST_F(PhotoRendererTest, FlatImageStaysMidGray)
     const double black = blackRatio(buffer, 0, W);
     EXPECT_GT(black, 0.35);
     EXPECT_LT(black, 0.6);
+}
+
+TEST_F(PhotoRendererTest, OversizedImageIsRejected)
+{
+    EXPECT_TRUE(PhotoRenderer::render(writeImage([](int) { return 128; }, 8193, 1)).empty());
 }
