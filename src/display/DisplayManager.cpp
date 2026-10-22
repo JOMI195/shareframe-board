@@ -318,6 +318,7 @@ bool DisplayManager::_hwInit()
         _metrics.increment("epd_poweron_fail_total");
         ++_consecutiveFailures;
         _logger->error("Panel init failed (power-on BUSY timeout)");
+        _hwSleep();
         return false;
     }
     const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
