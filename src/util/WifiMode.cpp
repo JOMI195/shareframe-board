@@ -44,13 +44,3 @@ bool WifiMode::isProtectedNetwork(const std::string_view ssid)
     });
 }
 
-int WifiMode::userNetworkCount(const nlohmann::json& mode)
-{
-    const auto it = mode.find("known_ssids");
-    if (it == mode.end() || !it->is_array())
-        return 0;
-    return static_cast<int>(std::ranges::count_if(*it, [](const nlohmann::json& ssid)
-    {
-        return ssid.is_string() && !isProtectedNetwork(ssid.get<std::string>());
-    }));
-}

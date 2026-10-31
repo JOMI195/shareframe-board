@@ -98,7 +98,7 @@ describe('network status banner', () => {
     [{ mode: 'connecting' as const, ssid: 'HomeNet' }, 'Verbinde…', 'Verbindung zu „HomeNet“ wird hergestellt.'],
     [{ mode: 'connecting' as const, ssid: '' }, 'Verbinde…', 'Suche nach bekannten Netzwerken.'],
     [{ mode: 'connected' as const, internet: false }, 'Kein Internet', 'Mit „HomeNet“ verbunden, aber keine Internetverbindung.'],
-    [{ mode: 'ap' as const, ap_ssid: 'sf-1', ap_password: 'pw123456' }, 'AP-Modus aktiv', /WLAN „sf-1“ · Passwort: pw123456/],
+    [{ mode: 'ap' as const, ap_ssid: 'sf-1', ap_password: 'pw123456' }, 'AP-Modus aktiv', /WLAN „sf-1“ · Passwort: pw123456 — unter Netzwerk/],
   ])('explains %o', async (mode, title, detail) => {
     server.use(...withConnectionMode(mode));
     renderRoute('/', { preloadedState: signedInState() });
@@ -133,5 +133,19 @@ describe('network status banner', () => {
     await screen.findByText('Bilderwiedergabe');
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+});
+
+describe('connection indicator', () => {
+  it.each([
+    [{}, 'Online'],
+    [{ mode: 'connected' as const, internet: false }, 'Kein Internet'],
+    [{ mode: 'connecting' as const }, 'Verbinde …'],
+    [{ mode: 'ap' as const, internet: false }, 'Hotspot'],
+  ])('shows %o as %s in the header', async (mode, label) => {
+    server.use(...withConnectionMode(mode));
+    renderRoute('/', { preloadedState: signedInState() });
+
+    expect(await screen.findByLabelText(`Verbindung: ${label}`)).toBeInTheDocument();
   });
 });

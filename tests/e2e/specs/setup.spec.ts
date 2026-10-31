@@ -1,37 +1,76 @@
-import { attachPanel, expectShimCall, Frame, setWifiMode, showsApSetup, showsDefault, showsStatus, waitForPanel } from '../support/board';
-import { expect, test } from '../support/fixtures';
+import { existsSync } from 'node:fs';
+import {
+  attachPanel, DASHBOARD_PASSWORD, expectShimCall, Frame, retryFlag, setWifiMode, showsApSetup, showsDefault,
+  showsRegistration, showsStatus, waitForPanel,
+} from '../support/board';
+import { card, expect, test } from '../support/fixtures';
 
-// The hotspot fallback: no internet, the owner joins the board's AP and sets up Wi-Fi
-// without signing in.
+// The hotspot fallback: no internet, the owner joins the board's AP, signs in with the
+// device password and sets up Wi-Fi in the regular dashboard.
 
-test('in hotspot mode a visitor can set up Wi-Fi without signing in', async ({ page }) => {
+const signInOnHotspot = async (page: import('@playwright/test').Page) => {
   await setWifiMode('ap');
-  await page.goto('/auth/sign-in');
-  await page.getByRole('button', { name: 'WLAN einrichten' }).click();
-  await expect(page).toHaveURL(/\/setup$/);
+  await page.goto('/');
+  await expect(page).toHaveURL(/\/auth\/sign-in$/);
+  await expect(page.getByText(/stellt den Hotspot „shareframe-e2e“ bereit/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Mit OTP anmelden' })).toHaveCount(0);
+  await page.getByLabel(/Passwort/).fill(DASHBOARD_PASSWORD);
+  await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
+  await expect(page).toHaveURL(/\/network\/$/);
+};
 
-  await page.getByLabel('Netzwerkname (SSID)').fill('HomeNet');
-  await page.getByLabel('Passwort', { exact: true }).fill('homepass1');
-  await page.getByRole('button', { name: 'Verbinden' }).click();
+test('on the hotspot the owner signs in with the device password and lands on the network settings', async ({ page }) => {
+  await signInOnHotspot(page);
 
-  await expect(page.getByText('WLAN gespeichert')).toBeVisible();
-  await expectShimCall('shareframe-wifi add HomeNet homepass1');
+  await expect(page.getByLabel('Verbindung: Hotspot')).toBeVisible();
+  await expect(card(page, 'Hotspot aktiv')).toBeVisible();
 });
 
-test('outside hotspot mode the Wi-Fi endpoints need a session', async ({ request }) => {
+test('on the hotspot a saved network is only tried on request', async ({ page }) => {
+  await signInOnHotspot(page);
+
+  await page.getByRole('button', { name: 'Netzwerk hinzufügen' }).click();
+  const add = page.getByRole('dialog');
+  await add.getByLabel(/Netzwerkname/).fill('HomeNet');
+  await add.getByLabel(/^Passwort/).fill('homepass1');
+  await add.getByRole('button', { name: 'Hinzufügen' }).click();
+  await expectShimCall('shareframe-wifi add HomeNet homepass1');
+  expect(existsSync(retryFlag), 'saving alone switched the board over').toBe(false);
+
+  await card(page, 'Hotspot aktiv').getByRole('button', { name: 'Jetzt verbinden' }).click();
+  const connect = page.getByRole('dialog');
+  await expect(connect.getByText('http://shareframe-e2e.local')).toBeVisible();
+  await connect.getByRole('button', { name: 'Verbinden' }).click();
+
+  await expect(card(page, 'Hotspot aktiv').getByText(/Der Rahmen verbindet sich/)).toBeVisible();
+  await expect.poll(() => existsSync(retryFlag), { message: 'retry requested from the Wi-Fi daemon' }).toBe(true);
+});
+
+test('the hotspot says when the last attempt failed', async ({ page }) => {
+  await signInOnHotspot(page);
+  await setWifiMode('ap', { last_failed_at: Math.floor(Date.now() / 1000) - 120 });
+
+  await expect(card(page, 'Hotspot aktiv').getByText(/Letzter Verbindungsversuch vor 2 Minuten fehlgeschlagen/))
+    .toBeVisible({ timeout: 15_000 });
+});
+
+test('the Wi-Fi endpoints need a session, also on the hotspot', async ({ request, board }) => {
   const connect = () => request.post('/api/connection/connect', { data: { ssid: 'HomeNet', password: 'homepass1' } });
   expect((await connect()).status()).toBe(401);
-
   await setWifiMode('ap');
-  expect((await connect()).status()).toBe(200);
+  expect((await connect()).status()).toBe(401);
+  expect((await request.post('/api/connection/apply')).status()).toBe(401);
+
+  await setWifiMode('connected');
+  expect((await board.postRaw('/api/connection/apply')).status()).toBe(409);
 });
 
-test('in hotspot mode a visitor can reset the frame to factory defaults', async ({ page, request }) => {
+test('on the hotspot a visitor can reset the frame to factory defaults from the sign-in page', async ({ page, request }) => {
   expect((await request.post('/api/system/factory-reset')).status()).toBe(401);
 
   await setWifiMode('ap');
-  await page.goto('/setup');
-  await page.getByRole('button', { name: 'Auf Werkseinstellungen zurücksetzen' }).click();
+  await page.goto('/auth/sign-in');
+  await page.getByRole('button', { name: /Auf Werkseinstellungen zurücksetzen/ }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Zurücksetzen' }).click();
   await expectShimCall('shareframe-factory-reset --yes');
   await waitForPanel(showsStatus('factory_reset'), 'factory reset status screen');
@@ -62,4 +101,20 @@ test('a frame booting without Wi-Fi shows the setup QR until it connects', async
 
   await setWifiMode('connected');
   await waitForPanel(showsDefault, 'slideshow back after connecting');
+});
+
+test('a frame nobody owns asks to be registered until the owner does', async ({ board, server }, testInfo) => {
+  test.setTimeout(120_000);
+  await board.restartService('display');
+  await waitForPanel(showsDefault, 'slideshow after the display restart');
+  await server.unregistered(true);
+  await board.restartService('websocket');
+
+  await waitForPanel(showsRegistration, 'registration screen', 30_000);
+  await attachPanel(testInfo, 'registration');
+  const frame = await Frame.read();
+  expect(frame.blackRatio(82, 44, 382, 436), 'QR code').toBeGreaterThan(0.2);
+
+  await server.unregistered(false);
+  await waitForPanel(showsDefault, 'slideshow once the frame is registered', 60_000);
 });

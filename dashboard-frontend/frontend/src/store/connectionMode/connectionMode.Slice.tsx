@@ -5,7 +5,7 @@ import { getConnectionModeUrl } from '@/assets/endpoints/api/frame';
 
 // Network mode published by the board's wifi-mode-manager daemon plus the
 // websocket's server link, exposed (publicly) at GET /api/connection/mode.
-// Drives the status banner and the offline AP-setup flow.
+// Drives the status banner, the header indicator and the hotspot connect flow.
 export type WifiMode = 'connecting' | 'connected' | 'ap';
 
 export interface ConnectionModeState {
@@ -18,6 +18,10 @@ export interface ConnectionModeState {
     server_connected: boolean | null;
     server_offline_secs: number;
     server_last_contact_at: number;
+    // How long ago the last try of the saved networks failed and the hotspot came back; null = none.
+    last_failed_secs_ago: number | null;
+    // The same moment on the browser's clock (ms), to compare with actions taken here.
+    last_failed_at: number | null;
     loaded: boolean;
 }
 
@@ -30,6 +34,8 @@ const initialState: ConnectionModeState = {
     server_connected: null,
     server_offline_secs: 0,
     server_last_contact_at: 0,
+    last_failed_secs_ago: null,
+    last_failed_at: null,
     loaded: false,
 };
 
@@ -65,6 +71,9 @@ export const connectionModeSlice = createSlice({
             state.server_connected = d.server_connected ?? null;
             state.server_offline_secs = d.server_offline_secs ?? 0;
             state.server_last_contact_at = d.server_last_contact_at ?? 0;
+            state.last_failed_secs_ago = d.last_failed_secs_ago ?? null;
+            state.last_failed_at = state.last_failed_secs_ago === null
+                ? null : Date.now() - state.last_failed_secs_ago * 1000;
             state.loaded = true;
         });
     },

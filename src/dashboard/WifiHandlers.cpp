@@ -33,6 +33,10 @@ nlohmann::json WifiHandlers::connectionMode() const
     mode["server_offline_secs"] = server && !server->connected && server->since > 0
         ? std::max<int64_t>(0, std::time(nullptr) - server->since) : 0;
     mode["server_last_contact_at"] = server ? server->lastContactAt : 0;
+    const auto failedAt = mode.value("last_failed_at", int64_t{0});
+    mode.erase("last_failed_at");
+    mode["last_failed_secs_ago"] = failedAt > 0
+        ? nlohmann::json(std::max<int64_t>(0, std::time(nullptr) - failedAt)) : nlohmann::json();
     return mode;
 }
 
@@ -70,6 +74,13 @@ ix::HttpResponsePtr WifiHandlers::handleForget(const ix::HttpRequestPtr& req) co
         return errorResponse(400, "Bad Request", "Invalid network name");
 
     return wifiResult(wifi_.forget(ssid));
+}
+
+ix::HttpResponsePtr WifiHandlers::handleApply(const ix::HttpRequestPtr& /*req*/) const
+{
+    if (!wifi_.isApMode())
+        return errorResponse(409, "Conflict", "Not in access point mode");
+    return wifiResult(wifi_.requestConnect());
 }
 
 ix::HttpResponsePtr WifiHandlers::handleSetApPassword(const ix::HttpRequestPtr& req) const

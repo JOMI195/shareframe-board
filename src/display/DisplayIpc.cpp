@@ -227,4 +227,8 @@ void DisplayIpc::onEvent(const std::string& topic, const nlohmann::json& payload
         spdlog::debug("Event: new image {}", payload.value("id", int64_t{0}));
         bus_.publish<Topic::IMAGE_NEW>(payload.value("id", int64_t{0}));
     }
+    else if (topic == event_topics::FrameRegistration)
+    {
+        bus_.publish<Topic::FRAME_REGISTRATION>(FrameRegistrationEvent{payload.value("registered", true)});
+    }
 }

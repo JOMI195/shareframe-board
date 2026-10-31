@@ -21,6 +21,7 @@ chmod 777 /state
 chmod 666 /state/*.* /state/wifi-mode /state/wifi-networks /state/shim-calls.log
 ln -sf /state/wifi-mode.json /run/shareframe/wifi-mode.json
 ln -sf /state/wifi-mode /run/shareframe/wifi-mode
+ln -sf /state/wifi-retry-requested /run/shareframe/wifi-retry-requested
 printf 'e2e kernel: boot ok\ne2e kernel: wlan0 up\n' > /data/logs/system.log
 
 cd /data

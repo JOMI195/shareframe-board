@@ -27,7 +27,7 @@ const NetworkStatusBanner = () => {
         bgcolor = 'error.main';
         Icon = WifiTetheringIcon;
         title = 'AP-Modus aktiv';
-        detail = `WLAN „${ap_ssid || 'shareframe-board'}“${ap_password ? ` · Passwort: ${ap_password}` : ''} — neues WLAN hinzufügen, das Gerät verbindet sich dann neu (oder neu starten).`;
+        detail = `WLAN „${ap_ssid || 'shareframe-board'}“${ap_password ? ` · Passwort: ${ap_password}` : ''} — unter Netzwerk ein WLAN hinzufügen und „Jetzt verbinden“ wählen.`;
     } else if (mode === 'connecting') {
         bgcolor = 'warning.main';
         title = 'Verbinde…';

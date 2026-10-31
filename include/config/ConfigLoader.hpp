@@ -140,6 +140,8 @@ struct glz::meta<DisplayConfig>
         "wifi_mode_path", &T::wifiModePath,
         "ap_setup_boot_window_secs", &T::apSetupBootWindowSecs,
         "setup_url", &T::setupUrl,
+        "register_path", &T::registerPath,
+        "registration_screen_window_secs", &T::registrationScreenWindowSecs,
         "setup_font_path", &T::setupFontPath,
         "bold_font_path", &T::boldFontPath,
         "status_screen_timeout_secs", &T::statusScreenTimeoutSecs

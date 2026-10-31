@@ -10,5 +10,6 @@ export const connectionHandlers = [
   http.get(apiUrl(api.getConnectionSavedNetworksUrl()), () => ok({ networks: ['HomeNet'] })),
   http.post(apiUrl(api.getConnectionConnectUrl()), () => ok()),
   http.post(apiUrl(api.getConnectionForgetUrl()), () => ok()),
+  http.post(apiUrl(api.getConnectionApplyUrl()), () => ok()),
   http.post(apiUrl(api.getApPasswordUrl()), () => ok()),
 ];

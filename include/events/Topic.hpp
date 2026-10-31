@@ -19,4 +19,5 @@ enum class Topic {
     AP_SETUP_STATE,
     STATUS_SCREEN,
     SCHEDULED_CLEAR,
+    FRAME_REGISTRATION,
 };

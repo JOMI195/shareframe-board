@@ -45,7 +45,14 @@ static bool isExpiredServer(const HTTPClient& http, const AppConfig& cfg, TokenR
     return !res.ok();
 }
 
-static bool fetchAndSaveToken(const HTTPClient& http, TokenRepository& repo, const AppConfig& cfg)
+enum class FetchResult
+{
+    Ok,
+    Unregistered,
+    Failed
+};
+
+static FetchResult fetchAndSaveToken(const HTTPClient& http, TokenRepository& repo, const AppConfig& cfg)
 {
     spdlog::info("Fetching new auth token");
     try
@@ -55,8 +62,14 @@ static bool fetchAndSaveToken(const HTTPClient& http, TokenRepository& repo, con
         auto res = http.post(url, "{}", Ed25519Auth::buildHTTPAuthHeaders(cfg));
         if (!res.ok())
         {
+            if (const auto body = nlohmann::json::parse(res.body, nullptr, false);
+                body.is_object() && body.value("code", "") == "frame_unregistered")
+            {
+                spdlog::warn("Server refuses frame {}: not registered to a user", cfg.frameId);
+                return FetchResult::Unregistered;
+            }
             spdlog::error("Failed to obtain token: HTTP {}", res.statusCode);
-            return false;
+            return FetchResult::Failed;
         }
         auto j = nlohmann::json::parse(res.body);
         const Token token{
@@ -65,12 +78,12 @@ static bool fetchAndSaveToken(const HTTPClient& http, TokenRepository& repo, con
         };
         repo.save(token);
         spdlog::info("Token obtained. Expires at: {}", j.at("expires_at").get<std::string>());
-        return true;
+        return FetchResult::Ok;
     }
     catch (const std::exception& e)
     {
         spdlog::error("Failed to obtain token: {}", e.what());
-        return false;
+        return FetchResult::Failed;
     }
 }
 
@@ -84,7 +97,9 @@ std::optional<std::string> AuthTokenManager::getOrFetchToken() const
     if (!isExpiredLocally(_repo) || !isExpiredServer(_http, _cfg, _repo))
         return _repo.get()->value;
 
-    if (!fetchAndSaveToken(_http, _repo, _cfg))
+    const auto result = fetchAndSaveToken(_http, _repo, _cfg);
+    _unregistered.store(result == FetchResult::Unregistered);
+    if (result != FetchResult::Ok)
         return std::nullopt;
 
     return _repo.get()->value;

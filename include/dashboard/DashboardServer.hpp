@@ -66,8 +66,6 @@ private:
     bool _isPasswordLoginConfigured() const;
     bool _hasValidSession(const ix::HttpRequestPtr& req) const;
     static std::string _extractSessionId(const ix::HttpRequestPtr& req);
-    // True while the board hosts its AP fallback (OTP login impossible offline).
-    static bool _isApMode();
 
     AppConfig& cfg_;
     HTTPClient& http_;

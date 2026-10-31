@@ -2,6 +2,7 @@
 #include "config/AppConfig.hpp"
 #include "repository/TokenRepository.hpp"
 #include "net/HTTPClient.hpp"
+#include <atomic>
 #include <optional>
 #include <string>
 
@@ -19,8 +20,12 @@ public:
     /// Clears the cached token; call on 401 so the next fetch gets a fresh one.
     void invalidate() const;
 
+    /// Whether the last fetch was refused because nobody owns the frame yet.
+    [[nodiscard]] bool isUnregistered() const { return _unregistered.load(); }
+
 private:
     AppConfig& _cfg;
     TokenRepository& _repo;
     HTTPClient& _http;
+    mutable std::atomic<bool> _unregistered{false};
 };

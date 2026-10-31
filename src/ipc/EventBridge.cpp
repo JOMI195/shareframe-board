@@ -28,4 +28,9 @@ void EventBridge::wire()
     {
         pub_.publish(std::string(event_topics::WsConnected), nlohmann::json::object());
     });
+
+    bus_.subscribe<Topic::FRAME_REGISTRATION>([this](const FrameRegistrationEvent& evt)
+    {
+        pub_.publish(std::string(event_topics::FrameRegistration), {{"registered", evt.registered}});
+    });
 }

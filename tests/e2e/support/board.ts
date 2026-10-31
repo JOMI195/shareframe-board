@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, type APIRequestContext, type TestInfo } from '@playwright/test';
 import { PNG } from 'pngjs';
@@ -38,6 +38,7 @@ export const showsImage = (id: number) => (p: Panel) => p.state === 'image' && p
 export const showsDefault = (p: Panel) => p.state === 'image' && p.source.includes('/assets/image/default/');
 export const isCleared = (p: Panel) => p.state === 'cleared';
 export const showsApSetup = (p: Panel) => p.state === 'image' && p.source === 'ap-setup';
+export const showsRegistration = (p: Panel) => p.state === 'image' && p.source === 'registration';
 export const showsStatus = (screen: string) => (p: Panel) => p.state === 'image' && p.source === `status:${screen}`;
 
 /** The 1-bit frame the e-paper would get, decoded from the PBM the mock display writes. */
@@ -89,9 +90,13 @@ export async function expectShimCall(line: string) {
   await expect.poll(shimCalls, { message: `board ran "${line}"` }).toContain(line);
 }
 
+/** Where the board's dashboard asks the Wi-Fi daemon to leave the hotspot. */
+export const retryFlag = path.join(STATE_DIR, 'wifi-retry-requested');
+
 export async function resetBoardState() {
   for (const file of ['wifi-mode.json', 'wifi-mode', 'wifi-networks'])
     await writeFile(path.join(STATE_DIR, file), await readFile(path.join(STATE_DIR, 'defaults', file)));
+  await rm(retryFlag, { force: true });
   await writeFile(path.join(STATE_DIR, 'shim-calls.log'), '');
 }
 
@@ -124,6 +129,7 @@ export class FakeServer {
   }
 
   async reset() {
+    await this.unregistered(false);
     await this.outage(false);
     await this.waitForFrame();
     await this.request.post(`${FAKE_SERVER}/__test/reset`);
@@ -160,6 +166,11 @@ export class FakeServer {
     await this.request.post(`${FAKE_SERVER}/__test/release`, {
       data: { release_notes: 'E2E release', release_date: '2026-10-01T10:00:00Z', criticality: 'normal', ...release },
     });
+  }
+
+  /** While on, the server refuses the frame because nobody owns it. */
+  async unregistered(on: boolean) {
+    await this.request.post(`${FAKE_SERVER}/__test/unregistered`, { data: { on } });
   }
 
   /** While on, the frame is dropped and every reconnect is turned away. */

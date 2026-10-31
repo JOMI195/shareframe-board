@@ -16,6 +16,7 @@ type SliceState = {
         forgetNetwork: { open: boolean; ssid: string };
         renameNetwork: { open: boolean; ssid: string; newName: string };
         changeApPassword: { open: boolean };
+        connect: { open: boolean };
     }
 };
 
@@ -33,7 +34,8 @@ const initialState: SliceState = {
         addNetwork: { open: false },
         forgetNetwork: { open: false, ssid: '' },
         renameNetwork: { open: false, ssid: '', newName: '' },
-        changeApPassword: { open: false }
+        changeApPassword: { open: false },
+        connect: { open: false }
     }
 };
 
@@ -103,6 +105,12 @@ const dialogsSlice = createSlice({
         },
         networkChangeApPasswordDialogClosed: (state) => {
             state.network.changeApPassword.open = false;
+        },
+        networkConnectDialogOpened: (state) => {
+            state.network.connect.open = true;
+        },
+        networkConnectDialogClosed: (state) => {
+            state.network.connect.open = false;
         },
     },
 });
@@ -186,6 +194,14 @@ export const closeNetworkChangeApPasswordDialog = () => ({
     type: dialogsSlice.actions.networkChangeApPasswordDialogClosed.type,
 });
 
+export const openNetworkConnectDialog = () => ({
+    type: dialogsSlice.actions.networkConnectDialogOpened.type,
+});
+
+export const closeNetworkConnectDialog = () => ({
+    type: dialogsSlice.actions.networkConnectDialogClosed.type,
+});
+
 export const {
     shutdownDialogOpened,
     shutdownDialogClosed,
@@ -205,7 +221,9 @@ export const {
     generalFactoryResetDialogOpened,
     generalFactoryResetDialogClosed,
     networkChangeApPasswordDialogOpened,
-    networkChangeApPasswordDialogClosed
+    networkChangeApPasswordDialogClosed,
+    networkConnectDialogOpened,
+    networkConnectDialogClosed
 } = dialogsSlice.actions;
 
 export default dialogsSlice.reducer;

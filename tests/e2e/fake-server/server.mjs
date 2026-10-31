@@ -27,6 +27,8 @@ function freshState() {
 
 const sockets = new Set();
 let outage = false;
+// Nobody owns the frame: no token for it, and its socket is refused even with an old token.
+let unregistered = false;
 
 function json(res, status, body) {
   res.writeHead(status, { 'Content-Type': 'application/json' });
@@ -55,6 +57,8 @@ const routes = {
   'POST /api/frames/obtain-frame-token/': (req, res) => {
     if (!(req.headers.authorization ?? '').startsWith('Ed25519-Sig ') || !req.headers['x-frame-id'])
       return json(res, 401, { detail: 'missing signature' });
+    if (unregistered)
+      return json(res, 403, { detail: 'Frame is not registered to a user.', code: 'frame_unregistered' });
     const token = randomUUID();
     tokens.add(token);
     tokenRequests++;
@@ -139,6 +143,10 @@ const routes = {
     for (const ws of sockets) code ? ws.close(code, 'e2e') : ws.terminate();
     json(res, 200, {});
   },
+  'POST /__test/unregistered': async (req, res) => {
+    ({ on: unregistered } = await readBody(req));
+    json(res, 200, {});
+  },
   // Server down for good: drops the frame and turns its reconnects away until switched off.
   'POST /__test/outage': async (req, res) => {
     ({ on: outage } = await readBody(req));
@@ -161,6 +169,11 @@ const wss = new WebSocketServer({ noServer: true });
 server.on('upgrade', (req, socket, head) => {
   if (outage) {
     socket.end('HTTP/1.1 503 Service Unavailable\r\n\r\n');
+    return;
+  }
+  // Channels turns a close before accept into a 403 handshake answer.
+  if (unregistered) {
+    socket.end('HTTP/1.1 403 Forbidden\r\n\r\n');
     return;
   }
   if (!req.url.startsWith('/ws/frames/') || !tokens.has(tokenFrom(req))) {

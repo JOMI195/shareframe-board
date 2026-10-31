@@ -211,6 +211,8 @@ set(DISPLAY_SOURCES
         src/display/DisplayManager.cpp
         src/display/PhotoRenderer.cpp
         src/display/ApNetworkSetupScreenRenderer.cpp
+        src/display/QrLayout.cpp
+        src/display/RegistrationScreenRenderer.cpp
         src/display/PanelText.cpp
         src/display/PanelBadge.cpp
         src/display/LogoScreenRenderer.cpp
@@ -218,6 +220,7 @@ set(DISPLAY_SOURCES
         src/task/DisplayImageLoop.cpp
         src/task/DisplayClear.cpp
         src/task/ApNetworkSetupScreen.cpp
+        src/task/RegistrationScreen.cpp
         src/task/NightBlankScreen.cpp
         src/task/DisplayTaskManager.cpp
         src/task/WifiModeWatcher.cpp

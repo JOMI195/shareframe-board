@@ -11,12 +11,20 @@ WebsocketClient::WebsocketClient(EventBus& bus, const AppConfig& cfg, AuthTokenM
 {
 }
 
+namespace
+{
+constexpr uint32_t kMaxReconnectWaitMs = 180000;
+// Notices soon after the owner registers the frame.
+constexpr uint32_t kUnregisteredMaxReconnectWaitMs = 30000;
+} // namespace
+
 // ------- CONNECTION
 
 void WebsocketClient::_setupWebsocket()
 {
     auto authHeaders = TokenAuth::buildTokenAuthHeaders(authMgr_);
     const ix::WebSocketHttpHeaders wsHeaders(authHeaders.begin(), authHeaders.end());
+    _reportIfUnregistered();
 
     auto url = cfg_.wsUrl();
     logger_->info("WebSocket URL: {}", url);
@@ -27,8 +35,8 @@ void WebsocketClient::_setupWebsocket()
     constexpr uint32_t minReconnectWaitMs = 1000;
     ws_.setMinWaitBetweenReconnectionRetries(minReconnectWaitMs);
 
-    constexpr uint32_t maxReconnectWaitMs = 180000;
-    ws_.setMaxWaitBetweenReconnectionRetries(maxReconnectWaitMs);
+    if (!reportedUnregistered_)
+        ws_.setMaxWaitBetweenReconnectionRetries(kMaxReconnectWaitMs);
 
     constexpr int pingIntervalSecs = 30;
     ws_.setPingInterval(pingIntervalSecs);
@@ -43,6 +51,12 @@ void WebsocketClient::_setupWebsocket()
             logger_->info("WebSocket connected");
             contact_.onOpen();
             reconnectCount_.store(0);
+            everOpened_.store(true);
+            if (reportedUnregistered_.exchange(false))
+            {
+                ws_.setMaxWaitBetweenReconnectionRetries(kMaxReconnectWaitMs);
+                bus_.publish<Topic::FRAME_REGISTRATION>({true});
+            }
             _flushSendQueue();
             bus_.publish<Topic::WS_CONNECTED>({});
         }
@@ -57,7 +71,9 @@ void WebsocketClient::_setupWebsocket()
             logger_->error("WebSocket error: http_status={} reason={}",
                            msg->errorInfo.http_status, msg->errorInfo.reason);
             contact_.onClose();
-            _handleReconnect(0);
+            // The server refuses a handshake it never accepted with 403 instead of a close code.
+            const int status = msg->errorInfo.http_status;
+            _handleReconnect(status == 401 || status == 403 ? ws::CLOSE_AUTH_REJECTED : 0);
         }
         else if (msg->type == ix::WebSocketMessageType::Message)
         {
@@ -150,7 +166,17 @@ void WebsocketClient::_refreshToken()
     else
     {
         logger_->error("Failed to obtain fresh token");
+        _reportIfUnregistered();
     }
+}
+
+void WebsocketClient::_reportIfUnregistered()
+{
+    if (everOpened_ || !authMgr_.isUnregistered())
+        return;
+    if (!reportedUnregistered_.exchange(true))
+        ws_.setMaxWaitBetweenReconnectionRetries(kUnregisteredMaxReconnectWaitMs);
+    bus_.publish<Topic::FRAME_REGISTRATION>({false});
 }
 
 // ------- SEND QUEUE

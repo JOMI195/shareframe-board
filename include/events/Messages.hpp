@@ -71,3 +71,10 @@ template <> struct TopicMessage<Topic::STATUS_SCREEN> { using type = StatusScree
 // The daily maintenance clear wiped the panel; whoever owns it paints its screen again.
 struct ScheduledClearEvent {};
 template <> struct TopicMessage<Topic::SCHEDULED_CLEAR> { using type = ScheduledClearEvent; };
+
+// Whether the server takes the frame or refuses it because nobody owns it yet.
+struct FrameRegistrationEvent
+{
+    bool registered = false;
+};
+template <> struct TopicMessage<Topic::FRAME_REGISTRATION> { using type = FrameRegistrationEvent; };

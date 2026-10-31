@@ -10,17 +10,20 @@ import { useAppDispatch, useAppSelector } from '@/store';
 import {
     closeNetworkAddNetworkDialog,
     closeNetworkChangeApPasswordDialog,
+    closeNetworkConnectDialog,
     closeNetworkForgetNetworkDialog,
     getDialogs
 } from '@/store/dialogs/dialogs.Slice';
 import {
     addNetwork,
     changeApPassword,
+    connectToSavedNetworks,
     forgetNetwork,
     NetworkCredentials,
     selectNetworkState
 } from '@/store/network/network.Slice';
 import { selectConnectionMode } from '@/store/connectionMode/connectionMode.Slice';
+import { boardAddress } from '@/common/utils/boardAddress';
 
 const AP_PASSWORD_MIN = 8;
 const AP_PASSWORD_MAX = 63;
@@ -31,7 +34,7 @@ const Dialogs: React.FC = () => {
     const dispatch = useAppDispatch();
     const { isConnected } = usePiConnection();
     const { loading } = useAppSelector(selectNetworkState);
-    const { mode } = useAppSelector(selectConnectionMode);
+    const { mode, ap_ssid } = useAppSelector(selectConnectionMode);
     const dialogs = useAppSelector(getDialogs).network;
 
     const [newNetwork, setNewNetwork] = useState<NetworkCredentials>({ ssid: '', password: '' });
@@ -91,6 +94,18 @@ const Dialogs: React.FC = () => {
         try {
             await dispatch(changeApPassword(apPassword)).unwrap();
             handleCloseApPasswordDialog();
+        } catch {
+            // Error handling is done in the thunk
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleConnect = async (): Promise<void> => {
+        setSubmitting(true);
+        try {
+            await dispatch(connectToSavedNetworks()).unwrap();
+            dispatch(closeNetworkConnectDialog());
         } catch {
             // Error handling is done in the thunk
         } finally {
@@ -178,6 +193,30 @@ const Dialogs: React.FC = () => {
                     color: "text.secondary"
                 }}>
                     Du kannst das Netzwerk jederzeit erneut hinzufügen.
+                </Typography>
+            </ShareframeDialog>
+
+            <ShareframeDialog
+                open={dialogs.connect.open}
+                title="Mit WLAN verbinden"
+                onClose={() => dispatch(closeNetworkConnectDialog())}
+                onConfirm={handleConnect}
+                confirmText="Verbinden"
+                cancelText="Abbrechen"
+                confirmDisabled={isActionsDisabled}
+            >
+                <Typography variant="body1" gutterBottom>
+                    Der Rahmen beendet den Hotspot und versucht etwa eine Minute lang, sich mit
+                    einem gespeicherten WLAN zu verbinden. Dein Gerät verliert dabei die Verbindung
+                    zu dieser Seite.
+                </Typography>
+                <Typography variant="body2" gutterBottom sx={{ color: "text.secondary" }}>
+                    Klappt es, verbinde dein Gerät wieder mit deinem WLAN und öffne{' '}
+                    <b>{boardAddress(ap_ssid)}</b>.
+                </Typography>
+                <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                    Klappt es nicht, erscheint der Hotspot wieder. Verbinde dich erneut damit und
+                    prüfe die Zugangsdaten.
                 </Typography>
             </ShareframeDialog>
 

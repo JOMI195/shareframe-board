@@ -46,6 +46,8 @@ protected:
         bus.publish<Topic::AP_SETUP_STATE>({required, required ? "shareframe-board" : "", required ? password : ""});
     }
 
+    void registered(const bool value) { bus.publish<Topic::FRAME_REGISTRATION>({value}); }
+
     void status(const std::optional<StatusScreenKind> kind, const std::string& version = "")
     {
         bus.publish<Topic::STATUS_SCREEN>({kind, version});
@@ -87,9 +89,11 @@ protected:
     DisplayManager display{cfg, metrics};
     DisplayImageLoop loop{bus, cfg, repo, display, settings};
     ApNetworkSetupScreen setupScreen{bus, cfg, display};
+    RegistrationScreen registrationScreen{bus, cfg, display};
     NightBlankScreen nightBlank{bus, cfg, display};
     StatusScreen statusScreen{bus, cfg, display};
-    DisplayTaskManager manager{bus, cfg, display, loop, setupScreen, nightBlank, statusScreen, settings};
+    DisplayTaskManager manager{bus, cfg, display, loop, setupScreen, registrationScreen, nightBlank, statusScreen,
+                               settings};
 };
 }
 
@@ -329,4 +333,45 @@ TEST_F(DisplayTaskManagerTest, ShutdownKeepsAShownStatusScreenWithoutRepainting)
     manager.stop();
     statusScreen.finishForShutdown();
     EXPECT_EQ(seq(), shownAt);
+}
+
+TEST_F(DisplayTaskManagerTest, RefusedFrameShowsTheRegistrationScreenUntilRegistered)
+{
+    start();
+    ASSERT_TRUE(waitFor([&] { return showsDefault(); }));
+
+    registered(false);
+    ASSERT_TRUE(waitFor([&] { return source() == "registration"; }));
+    EXPECT_EQ(manager.state(), DisplayState::Registration);
+
+    registered(true);
+    EXPECT_TRUE(waitFor([&] { return showsDefault(); }));
+    registered(false);
+    std::this_thread::sleep_for(300ms);
+    EXPECT_EQ(manager.state(), DisplayState::Slideshow) << "a later refusal brought the screen back before a reboot";
+}
+
+TEST_F(DisplayTaskManagerTest, RegistrationScreenTimesOutForGood)
+{
+    cfg.display.registrationScreenWindowSecs = 1;
+    start();
+    registered(false);
+    ASSERT_TRUE(waitFor([&] { return source() == "registration"; }));
+    ASSERT_TRUE(waitFor([&] { return showsDefault(); }, 3000ms));
+
+    registered(false);
+    std::this_thread::sleep_for(300ms);
+    EXPECT_EQ(manager.state(), DisplayState::Slideshow);
+}
+
+TEST_F(DisplayTaskManagerTest, SetupScreenOutranksTheRegistrationScreen)
+{
+    start();
+    registered(false);
+    ASSERT_TRUE(waitFor([&] { return source() == "registration"; }));
+
+    apSetup(true);
+    ASSERT_TRUE(waitFor([&] { return source() == "ap-setup"; }));
+    apSetup(false);
+    EXPECT_TRUE(waitFor([&] { return source() == "registration"; }));
 }

@@ -1,8 +1,5 @@
 export const getHomeUrl = () => "/";
 
-// Unauthenticated offline WiFi-setup page, shown when the board hosts its AP
-export const getSetupUrl = () => "/setup";
-
 export const getNetworkUrl = () => "network/";
 
 export const getSlideshowPageUrl = () => "slideshow/";

@@ -4,9 +4,7 @@
 #include "dashboard/ResponseUtil.hpp"
 #include "dashboard/Validation.hpp"
 #include "util/HttpUtil.hpp"
-#include <algorithm>
 #include <chrono>
-#include <fstream>
 #include <thread>
 
 using dashboard::errorResponse;
@@ -102,6 +100,7 @@ void DashboardServer::_initRoutes()
         {"GET",  "/api/connection/saved-networks", [this](auto& req, auto&) { return wifiHandlers_.handleSavedNetworks(req); }},
         {"POST", "/api/connection/connect",        [this](auto& req, auto&) { return wifiHandlers_.handleConnect(req); }},
         {"POST", "/api/connection/forget",         [this](auto& req, auto&) { return wifiHandlers_.handleForget(req); }},
+        {"POST", "/api/connection/apply",          [this](auto& req, auto&) { return wifiHandlers_.handleApply(req); }},
         {"POST", "/api/connection/ap-password",    [this](auto& req, auto&) { return wifiHandlers_.handleSetApPassword(req); }},
 
         // System
@@ -138,18 +137,8 @@ ix::HttpResponsePtr DashboardServer::_handleRequest(
         if (req->method == method && path == routePath)
             return handler(req, queryParams);
 
-    // AP fallback: joining the AP is implicit auth for the setup endpoints only —
-    // explicit allowlist (ap-password stays session-gated). Factory reset is the
-    // recovery path for a forgotten device password.
-    static const std::vector<std::string> kApBypassPaths = {
-        "/api/connection/status",
-        "/api/connection/saved-networks",
-        "/api/connection/connect",
-        "/api/connection/forget",
-        "/api/system/factory-reset",
-    };
-    const bool apBypass = _isApMode()
-        && std::find(kApBypassPaths.begin(), kApBypassPaths.end(), path) != kApBypassPaths.end();
+    // On the AP, factory reset is the way out of a forgotten device password.
+    const bool apBypass = path == "/api/system/factory-reset" && wifiHandlers_.isApMode();
 
     // All remaining routes require auth
     if (!apBypass)
@@ -352,16 +341,6 @@ ix::HttpResponsePtr DashboardServer::_handleConnectionMode(const ix::HttpRequest
 }
 
 // --- Helpers ---
-
-bool DashboardServer::_isApMode()
-{
-    // Single word written by the wifi-mode-manager daemon: connecting|connected|ap.
-    std::ifstream f("/run/shareframe/wifi-mode");
-    std::string mode;
-    if (f)
-        std::getline(f, mode);
-    return mode == "ap";
-}
 
 ix::HttpResponsePtr DashboardServer::_loginRequired(const ix::HttpRequestPtr& req) const
 {

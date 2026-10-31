@@ -78,8 +78,17 @@ describe('connectionMode slice', () => {
 
     expect(state).toEqual({
       mode: 'ap', ssid: '', internet: false, ap_ssid: '', ap_password: '',
-      server_connected: null, server_offline_secs: 0, server_last_contact_at: 0, loaded: true,
+      server_connected: null, server_offline_secs: 0, server_last_contact_at: 0,
+      last_failed_secs_ago: null, last_failed_at: null, loaded: true,
     });
+  });
+
+  it('dates a failed attempt on the browser clock', () => {
+    const before = Date.now();
+    const state = connectionMode(undefined, fetchConnectionMode.fulfilled({ mode: 'ap', last_failed_secs_ago: 60 }, 'req'));
+
+    expect(state.last_failed_at).toBeGreaterThanOrEqual(before - 60_000);
+    expect(state.last_failed_at).toBeLessThanOrEqual(Date.now() - 60_000);
   });
 
   it('falls back to connecting when the mode is missing', () => {

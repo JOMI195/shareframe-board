@@ -1,7 +1,7 @@
 import MainLayout from '@/common/components/layout/layout';
 import Snackbars from '@/common/components/snackbars/snackbars';
 import ProtectedRoute from '@/common/components/protectedRoute';
-import { getHomeUrl, getSlideshowPageUrl, getCustomizationUrl, getGeneralSettingsUrl, getDisplayHealthUrl, getLogsUrl, getNetworkUrl, getUpdatesyUrl, getUpdateHistoryPageUrl, getServicesOverviewUrl, getServiceDetailUrl, getSetupUrl } from '@/assets/endpoints/app/appEndpoints';
+import { getHomeUrl, getSlideshowPageUrl, getCustomizationUrl, getGeneralSettingsUrl, getDisplayHealthUrl, getLogsUrl, getNetworkUrl, getUpdatesyUrl, getUpdateHistoryPageUrl, getServicesOverviewUrl, getServiceDetailUrl } from '@/assets/endpoints/app/appEndpoints';
 import FrameActions from '@/main/frame/frameActions';
 import SlideshowImages from '@/main/slideshowImages/slideshowImages';
 import Customization from '@/main/customization/customization';
@@ -21,7 +21,6 @@ import AuthenticationLayout from '@/main/authentication/layout';
 import SignIn from '@/main/authentication/signIn/signIn';
 import SignOut from '@/main/authentication/signOut/signOut';
 import RouterContext from '@/common/components/routerContext';
-import WifiSetup from '@/main/setup/wifiSetup';
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const routes = [
@@ -34,11 +33,6 @@ export const routes = [
           {
             path: "*",
             element: <NotFound />,
-          },
-          {
-            // Unauthenticated offline WiFi-setup page (board hosting its AP).
-            path: getSetupUrl(),
-            element: <WifiSetup />,
           },
           {
             path: getAuthenticationUrl(),

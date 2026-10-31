@@ -1,6 +1,7 @@
 #include "dashboard/WifiManager.hpp"
 #include "util/Subprocess.hpp"
 #include "util/WifiMode.hpp"
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 
@@ -95,14 +96,25 @@ nlohmann::json WifiManager::connect(const std::string& ssid, const std::string& 
     }
 
     logger_->info("Added WiFi network: {}", ssid);
+    return {{"message", "Saved " + ssid}};
+}
 
-    // Nudge wifi-mode-manager to retry the station now (switches out of AP
-    // fallback at once instead of waiting for the periodic retry). No-op if
-    // already connected.
-    if (std::ofstream retryFlag{"/run/shareframe/wifi-retry-requested"}; !retryFlag)
-        logger_->warn("could not create wifi-retry-requested flag");
+bool WifiManager::isApMode() const
+{
+    return getWifiMode().value("mode", "") == "ap";
+}
 
-    return {{"message", "Connected to " + ssid}};
+nlohmann::json WifiManager::requestConnect() const
+{
+    // wifi-mode-manager polls for this flag while it hosts the AP and then tries the saved networks.
+    const auto flag = std::filesystem::path(wifiModePath_).parent_path() / "wifi-retry-requested";
+    if (std::ofstream retryFlag{flag}; !retryFlag)
+    {
+        logger_->error("Could not create {}", flag.string());
+        return {{"error", "Failed to request a connection"}};
+    }
+    logger_->info("Requested leaving the AP for the saved networks");
+    return {{"message", "Connecting"}};
 }
 
 nlohmann::json WifiManager::getWifiMode() const

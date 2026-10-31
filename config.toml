@@ -39,6 +39,8 @@ night_style = "hold"
 wifi_mode_path = "/run/shareframe/wifi-mode.json"
 ap_setup_boot_window_secs = 600
 setup_url = "http://192.168.4.1"
+register_path = "/bilderrahmen?register="
+registration_screen_window_secs = 600
 setup_font_path = "assets/font/DejaVuSans.ttf"
 bold_font_path = "assets/font/DejaVuSans-Bold.ttf"
 

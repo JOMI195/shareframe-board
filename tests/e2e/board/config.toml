@@ -34,6 +34,8 @@ setup_font_path = "/usr/share/shareframe/assets/font/DejaVuSans.ttf"
 bold_font_path = "/usr/share/shareframe/assets/font/DejaVuSans-Bold.ttf"
 # The shims never reboot, so the status screen has to give way for the next test.
 status_screen_timeout_secs = 5
+# The container sees the host's uptime, so a boot window would long be over.
+ap_setup_boot_window_secs = 2000000000
 clear_target_hour = 3
 night_mode_enabled = false
 night_start_hour = 2

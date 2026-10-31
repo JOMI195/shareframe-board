@@ -14,6 +14,7 @@ describe('API endpoints', () => {
     [api.getConnectionSavedNetworksUrl(), '/api/connection/saved-networks'],
     [api.getConnectionConnectUrl(), '/api/connection/connect'],
     [api.getConnectionForgetUrl(), '/api/connection/forget'],
+    [api.getConnectionApplyUrl(), '/api/connection/apply'],
     [api.getConnectionModeUrl(), '/api/connection/mode'],
     [api.getApPasswordUrl(), '/api/connection/ap-password'],
     [api.getSlideshowUrl(), '/api/frame/slideshow'],

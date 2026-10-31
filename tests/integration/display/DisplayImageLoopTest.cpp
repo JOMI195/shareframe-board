@@ -223,8 +223,6 @@ TEST_F(DisplayImageLoopTest, SenderBadgeOnlyNamesWhoSentTheUserPicture)
     start();
     bus.publish<Topic::UPDATE_CUSTOMIZATION>({true});
     ASSERT_TRUE(waitFor([&] { return settings.isShowSender() && seq() >= 1; }));
-    const auto defaultImage = source();
-    EXPECT_EQ(shownBuffer(), PhotoRenderer::render(defaultImage));
 
     const auto picture = db.dir() / "user.jpg";
     std::filesystem::copy_file(std::string(SHAREFRAME_ASSETS_DIR) + "/image/default/sample_2.jpg", picture);
@@ -236,6 +234,39 @@ TEST_F(DisplayImageLoopTest, SenderBadgeOnlyNamesWhoSentTheUserPicture)
     auto badged = PhotoRenderer::render(picture);
     panel_badge::draw(badged, cfg.display.boldFontPath, "alice", panel_badge::Corner::TopRight);
     EXPECT_EQ(shownBuffer(), badged);
+}
+
+TEST_F(DisplayImageLoopTest, SamplesCarryTheNoImagesNoteAtANewSpotEachTime)
+{
+    cfg.display.boldFontPath = std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans-Bold.ttf";
+    const auto noteBounds = [&]
+    {
+        const auto shown = shownBuffer();
+        const auto plain = PhotoRenderer::render(source());
+        panel_text::Rect r{DisplayManager::WIDTH, DisplayManager::HEIGHT, 0, 0};
+        for (int i = 0; i < DisplayManager::WIDTH * DisplayManager::HEIGHT; ++i)
+            if ((shown[i / 8] ^ plain[i / 8]) & (0x80 >> (i % 8)))
+            {
+                const int x = i % DisplayManager::WIDTH;
+                const int y = i / DisplayManager::WIDTH;
+                r = {std::min(r.x0, x), std::min(r.y0, y), std::max(r.x1, x + 1), std::max(r.y1, y + 1)};
+            }
+        return r;
+    };
+    start();
+    ASSERT_TRUE(waitFor([&] { return seq() >= 1; }));
+    const auto first = noteBounds();
+    ASSERT_LT(first.x0, first.x1) << "sample shown without the note";
+    EXPECT_GE(first.x0, panel_text::SAFE_AREA.x0);
+    EXPECT_LE(first.y1, panel_text::SAFE_AREA.y1);
+
+    bus.publish<Topic::SKIP_IMAGE>({});
+    ASSERT_TRUE(waitFor([&] { return seq() >= 2; }));
+    loop.stop();
+    const auto second = noteBounds();
+    ASSERT_LT(second.x0, second.x1);
+    EXPECT_TRUE(second.x1 <= first.x0 || first.x1 <= second.x0 || second.y1 <= first.y0 || first.y1 <= second.y0)
+        << "note stayed in place";
 }
 
 TEST_F(DisplayImageLoopTest, ReportsRefreshingOnlyWhilePainting)

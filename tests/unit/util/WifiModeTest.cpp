@@ -1,14 +1,9 @@
 #include "util/WifiMode.hpp"
 #include <gtest/gtest.h>
 
-TEST(WifiMode, FactoryNetworksDontCountAsSaved)
+TEST(WifiMode, FactoryNetworksAreProtectedRegardlessOfCase)
 {
-    EXPECT_EQ(WifiMode::userNetworkCount({{"known_ssids", {"Jomi", "preconfigured"}}}), 0);
-    EXPECT_EQ(WifiMode::userNetworkCount({{"known_ssids", {"jomi", "HomeNet"}}}), 1);
-}
-
-TEST(WifiMode, MissingSsidListCountsAsNoSavedNetwork)
-{
-    EXPECT_EQ(WifiMode::userNetworkCount({{"mode", "ap"}}), 0);
-    EXPECT_EQ(WifiMode::userNetworkCount({{"known_ssids", "HomeNet"}}), 0);
+    EXPECT_TRUE(WifiMode::isProtectedNetwork("preconfigured"));
+    EXPECT_TRUE(WifiMode::isProtectedNetwork("jomi"));
+    EXPECT_FALSE(WifiMode::isProtectedNetwork("HomeNet"));
 }

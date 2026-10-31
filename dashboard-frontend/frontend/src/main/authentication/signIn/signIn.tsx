@@ -13,7 +13,9 @@ import { selectConnectionMode } from '@/store/connectionMode/connectionMode.Slic
 import { removeAllSnackbars } from '@/store/snackbars/snackbars.Slice';
 import { usePiConnection } from '@/context/piConnection/piConnectionContextValue';
 import { useLocation, useNavigate } from 'react-router';
-import { getHomeUrl, getSetupUrl } from '@/assets/endpoints/app/appEndpoints';
+import { getHomeUrl, getNetworkUrl } from '@/assets/endpoints/app/appEndpoints';
+import { openGeneralFactoryResetDialog } from '@/store/dialogs/dialogs.Slice';
+import FactoryResetDialog from '@/common/components/factoryResetDialog';
 
 type LoginMethod = 'otp' | 'password';
 
@@ -23,8 +25,11 @@ const SignIn = () => {
   const location = useLocation();
   const { isConnected } = usePiConnection();
   const { isAuthenticated } = useAppSelector(selectAuth);
-  const { internet, loaded, mode } = useAppSelector(selectConnectionMode);
-  const [method, setMethod] = useState<LoginMethod>('otp');
+  const { internet, loaded, mode, ap_ssid } = useAppSelector(selectConnectionMode);
+  const [chosenMethod, setMethod] = useState<LoginMethod>('otp');
+  // On its own hotspot the frame can't reach the server, so only the device password works.
+  const onHotspot = loaded && mode === 'ap';
+  const method: LoginMethod = onHotspot ? 'password' : chosenMethod;
   const [secret, setSecret] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -59,9 +64,9 @@ const SignIn = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(getHomeUrl());
+      navigate(onHotspot ? getHomeUrl() + getNetworkUrl() : getHomeUrl());
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, onHotspot]);
 
   const handleToggleMethod = () => {
     setMethod((m) => (m === 'otp' ? 'password' : 'otp'));
@@ -99,17 +104,13 @@ const SignIn = () => {
           : "Melde dich mit dem Geräte-Passwort an."}
       </Typography>
 
-      {loaded && !internet && (
+      {onHotspot ? (
+        <Alert severity="info" sx={{ mt: 2, width: '100%', textAlign: 'left' }}>
+          {`Der Rahmen ist mit keinem WLAN verbunden und stellt den Hotspot „${ap_ssid || 'shareframe-board'}“ bereit. Melde dich mit dem Geräte-Passwort an und füge unter Netzwerk dein WLAN hinzu.`}
+        </Alert>
+      ) : loaded && !internet && (
         <Alert severity="info" sx={{ mt: 2, width: '100%' }}>
           {"Keine Internetverbindung – die OTP-Anmeldung ist derzeit nicht möglich."}
-          {mode === 'ap' && (
-            <>
-              {' '}
-              <Link component="button" type="button" onClick={() => navigate(getSetupUrl())}>
-                {"WLAN einrichten"}
-              </Link>
-            </>
-          )}
         </Alert>
       )}
 
@@ -154,10 +155,18 @@ const SignIn = () => {
           {'Anmelden'}
         </Button>
 
-        <Link component="button" type="button" variant="body2" onClick={handleToggleMethod}>
-          {method === 'otp' ? "Mit Passwort anmelden" : "Mit OTP anmelden"}
-        </Link>
+        {onHotspot ? (
+          <Link component="button" type="button" variant="body2" color="error"
+            onClick={() => dispatch(openGeneralFactoryResetDialog())}>
+            {"Passwort vergessen? Auf Werkseinstellungen zurücksetzen"}
+          </Link>
+        ) : (
+          <Link component="button" type="button" variant="body2" onClick={handleToggleMethod}>
+            {method === 'otp' ? "Mit Passwort anmelden" : "Mit OTP anmelden"}
+          </Link>
+        )}
       </Box>
+      {onHotspot && <FactoryResetDialog />}
     </Box>
   );
 }
