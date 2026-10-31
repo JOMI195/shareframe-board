@@ -52,6 +52,7 @@ const FrameLogs = () => {
             <LogFilter onChange={setParams} onRefresh={loadLogs} loading={loading} />
 
             <LogsContent
+                onRetry={loadLogs}
                 serviceType={source}
                 loading={loading}
                 error={error}

@@ -1,5 +1,6 @@
 import { useEffect, ReactNode, Fragment } from 'react';
-import { Stack, Chip, Typography, Box } from '@mui/material';
+import { Stack, Chip, Typography, Box, Button } from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
@@ -66,7 +67,7 @@ const EntryAccordion = ({ entry }: { entry: UpdateHistoryEntry }) => {
 
 const UpdateHistory = () => {
     const dispatch = useAppDispatch();
-    const { history } = useAppSelector(selectUpdatesState);
+    const { history, historyFailed } = useAppSelector(selectUpdatesState);
 
     useEffect(() => {
         dispatch(fetchUpdateHistory());
@@ -79,8 +80,17 @@ const UpdateHistory = () => {
             <ShareframeInfoCard
                 title="Update-Verlauf"
                 sections={
-                    history.length === 0
-                        ? [{ content: "Noch keine Updates durchgeführt." }]
+                    historyFailed && history.length === 0
+                        ? [{ content: node(
+                            <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
+                                <Typography sx={{ color: 'text.secondary' }}>Update-Verlauf konnte nicht geladen werden</Typography>
+                                <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => dispatch(fetchUpdateHistory())}>
+                                    Erneut versuchen
+                                </Button>
+                            </Stack>
+                        ) }]
+                        : history.length === 0
+                        ? [{ content: "Noch keine Updates installiert." }]
                         : [{ content: node(<Box>{history.map((e, i) => <Fragment key={i}><EntryAccordion entry={e} /></Fragment>)}</Box>) }]
                 }
             />

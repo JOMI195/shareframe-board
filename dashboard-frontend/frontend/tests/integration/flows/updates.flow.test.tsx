@@ -129,7 +129,7 @@ describe('update history', () => {
   it('says so when nothing was installed yet', async () => {
     openHistory();
 
-    expect(await screen.findByText('Noch keine Updates durchgeführt.')).toBeInTheDocument();
+    expect(await screen.findByText('Noch keine Updates installiert.')).toBeInTheDocument();
   });
 
   it('lists each update with its outcome', async () => {

@@ -41,6 +41,7 @@ export interface UpdatesState {
     latest_release: Release | null;
     update_status: UpdateStatus | null;
     history: UpdateHistoryEntry[];
+    historyFailed: boolean;
     loading: boolean;
 }
 
@@ -48,6 +49,7 @@ const initialState: UpdatesState = {
     latest_release: null,
     update_status: null,
     history: [],
+    historyFailed: false,
     loading: false,
 };
 
@@ -153,8 +155,14 @@ export const UpdatesSlice = createSlice({
         builder.addCase(fetchUpdateStatus.fulfilled, (state, action) => {
             state.update_status = action.payload;
         });
+        builder.addCase(fetchUpdateHistory.pending, (state) => {
+            state.historyFailed = false;
+        });
         builder.addCase(fetchUpdateHistory.fulfilled, (state, action) => {
             state.history = action.payload;
+        });
+        builder.addCase(fetchUpdateHistory.rejected, (state) => {
+            state.historyFailed = true;
         });
     }
 });

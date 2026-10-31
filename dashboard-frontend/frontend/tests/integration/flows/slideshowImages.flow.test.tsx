@@ -173,16 +173,21 @@ describe('slideshow images', () => {
 
   it('explains a failed load instead of claiming the frame is empty', async () => {
     server.use(...failsWith('get', api.getSlideshowImagesUrl(), 500, 'Service unavailable'));
-    renderRoute('/slideshow/', { preloadedState: signedInState() });
+    const { user } = renderRoute('/slideshow/', { preloadedState: signedInState() });
 
-    expect(await screen.findByText('Die Bilder konnten nicht geladen werden.')).toBeInTheDocument();
-    expect(screen.queryByText(/Keine Bilder auf dem Bilderrahmen/)).not.toBeInTheDocument();
+    expect(await screen.findByText('Fotos konnten nicht geladen werden')).toBeInTheDocument();
+    expect(screen.queryByText(/Noch keine Fotos/)).not.toBeInTheDocument();
+
+    server.resetHandlers();
+    await user.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+    expect(await screen.findByText(/Noch keine Fotos|auf dem Bilderrahmen$/)).toBeInTheDocument();
+    expect(screen.queryByText('Fotos konnten nicht geladen werden')).not.toBeInTheDocument();
   });
 
   it('says so when the frame holds no pictures', async () => {
     setBoard({ slideshowImages: makeSlideshowImages({ images: [] }) });
     renderRoute('/slideshow/', { preloadedState: signedInState() });
 
-    expect(await screen.findByText('Keine Bilder auf dem Bilderrahmen. Es werden die Standardbilder angezeigt.')).toBeInTheDocument();
+    expect(await screen.findByText('Noch keine Fotos auf dem Bilderrahmen. Bis dahin zeigt er Beispielbilder.')).toBeInTheDocument();
   });
 });

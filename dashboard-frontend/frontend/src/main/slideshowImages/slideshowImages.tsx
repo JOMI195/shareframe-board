@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, Grid, ImageList, ImageListItem, Skeleton, Stack, Typography } from '@mui/material';
-import { CloseOutlined, EditOutlined, SaveOutlined } from '@mui/icons-material';
+import { Button, Grid, ImageList, ImageListItem, Skeleton, Stack, Typography } from '@mui/material';
+import { CloseOutlined, EditOutlined, Refresh, SaveOutlined } from '@mui/icons-material';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { fetchSlideshowImages, selectSlideshowImages, updatePlaybackOrder } from '@/store/slideshowImages/slideshowImages.Slice';
 import { useMinimumLoading } from '@/hooks/loading/useMinimumLoading';
@@ -107,12 +107,6 @@ const SlideshowImages: React.FC = () => {
                     />
                 </Grid>
 
-                {error && lastFetchedAt === null && (
-                    <Grid size={12}>
-                        <Alert severity="error">Die Bilder konnten nicht geladen werden.</Alert>
-                    </Grid>
-                )}
-
                 <Grid size={12}>
                     {showSkeleton ? renderSkeleton() : shown.length > 0 ? (
                         <Stack spacing={1}>
@@ -128,7 +122,12 @@ const SlideshowImages: React.FC = () => {
                             </Typography>
                         </Stack>
                     ) : lastFetchedAt !== null ? (
-                        <DataNotFound notFoundMessage="Keine Bilder auf dem Bilderrahmen. Es werden die Standardbilder angezeigt." />
+                        <DataNotFound notFoundMessage="Noch keine Fotos auf dem Bilderrahmen. Bis dahin zeigt er Beispielbilder." />
+                    ) : error ? (
+                        <DataNotFound
+                            notFoundMessage="Fotos konnten nicht geladen werden"
+                            action={{ label: 'Erneut versuchen', icon: <Refresh />, onClick: () => dispatch(fetchSlideshowImages()) }}
+                        />
                     ) : null}
                 </Grid>
             </Grid>

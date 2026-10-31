@@ -65,7 +65,8 @@ describe('system logs', () => {
     renderRoute('/logs/', { preloadedState: signedInState() });
 
     expect(await screen.findByText('Abrufen der Logs fehlgeschlagen')).toBeInTheDocument();
-    expect(screen.getByText('Keine Protokolle verfügbar')).toBeInTheDocument();
+    expect(screen.getByText('Protokolle konnten nicht geladen werden')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Erneut versuchen' })).toBeInTheDocument();
   });
 });
 
