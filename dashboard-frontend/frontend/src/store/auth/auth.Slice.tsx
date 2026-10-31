@@ -4,6 +4,7 @@ import { IServerResponse } from '@/types';
 import uuid from 'react-uuid';
 import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '../snackbars/snackbars.Slice';
 import { fetchWithTimeout } from '@/common/utils/fetch';
+import { boardErrorMessage, unreachableMessage } from '@/common/utils/errors/boardErrors';
 import { getAuthStatusUrl, getLoginUrl, getChangePasswordUrl, getLogoutUrl } from '@/assets/endpoints/api/frame';
 
 // Types for Authentication State
@@ -30,7 +31,7 @@ export const checkAuthStatusThunk = createAsyncThunk(
   }
 );
 
-// Login works with the cloud-verified OTP or, offline, the local device password.
+// Login works with the cloud-verified one-time code or, offline, the local device password.
 export type LoginCredentials = { otp: string } | { password: string };
 
 // Async Thunk for login
@@ -42,7 +43,7 @@ export const loginThunk = createAsyncThunk(
       // Add loading snackbar
       dispatch(addLoadingSnackbar(
         snackbarId,
-        'otp' in credentials ? 'Überprüfung des OTP' : 'Passwort wird überprüft',
+        'Du wirst angemeldet',
       ));
 
       const response = await fetchWithTimeout(getLoginUrl(), {
@@ -60,17 +61,13 @@ export const loginThunk = createAsyncThunk(
 
       if (data.success) {
         // Add success snackbar
-        dispatch(addAlertSnackbar(
-          uuid(),
-          'Authentifizierung erfolgreich',
-          'success'
-        ));
+        dispatch(addAlertSnackbar(uuid(), 'Angemeldet', 'success'));
         return true;
       } else {
         // Add error snackbar
         dispatch(addAlertSnackbar(
           uuid(),
-          data.message ? data.message : 'Authentifizierung fehlgeschlagen',
+          boardErrorMessage('Anmeldung fehlgeschlagen', response, data.message),
           'error'
         ));
         return rejectWithValue(data.message || 'Authentication failed');
@@ -79,12 +76,7 @@ export const loginThunk = createAsyncThunk(
       // Remove loading snackbar
       dispatch(removeLoadingSnackbar(snackbarId));
 
-      // Add error snackbar
-      dispatch(addAlertSnackbar(
-        uuid(),
-        'Authentifizierung fehlgeschlagen',
-        'error'
-      ));
+      dispatch(addAlertSnackbar(uuid(), unreachableMessage(), 'error'));
 
       return rejectWithValue('Authentication failed');
     }
@@ -121,16 +113,12 @@ export const changePasswordThunk = createAsyncThunk(
       dispatch(removeLoadingSnackbar(snackbarId));
 
       if (data.success) {
-        dispatch(addAlertSnackbar(
-          uuid(),
-          'Passwort erfolgreich geändert',
-          'success'
-        ));
+        dispatch(addAlertSnackbar(uuid(), 'Passwort geändert', 'success'));
         return true;
       } else {
         dispatch(addAlertSnackbar(
           uuid(),
-          data.message ? data.message : 'Passwortänderung fehlgeschlagen',
+          boardErrorMessage('Passwort konnte nicht geändert werden', response, data.message),
           'error'
         ));
         return rejectWithValue(data.message || 'Password change failed');
@@ -138,11 +126,7 @@ export const changePasswordThunk = createAsyncThunk(
     } catch {
       dispatch(removeLoadingSnackbar(snackbarId));
 
-      dispatch(addAlertSnackbar(
-        uuid(),
-        'Passwortänderung fehlgeschlagen',
-        'error'
-      ));
+      dispatch(addAlertSnackbar(uuid(), unreachableMessage(), 'error'));
 
       return rejectWithValue('Password change failed');
     }
@@ -159,20 +143,12 @@ export const logoutThunk = createAsyncThunk(
       });
 
       // Add success snackbar
-      dispatch(addAlertSnackbar(
-        uuid(),
-        'Erfolgreich ausgeloggt',
-        'success'
-      ));
+      dispatch(addAlertSnackbar(uuid(), 'Abgemeldet', 'success'));
 
       return true;
     } catch (error) {
       // Add error snackbar
-      dispatch(addAlertSnackbar(
-        uuid(),
-        'Logout fehlgeschlagen',
-        'error'
-      ));
+      dispatch(addAlertSnackbar(uuid(), unreachableMessage(), 'error'));
 
       throw error;
     }

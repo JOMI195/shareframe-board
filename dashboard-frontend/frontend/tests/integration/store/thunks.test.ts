@@ -78,7 +78,7 @@ describe('network data', () => {
 
     await store.dispatch(fetchNetworkData());
 
-    expect(alerts(store)).toEqual(['Aktualisieren fehlgeschlagen']);
+    expect(alerts(store)).toEqual(['Netzwerke konnten nicht geladen werden']);
     expect(store.getState().network.error).toBeTruthy();
   });
 
@@ -194,8 +194,8 @@ describe('slideshow settings', () => {
     await store.dispatch(fetchNightMode());
 
     expect(alerts(store)).toEqual([
-      'Abrufen des Intervalls der Bilderwiedergabe fehlgeschlagen',
-      'Abrufen des Nachtmodus fehlgeschlagen',
+      'Intervall konnte nicht geladen werden',
+      'Nachtmodus konnte nicht geladen werden',
     ]);
   });
 
@@ -224,7 +224,7 @@ describe('slideshow toggle', () => {
     await advance(10 * 60_000 + 2_000);
     await done;
 
-    expect(alerts(store)).toContain('Zeitüberschreitung bei Statusänderung');
+    expect(alerts(store)).toContain('Der Bilderrahmen hat die Diashow nicht rechtzeitig umgeschaltet');
     expect(store.getState().slideshowOperation.isToggling).toBe(false);
   });
 
@@ -234,8 +234,8 @@ describe('slideshow toggle', () => {
 
     await store.dispatch(toggleSlideshowThunk());
 
-    expect(alerts(store)).toEqual(['Fehler bei der Statusänderung der Bildwiedergabe']);
-    expect(store.getState().slideshowOperation.error).toBe('Statusänderung fehlgeschlagen');
+    expect(alerts(store)).toEqual(['Diashow konnte nicht umgeschaltet werden']);
+    expect(store.getState().slideshowOperation.error).toBe('Diashow konnte nicht umgeschaltet werden');
   });
 });
 
@@ -255,7 +255,7 @@ describe('restart', () => {
     await done;
 
     expect(navigate).toHaveBeenCalledWith('/');
-    expect(alerts(store)).toEqual(['Neustartprozess gestartet']);
+    expect(alerts(store)).toEqual([]);
     expect(store.getState().loadingWall.isLoadingWallVisible).toBe(true);
     expect(window.location.reload).not.toHaveBeenCalled();
   });

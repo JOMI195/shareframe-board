@@ -32,7 +32,7 @@ describe('system info', () => {
     expect(await within(device).findByText('SER-1')).toBeInTheDocument();
     expect(within(device).getByText('B (Trial, nicht bestätigt)')).toBeInTheDocument();
     expect(within(device).getByText('1d 1h 1m')).toBeInTheDocument();
-    expect(within(card('Netzwerk')).getByText('Access Point')).toBeInTheDocument();
+    expect(within(card('Netzwerk')).getByText('Hotspot')).toBeInTheDocument();
     expect(within(card('System')).getByText('256 MB / 512 MB (50%)')).toBeInTheDocument();
     expect(within(card('System')).getByText('45.2 °C')).toBeInTheDocument();
   });
@@ -41,7 +41,7 @@ describe('system info', () => {
     server.use(...failsWith('get', api.getSystemInfoUrl()));
     openGeneral();
 
-    expect(await screen.findAllByText('Abrufen der Frame-Informationen fehlgeschlagen')).not.toHaveLength(0);
+    expect(await screen.findAllByText('Systeminfos konnten nicht geladen werden')).not.toHaveLength(0);
   });
 });
 
@@ -62,7 +62,7 @@ describe('device password', () => {
     await user.type(within(dialog).getByLabelText(/Neues Passwort bestätigen/), 'newpassword');
     await user.click(within(dialog).getByRole('button', { name: 'Passwort ändern' }));
 
-    expect(await screen.findByText('Passwort erfolgreich geändert')).toBeInTheDocument();
+    expect(await screen.findByText('Passwort geändert')).toBeInTheDocument();
     expect(await change.calls[0].json()).toEqual({ current_password: 'oldpassword', new_password: 'newpassword' });
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
@@ -87,7 +87,7 @@ describe('device password', () => {
     await user.type(within(dialog).getByLabelText(/Neues Passwort bestätigen/), 'newpassword');
     await user.click(within(dialog).getByRole('button', { name: 'Passwort ändern' }));
 
-    expect(await screen.findByText('Aktuelles Passwort ungültig')).toBeInTheDocument();
+    expect(await screen.findByText('Das aktuelle Passwort stimmt nicht.')).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });
@@ -122,7 +122,7 @@ describe('power', () => {
     const board = boardGoesDownOn(api.getRestartPiUrl());
     const { user, router, store } = await openPowerMenu();
 
-    await user.click(await screen.findByRole('menuitem', { name: 'Neustarten' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Neu starten' }));
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Neu starten' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
@@ -152,17 +152,17 @@ describe('power', () => {
 
     await advance(6_000);
 
-    await waitFor(() => expect(store.getState().loadingWall.message).toMatch(/wurde heruntergefahren und ist ausgeschaltet/));
+    await waitFor(() => expect(store.getState().loadingWall.message).toMatch(/Der Bilderrahmen ist ausgeschaltet/));
   });
 
   it('stays put when the board refuses to restart', async () => {
     server.use(...failsWith('post', api.getRestartPiUrl(), 409, 'Update läuft'));
     const { user, router, store } = await openPowerMenu();
 
-    await user.click(await screen.findByRole('menuitem', { name: 'Neustarten' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Neu starten' }));
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Neu starten' }));
 
-    expect(await screen.findByText('Neustartprozess fehlgeschlagen')).toBeInTheDocument();
+    expect(await screen.findByText('Bilderrahmen konnte nicht neu gestartet werden')).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/general/');
     expect(store.getState().loadingWall.isLoadingWallVisible).toBe(false);
   });
@@ -207,7 +207,7 @@ describe('power', () => {
 
     await user.click(within(dialog).getByRole('button', { name: 'Zurücksetzen' }));
 
-    expect(await screen.findByText('Zurücksetzen fehlgeschlagen')).toBeInTheDocument();
+    expect(await screen.findByText('Bilderrahmen konnte nicht zurückgesetzt werden')).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/general/');
     expect(store.getState().loadingWall.isLoadingWallVisible).toBe(false);
   });

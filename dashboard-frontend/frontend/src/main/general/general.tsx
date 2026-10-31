@@ -68,7 +68,7 @@ const fmtSlot = (slot?: string, trial?: boolean): string =>
 const fmtFreq = (mhz?: number): string => (mhz === undefined ? DASH : `${mhz} MHz`);
 const HEALTH_LABELS: Record<string, string> = { ok: 'OK', warn: 'Warnung', critical: 'Kritisch' };
 const fmtHealth = (s?: string): string => (s ? HEALTH_LABELS[s] ?? s : DASH);
-const WIFI_MODE_LABELS: Record<string, string> = { connected: 'Verbunden', connecting: 'Verbinde …', ap: 'Access Point' };
+const WIFI_MODE_LABELS: Record<string, string> = { connected: 'Verbunden', connecting: 'Verbinde …', ap: 'Hotspot' };
 const fmtWifiMode = (m?: string): string => (m ? WIFI_MODE_LABELS[m] ?? m : DASH);
 
 const General = () => {
@@ -156,7 +156,7 @@ const General = () => {
                     sections={[
                         {
                             label: "Geräte-Passwort",
-                            content: "Passwort für die Anmeldung am Dashboard ohne Internetverbindung.",
+                            content: "Damit meldest du dich auch ohne Internet in den Einstellungen an.",
                         },
                     ]}
                     actions={
@@ -177,7 +177,7 @@ const General = () => {
                     sections={[
                         {
                             label: "Diagnose",
-                            content: "Sendet Protokolle und Systemzustand an den Support. Ohne Passwörter, WLAN-Zugangsdaten und Bilder.",
+                            content: "Sendet Protokolle und Systemzustand an den Support. Ohne Passwörter, WLAN-Zugangsdaten und Fotos.",
                         },
                     ]}
                     actions={
@@ -199,7 +199,7 @@ const General = () => {
                     sections={[
                         {
                             label: "Zurücksetzen",
-                            content: "Löscht alle Bilder, WLAN-Netzwerke, das Geräte-Passwort und alle Einstellungen.",
+                            content: "Löscht alle Fotos, WLANs, das Geräte-Passwort und alle Einstellungen.",
                         },
                     ]}
                     actions={

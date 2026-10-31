@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { boardErrorMessage } from '@/common/utils/errors/boardErrors';
 import { RootState } from '@/store';
 import uuid from 'react-uuid';
 import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '@/store/snackbars/snackbars.Slice';
@@ -43,7 +44,7 @@ export const restartService = createAsyncThunk(
     async (id: string, { dispatch, rejectWithValue }) => {
         const loadingId = uuid();
         try {
-            dispatch(addLoadingSnackbar(loadingId, 'Starte Dienst neu'));
+            dispatch(addLoadingSnackbar(loadingId, 'Neustart wird angefordert'));
             const response = await fetchWithTimeout(getServiceRestartUrl(), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -51,13 +52,13 @@ export const restartService = createAsyncThunk(
             });
             const payload: IServerResponse = await response.json();
             if (payload.success) {
-                dispatch(addAlertSnackbar(uuid(), payload.message || 'Dienst wird neu gestartet', 'success'));
+                dispatch(addAlertSnackbar(uuid(), 'Dienst wird neu gestartet', 'success'));
                 return id;
             }
-            dispatch(addAlertSnackbar(uuid(), payload.message || 'Neustart fehlgeschlagen', 'error'));
+            dispatch(addAlertSnackbar(uuid(), boardErrorMessage('Dienst konnte nicht neu gestartet werden', response, payload.message), 'error'));
             return rejectWithValue(payload.message || 'restart failed');
         } catch (error) {
-            dispatch(addAlertSnackbar(uuid(), 'Neustart fehlgeschlagen', 'error'));
+            dispatch(addAlertSnackbar(uuid(), 'Dienst konnte nicht neu gestartet werden', 'error'));
             return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
         } finally {
             dispatch(removeLoadingSnackbar(loadingId));

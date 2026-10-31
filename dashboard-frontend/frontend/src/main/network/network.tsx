@@ -65,7 +65,7 @@ const Network = () => {
             }}>
                 {mode === 'ap' && <HotspotCard />}
                 <ShareframeInfoCard
-                    title="Übersicht (WIFI)"
+                    title="WLAN"
                     sections={[
                         {
                             label: "Aktuelles Netzwerk",
@@ -155,7 +155,7 @@ const Network = () => {
                 />
 
                 <ShareframeInfoCard
-                    title="Access Point"
+                    title="Hotspot"
                     minHeight="0px"
                     sections={[
                         {
@@ -182,7 +182,7 @@ const Network = () => {
                                             {ap_password && (
                                                 <IconButton
                                                     size="small"
-                                                    aria-label="AP-Passwort anzeigen"
+                                                    aria-label="Hotspot-Passwort anzeigen"
                                                     onClick={() => setShowApPassword((s) => !s)}
                                                     sx={{ ml: 0.5 }}
                                                 >
@@ -205,7 +205,7 @@ const Network = () => {
                             onClick={() => dispatch(openNetworkChangeApPasswordDialog())}
                             disabled={isButtonsDisabled}
                         >
-                            AP-Passwort ändern
+                            Hotspot-Passwort ändern
                         </Button>
                     }
                 />

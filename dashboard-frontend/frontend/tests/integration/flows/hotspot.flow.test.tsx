@@ -13,7 +13,7 @@ const signedOutOnHotspot = () => server.use(...signedOut(), ...apMode(HOTSPOT));
 const openNetworkOnHotspot = async (saved = ['HomeNet'], over = {}) => {
   server.use(...apMode({ ...HOTSPOT, ...over }), ...withNetworks('', saved));
   const view = renderRoute('/network/', { preloadedState: signedInState() });
-  await screen.findByText('Hotspot aktiv');
+  await screen.findByRole('heading', { level: 2, name: 'WLAN einrichten' });
   return view;
 };
 
@@ -24,7 +24,7 @@ describe('signing in on the hotspot', () => {
 
     expect(await screen.findByText(/stellt den Hotspot „shareframe-board-1234“ bereit/)).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/auth/sign-in');
-    expect(screen.getByLabelText(/Passwort/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Passwort/, { selector: 'input' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Mit OTP anmelden' })).not.toBeInTheDocument();
   });
 
@@ -35,7 +35,7 @@ describe('signing in on the hotspot', () => {
     const { user, router } = renderRoute('/auth/sign-in', { preloadedState: buildState() });
 
     await screen.findByText(/stellt den Hotspot/);
-    await user.type(screen.getByLabelText(/Passwort/), 'geheim123');
+    await user.type(screen.getByLabelText(/^Passwort/, { selector: 'input' }), 'geheim123');
     await user.click(screen.getByRole('button', { name: 'Anmelden' }));
 
     expect(await login.calls[0].json()).toEqual({ password: 'geheim123' });
@@ -60,8 +60,8 @@ describe('connecting from the hotspot', () => {
   it('only shows the hotspot card while the board hosts it', async () => {
     renderRoute('/network/', { preloadedState: signedInState() });
 
-    await screen.findByText('Übersicht (WIFI)');
-    expect(screen.queryByText('Hotspot aktiv')).not.toBeInTheDocument();
+    await screen.findByRole('heading', { level: 2, name: 'WLAN' });
+    expect(screen.queryByRole('heading', { name: 'WLAN einrichten' })).not.toBeInTheDocument();
   });
 
   it('tells after saving a network how to switch over', async () => {
@@ -73,7 +73,7 @@ describe('connecting from the hotspot', () => {
     await user.type(within(dialog).getByLabelText(/^Passwort$/), 'gardenpass');
     await user.click(within(dialog).getByRole('button', { name: 'Hinzufügen' }));
 
-    expect(await screen.findByText(/mit „Jetzt verbinden“ wechselt der Rahmen ins WLAN/)).toBeInTheDocument();
+    expect(await screen.findByText(/Mit „Jetzt verbinden“ wechselt der Bilderrahmen ins WLAN/)).toBeInTheDocument();
   });
 
   it('asks the board to try the saved networks and explains where to find it', async () => {
@@ -81,14 +81,14 @@ describe('connecting from the hotspot', () => {
     server.use(apply.handler);
     const { user } = await openNetworkOnHotspot();
 
-    await user.click(within(card('Hotspot aktiv')).getByRole('button', { name: 'Jetzt verbinden' }));
+    await user.click(within(card('WLAN einrichten')).getByRole('button', { name: 'Jetzt verbinden' }));
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText('http://shareframe-board-1234.local')).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: 'Verbinden' }));
 
     await waitFor(() => expect(apply.calls).toHaveLength(1));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    const hotspot = card('Hotspot aktiv');
+    const hotspot = card('WLAN einrichten');
     expect(await within(hotspot).findByText(/Der Rahmen verbindet sich/)).toBeInTheDocument();
     expect(within(hotspot).getByRole('button', { name: 'Jetzt verbinden' })).toBeDisabled();
   });
@@ -97,10 +97,10 @@ describe('connecting from the hotspot', () => {
     server.use(...failsWith('post', api.getConnectionApplyUrl(), 409, 'Not in access point mode'));
     const { user } = await openNetworkOnHotspot();
 
-    await user.click(within(card('Hotspot aktiv')).getByRole('button', { name: 'Jetzt verbinden' }));
+    await user.click(within(card('WLAN einrichten')).getByRole('button', { name: 'Jetzt verbinden' }));
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Verbinden' }));
 
-    expect(await screen.findByText('Verbinden fehlgeschlagen')).toBeInTheDocument();
+    expect(await screen.findByText('Das geht nur, solange der Bilderrahmen seinen Hotspot bereitstellt.')).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.queryByText(/Der Rahmen verbindet sich/)).not.toBeInTheDocument();
   });
@@ -108,13 +108,13 @@ describe('connecting from the hotspot', () => {
   it('says when the last attempt failed', async () => {
     await openNetworkOnHotspot(['HomeNet'], { last_failed_secs_ago: 180 });
 
-    expect(await within(card('Hotspot aktiv')).findByText(/Letzter Verbindungsversuch vor 3 Minuten fehlgeschlagen/))
+    expect(await within(card('WLAN einrichten')).findByText(/Vor 3 Minuten war keines der gespeicherten/))
       .toBeInTheDocument();
   });
 
   it('needs a saved network first', async () => {
     await openNetworkOnHotspot([]);
 
-    expect(within(card('Hotspot aktiv')).getByRole('button', { name: 'Jetzt verbinden' })).toBeDisabled();
+    expect(within(card('WLAN einrichten')).getByRole('button', { name: 'Jetzt verbinden' })).toBeDisabled();
   });
 });

@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { boardErrorMessage } from '@/common/utils/errors/boardErrors';
 import { RootState } from '@/store'; // Adjust import path as needed
 import uuid from 'react-uuid';
 import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '@/store/snackbars/snackbars.Slice';
@@ -23,7 +24,7 @@ export interface NetworkState {
 
 // Initial State
 const initialState: NetworkState = {
-    currentConnection: 'Loading...',
+    currentConnection: 'Wird geladen …',
     savedNetworks: [],
     loading: false,
     error: null,
@@ -53,7 +54,7 @@ export const fetchNetworkData = createAsyncThunk(
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            dispatch(addAlertSnackbar(uuid(), "Aktualisieren fehlgeschlagen", "error"));
+            dispatch(addAlertSnackbar(uuid(), "Netzwerke konnten nicht geladen werden", "error"));
             return rejectWithValue(errorMessage);
         }
     }
@@ -63,7 +64,7 @@ export const addNetwork = createAsyncThunk(
     'network/addNetwork',
     async (credentials: NetworkCredentials, { dispatch, getState, rejectWithValue }) => {
         if (!credentials.ssid || !credentials.password) {
-            dispatch(addAlertSnackbar(uuid(), "SSID und Passwort benötigt", "error"));
+            dispatch(addAlertSnackbar(uuid(), "Gib Netzwerkname und Passwort ein", "error"));
             return rejectWithValue('Missing credentials');
         }
 
@@ -72,7 +73,7 @@ export const addNetwork = createAsyncThunk(
         try {
             dispatch(addLoadingSnackbar(
                 loadingSnackbarId,
-                'Netzwerk hinzufügen'
+                'WLAN wird hinzugefügt'
             ));
 
             const response = await fetchWithTimeout(getConnectionConnectUrl(), {
@@ -88,17 +89,17 @@ export const addNetwork = createAsyncThunk(
             if (data.success) {
                 const onHotspot = (getState() as RootState).connectionMode.mode === 'ap';
                 dispatch(addAlertSnackbar(uuid(), onHotspot
-                    ? "Netzwerk gespeichert – mit „Jetzt verbinden“ wechselt der Rahmen ins WLAN"
-                    : "Netzwerk erfolgreich hinzugefügt", "success"));
+                    ? "WLAN gespeichert. Mit „Jetzt verbinden“ wechselt der Bilderrahmen ins WLAN."
+                    : "WLAN hinzugefügt", "success"));
                 dispatch(fetchNetworkData());
                 return credentials.ssid;
             } else {
-                dispatch(addAlertSnackbar(uuid(), "Hinzufügen des Netzwerks fehlgeschlagen", "error"));
+                dispatch(addAlertSnackbar(uuid(), boardErrorMessage("WLAN konnte nicht hinzugefügt werden", response, data.message), "error"));
                 return rejectWithValue('Failed to add network');
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            dispatch(addAlertSnackbar(uuid(), "Hinzufügen des Netzwerks fehlgeschlagen", "error"));
+            dispatch(addAlertSnackbar(uuid(), "WLAN konnte nicht hinzugefügt werden", "error"));
             return rejectWithValue(errorMessage);
         } finally {
             dispatch(removeLoadingSnackbar(loadingSnackbarId));
@@ -114,7 +115,7 @@ export const forgetNetwork = createAsyncThunk(
         try {
             dispatch(addLoadingSnackbar(
                 loadingSnackbarId,
-                'Netzwerk entfernen'
+                'WLAN wird entfernt'
             ));
             const response = await fetchWithTimeout(getConnectionForgetUrl(), {
                 method: 'POST',
@@ -127,16 +128,16 @@ export const forgetNetwork = createAsyncThunk(
             const data: IServerResponse = await response.json();
 
             if (data.success) {
-                dispatch(addAlertSnackbar(uuid(), "Netzwerk erfolgreich entfernt", "success"));
+                dispatch(addAlertSnackbar(uuid(), "WLAN entfernt", "success"));
                 dispatch(fetchNetworkData());
                 return ssid;
             } else {
-                dispatch(addAlertSnackbar(uuid(), "Entfernen des Netzwerks fehlgeschlagen", "error"));
+                dispatch(addAlertSnackbar(uuid(), boardErrorMessage("WLAN konnte nicht entfernt werden", response, data.message), "error"));
                 return rejectWithValue('Failed to forget network');
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            dispatch(addAlertSnackbar(uuid(), "Entfernen des Netzwerks fehlgeschlagen", "error"));
+            dispatch(addAlertSnackbar(uuid(), "WLAN konnte nicht entfernt werden", "error"));
             return rejectWithValue(errorMessage);
         } finally {
             dispatch(removeLoadingSnackbar(loadingSnackbarId));
@@ -152,7 +153,7 @@ export const changeApPassword = createAsyncThunk(
         try {
             dispatch(addLoadingSnackbar(
                 loadingSnackbarId,
-                'AP-Passwort wird geändert'
+                'Hotspot-Passwort wird geändert'
             ));
             const response = await fetchWithTimeout(getApPasswordUrl(), {
                 method: 'POST',
@@ -165,15 +166,15 @@ export const changeApPassword = createAsyncThunk(
             const data: IServerResponse = await response.json();
 
             if (data.success) {
-                dispatch(addAlertSnackbar(uuid(), "AP-Passwort erfolgreich geändert", "success"));
+                dispatch(addAlertSnackbar(uuid(), "Hotspot-Passwort geändert", "success"));
                 return true;
             } else {
-                dispatch(addAlertSnackbar(uuid(), data.message || "Ändern des AP-Passworts fehlgeschlagen", "error"));
+                dispatch(addAlertSnackbar(uuid(), boardErrorMessage("Hotspot-Passwort konnte nicht geändert werden", response, data.message), "error"));
                 return rejectWithValue(data.message || 'Failed to change AP password');
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            dispatch(addAlertSnackbar(uuid(), "Ändern des AP-Passworts fehlgeschlagen", "error"));
+            dispatch(addAlertSnackbar(uuid(), "Hotspot-Passwort konnte nicht geändert werden", "error"));
             return rejectWithValue(errorMessage);
         } finally {
             dispatch(removeLoadingSnackbar(loadingSnackbarId));
@@ -191,10 +192,10 @@ export const connectToSavedNetworks = createAsyncThunk(
             if (data.success) {
                 return true;
             }
-            dispatch(addAlertSnackbar(uuid(), "Verbinden fehlgeschlagen", "error"));
+            dispatch(addAlertSnackbar(uuid(), boardErrorMessage("Verbindung konnte nicht gestartet werden", response, data.message), "error"));
             return rejectWithValue(data.message || 'Failed to connect');
         } catch (error) {
-            dispatch(addAlertSnackbar(uuid(), "Verbinden fehlgeschlagen", "error"));
+            dispatch(addAlertSnackbar(uuid(), "Verbindung konnte nicht gestartet werden", "error"));
             return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
         }
     }

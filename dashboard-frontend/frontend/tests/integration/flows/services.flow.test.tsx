@@ -59,7 +59,7 @@ describe('services overview', () => {
     await user.click(within(await findCard('Display')).getByRole('button', { name: 'Neu starten' }));
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Neu starten' }));
 
-    expect(await screen.findByText('Unbekannter Dienst')).toBeInTheDocument();
+    expect(await screen.findByText('Dienst konnte nicht neu gestartet werden')).toBeInTheDocument();
   });
 
   it('opens the detail page of a service', async () => {

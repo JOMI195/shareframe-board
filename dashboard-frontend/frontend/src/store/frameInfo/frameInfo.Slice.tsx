@@ -66,12 +66,12 @@ export const fetchFrameInfos = createAsyncThunk(
             if (payload.success && payload.data) {
                 return payload.data;
             } else {
-                dispatch(addAlertSnackbar(uuid(), "Abrufen der Frame-Informationen fehlgeschlagen", "error"));
+                dispatch(addAlertSnackbar(uuid(), "Systeminfos konnten nicht geladen werden", "error"));
                 return rejectWithValue('Failed to fetch frame infos');
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            dispatch(addAlertSnackbar(uuid(), "Abrufen der Frame-Informationen fehlgeschlagen", "error"));
+            dispatch(addAlertSnackbar(uuid(), "Systeminfos konnten nicht geladen werden", "error"));
             return rejectWithValue(errorMessage);
         }
     }

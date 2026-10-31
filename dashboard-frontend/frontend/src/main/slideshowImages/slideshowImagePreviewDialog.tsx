@@ -62,7 +62,7 @@ const SlideshowImagePreviewDialog: React.FC<SlideshowImagePreviewDialogProps> = 
             link.click();
             URL.revokeObjectURL(url);
         } catch {
-            dispatch(addAlertSnackbar(uuid(), 'Foto herunterladen fehlgeschlagen', 'error'));
+            dispatch(addAlertSnackbar(uuid(), 'Foto konnte nicht heruntergeladen werden', 'error'));
         }
     };
 
@@ -87,7 +87,7 @@ const SlideshowImagePreviewDialog: React.FC<SlideshowImagePreviewDialogProps> = 
         <ShareframeMainDialog
             open={image !== null}
             onDialogClose={onClose}
-            dialogTitle="Bild auf dem Bilderrahmen"
+            dialogTitle="Foto auf dem Bilderrahmen"
             dialogContentSx={{ padding: 2 }}
             actionsShown={image !== null}
             actionPrimary={primaryAction}
@@ -130,7 +130,7 @@ const SlideshowImagePreviewDialog: React.FC<SlideshowImagePreviewDialogProps> = 
                     <AuthenticatedImage
                         key={image.id}
                         url={getImageFileUrl(image.id)}
-                        alt={`Bild von ${image.sender}`}
+                        alt={`Foto von ${image.sender}`}
                         style={{ maxWidth: '100%', maxHeight: isSmallScreen ? '50vh' : '60vh', borderRadius: 8 }}
                         aspectRatio={image.height ? image.width / image.height : undefined}
                     />

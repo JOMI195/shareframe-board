@@ -44,7 +44,7 @@ const FrameLogs = () => {
             <Alert severity="info">
                 {source === ServiceType.SYSTEM
                     ? <>Dies ist das System-Protokoll. Dienst-spezifische Protokolle (Display, WebSocket,
-                        Dashboard, Heartbeat) findest du auf der jeweiligen Dienst-Seite unter „Verwaltung".</>
+                        Dashboard, Heartbeat) findest du auf der jeweiligen Dienst-Seite unter „Verwaltung“.</>
                     : <>Ereignisse bleiben auch nach einem Neustart erhalten: Starts, Abstürze, Updates,
                         WLAN-Wechsel und Befehle, die der Support aus der Ferne ausgelöst hat.</>}
             </Alert>

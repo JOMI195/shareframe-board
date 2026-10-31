@@ -19,7 +19,7 @@ describe('navigation', () => {
     await user.click(within(sidebar()).getByRole('link', { name: 'Netzwerk' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/network/'));
-    expect(await screen.findByRole('heading', { name: 'Übersicht (WIFI)' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'WLAN' })).toBeInTheDocument();
   });
 
   it('reveals the admin pages in advanced mode', async () => {
@@ -113,16 +113,16 @@ describe('notifications', () => {
 describe('network status banner', () => {
   it('stays hidden while the board is online', async () => {
     renderRoute('/', { preloadedState: signedInState() });
-    await screen.findByText('Bilderwiedergabe');
+    await screen.findByRole('heading', { level: 2, name: 'Diashow' });
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it.each([
-    [{ mode: 'connecting' as const, ssid: 'HomeNet' }, 'Verbinde…', 'Verbindung zu „HomeNet“ wird hergestellt.'],
-    [{ mode: 'connecting' as const, ssid: '' }, 'Verbinde…', 'Suche nach bekannten Netzwerken.'],
+    [{ mode: 'connecting' as const, ssid: 'HomeNet' }, 'Verbindet …', 'Verbindung zu „HomeNet“ wird hergestellt.'],
+    [{ mode: 'connecting' as const, ssid: '' }, 'Verbindet …', 'Suche nach bekannten Netzwerken.'],
     [{ mode: 'connected' as const, internet: false }, 'Kein Internet', 'Mit „HomeNet“ verbunden, aber keine Internetverbindung.'],
-    [{ mode: 'ap' as const, ap_ssid: 'sf-1', ap_password: 'pw123456' }, 'AP-Modus aktiv', /WLAN „sf-1“ · Passwort: pw123456 — unter Netzwerk/],
+    [{ mode: 'ap' as const, ap_ssid: 'sf-1', ap_password: 'pw123456' }, 'Hotspot aktiv', /WLAN „sf-1“ · Passwort: pw123456\. Füge unter „Netzwerk“/],
   ])('explains %o', async (mode, title, detail) => {
     server.use(...withConnectionMode(mode));
     renderRoute('/', { preloadedState: signedInState() });
@@ -154,7 +154,7 @@ describe('network status banner', () => {
   ])('keeps quiet for a short reconnect or an unknown link: %o', async (over) => {
     server.use(...withConnectionMode(over));
     renderRoute('/', { preloadedState: signedInState() });
-    await screen.findByText('Bilderwiedergabe');
+    await screen.findByRole('heading', { level: 2, name: 'Diashow' });
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });

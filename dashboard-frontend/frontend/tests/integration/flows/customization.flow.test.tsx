@@ -25,7 +25,7 @@ describe('customization', () => {
 
     await waitFor(() => expect(save.calls).toHaveLength(1));
     expect(await save.calls[0].json()).toEqual({ show_sender: false });
-    expect(await screen.findByText('Der Name des Absenders wird ab dem nächsten Bildwechsel ausgeblendet')).toBeInTheDocument();
+    expect(await screen.findByText('Der Name des Absenders wird ab dem nächsten Fotowechsel ausgeblendet')).toBeInTheDocument();
     expect(senderSwitch()).not.toBeChecked();
   });
 
@@ -36,7 +36,7 @@ describe('customization', () => {
 
     await user.click(senderSwitch());
 
-    expect(await screen.findByText('Speichern der Anpassung fehlgeschlagen')).toBeInTheDocument();
+    expect(await screen.findByText('Anpassung konnte nicht gespeichert werden')).toBeInTheDocument();
     expect(senderSwitch()).not.toBeChecked();
   });
 });

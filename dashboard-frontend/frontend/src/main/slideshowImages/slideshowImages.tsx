@@ -78,13 +78,13 @@ const SlideshowImages: React.FC = () => {
                                             />
                                             {isEditing && (
                                                 <Typography variant="body2" color="text.secondary">
-                                                    Ziehe die Bilder in die gewünschte Reihenfolge und speichere sie anschließend.
-                                                    Neue Bilder werden hinten angehängt.
+                                                    Ziehe die Fotos in die gewünschte Reihenfolge und speichere sie anschließend.
+                                                    Neue Fotos werden hinten angehängt.
                                                 </Typography>
                                             )}
                                             {!isEditing && mode === 'shuffle' && (
                                                 <Typography variant="body2" color="text.secondary">
-                                                    Jedes Bild kommt einmal pro Durchlauf an die Reihe, danach wird neu gemischt.
+                                                    Jedes Foto kommt einmal pro Durchlauf an die Reihe, danach wird neu gemischt.
                                                     Unten siehst du den aktuellen Durchlauf.
                                                 </Typography>
                                             )}
@@ -118,7 +118,7 @@ const SlideshowImages: React.FC = () => {
                                 onOpen={setPreviewId}
                             />
                             <Typography variant="subtitle2" color="text.secondary" sx={{ textAlign: 'center', pt: 1 }}>
-                                {shown.length} {shown.length === 1 ? 'Bild' : 'Bilder'} auf dem Bilderrahmen
+                                {shown.length} {shown.length === 1 ? 'Foto' : 'Fotos'} auf dem Bilderrahmen
                             </Typography>
                         </Stack>
                     ) : lastFetchedAt !== null ? (

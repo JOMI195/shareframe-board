@@ -40,7 +40,7 @@ describe('updates', () => {
     server.use(...failsWith('get', api.getLatestReleaseUrl()));
     openUpdates();
 
-    expect(await screen.findByText('Suche nach neuster Version fehlgeschlagen')).toBeInTheDocument();
+    expect(await screen.findByText('Updates konnten nicht gesucht werden')).toBeInTheDocument();
   });
 
   it('lists the bullet points of the release notes', async () => {

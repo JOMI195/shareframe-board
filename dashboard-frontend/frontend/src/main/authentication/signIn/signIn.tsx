@@ -56,7 +56,8 @@ const SignIn = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await dispatch(loginThunk(method === 'otp' ? { otp: secret } : { password: secret }));
+      const result = await dispatch(loginThunk(method === 'otp' ? { otp: secret } : { password: secret }));
+      if (loginThunk.rejected.match(result)) setSecret('');
     } finally {
       setLoading(false);
     }
@@ -100,17 +101,17 @@ const SignIn = () => {
         textAlign: "center"
       }}>
         {method === 'otp'
-          ? "Nutze ein OTP um dich bei deinem Bilderrahmen anzumelden. Dieses erhälst du in der ShareFrame Website Bilderrahmen Übersicht"
+          ? "Melde dich mit einem Einmal-Code an. Du erhältst ihn auf shareframe.de unter „Bilderrahmen“ über „Einmal-Code anzeigen“."
           : "Melde dich mit dem Geräte-Passwort an."}
       </Typography>
 
       {onHotspot ? (
         <Alert severity="info" sx={{ mt: 2, width: '100%', textAlign: 'left' }}>
-          {`Der Rahmen ist mit keinem WLAN verbunden und stellt den Hotspot „${ap_ssid || 'shareframe-board'}“ bereit. Melde dich mit dem Geräte-Passwort an und füge unter Netzwerk dein WLAN hinzu.`}
+          {`Der Bilderrahmen ist mit keinem WLAN verbunden und stellt den Hotspot „${ap_ssid || 'shareframe-board'}“ bereit. Melde dich mit dem Geräte-Passwort an und füge unter „Netzwerk“ dein WLAN hinzu.`}
         </Alert>
       ) : loaded && !internet && (
         <Alert severity="info" sx={{ mt: 2, width: '100%' }}>
-          {"Keine Internetverbindung – die OTP-Anmeldung ist derzeit nicht möglich."}
+          {"Keine Internetverbindung. Die Anmeldung mit Einmal-Code ist gerade nicht möglich."}
         </Alert>
       )}
 
@@ -120,19 +121,22 @@ const SignIn = () => {
           margin="normal"
           required
           fullWidth
-          name="password"
-          label={method === 'otp' ? "OTP" : "Passwort"}
+          name={method === 'otp' ? "otp" : "password"}
+          label={method === 'otp' ? "Einmal-Code" : "Passwort"}
           type={showPassword ? "text" : "password"}
-          id="password"
-          autoComplete="current-password"
+          id={method === 'otp' ? "otp" : "password"}
+          autoComplete={method === 'otp' ? "one-time-code" : "current-password"}
           value={secret}
           onChange={(e) => setSecret(e.target.value)}
           slotProps={{
+            htmlInput: method === 'otp'
+              ? { autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false }
+              : undefined,
             input: {
               endAdornment: (
                 <InputAdornment position="end">
                   <IconButton
-                    aria-label="toggle current password visibility"
+                    aria-label={`${method === 'otp' ? 'Einmal-Code' : 'Passwort'} ${showPassword ? 'verbergen' : 'anzeigen'}`}
                     onClick={() => handleClickShowPassword()}
                     onMouseDown={handleMouseDownPassword}
                     edge="end"
@@ -150,7 +154,8 @@ const SignIn = () => {
           variant="contained"
           color="primary"
           sx={{ mt: 3, mb: 2 }}
-          disabled={loading || !secret || !isConnected}
+          loading={loading}
+          disabled={!secret || !isConnected}
         >
           {'Anmelden'}
         </Button>
@@ -162,7 +167,7 @@ const SignIn = () => {
           </Link>
         ) : (
           <Link component="button" type="button" variant="body2" onClick={handleToggleMethod}>
-            {method === 'otp' ? "Mit Passwort anmelden" : "Mit OTP anmelden"}
+            {method === 'otp' ? "Mit Passwort anmelden" : "Mit Einmal-Code anmelden"}
           </Link>
         )}
       </Box>

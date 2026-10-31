@@ -104,7 +104,7 @@ const DisplayHealthPage = () => {
                             </Box>,
                         ),
                     },
-                    { label: 'Bild-Aktualisierungen', content: fmtInt(stats?.epd_image_refresh_total) },
+                    { label: 'Foto-Aktualisierungen', content: fmtInt(stats?.epd_image_refresh_total) },
                     { label: 'Löschvorgänge', content: fmtInt(stats?.epd_clear_total) },
                 ]}
             />

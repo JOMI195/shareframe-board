@@ -135,7 +135,7 @@ const Updates = () => {
                                 }
                             },
                             {
-                                content: "Die neue Version läuft und wird nach erfolgreicher Prüfung automatisch übernommen."
+                                content: "Die neue Version läuft und wird nach der Prüfung automatisch übernommen."
                             }
                         ]}
                     />
@@ -286,7 +286,7 @@ const Updates = () => {
                                         }
                                     },
                                     {
-                                        content: "Bilderrahmen ist auf dem neusten Stand!"
+                                        content: "Der Bilderrahmen ist auf dem neuesten Stand."
                                     },
                                 ]}
                                 actions={
