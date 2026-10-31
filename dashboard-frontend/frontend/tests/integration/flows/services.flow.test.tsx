@@ -79,7 +79,7 @@ describe('service detail', () => {
     server.use(logs.handler);
     renderRoute('/services/display', { preloadedState: signedInState() });
 
-    const overview = card('Display');
+    const overview = await findCard('Display');
     expect(await within(overview).findByText('Aktiv')).toBeInTheDocument();
     expect(within(overview).getByText('100')).toBeInTheDocument();
     expect(await screen.findByText('refresh ok again')).toBeInTheDocument();

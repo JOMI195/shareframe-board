@@ -1,7 +1,7 @@
-import { Box, Container, Link, useMediaQuery, useTheme } from "@mui/material";
+import { Box, Container, LinearProgress, Link, useMediaQuery, useTheme } from "@mui/material";
 import TopAppbar from "./topLayout/topAppBar";
 import NetworkStatusBanner from "@/common/components/networkStatusBanner";
-import { Outlet, useLocation } from "react-router";
+import { Outlet, useLocation, useNavigation } from "react-router";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { useTimer } from "@/hooks/useTimer";
 import { useEffect, useEffectEvent, useRef } from "react";
@@ -16,6 +16,18 @@ import { getCurrentPath, getSidebar, routeChanged } from "@/store/navigation/nav
 import HiddenPageTitle from "@/common/components/hiddenPageTitle";
 import { usePageTitle } from "@/hooks/navigation/usePageTitle";
 import { SIDEBAR_ICON_WIDTH, SIDEBAR_WIDTH } from "./sidebar/sidebarWidth";
+
+// Own component, so a navigation state change doesn't re-render the whole shell.
+const NavigationProgress = () => {
+    const navigation = useNavigation();
+    if (navigation.state !== 'loading') return null;
+    return (
+        <LinearProgress
+            aria-label="Seite lädt"
+            sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: (theme) => theme.zIndex.tooltip }}
+        />
+    );
+};
 
 const MainLayout = () => {
     const dispatch = useAppDispatch();
@@ -90,6 +102,7 @@ const MainLayout = () => {
             >
                 Zum Inhalt springen
             </Link>
+            <NavigationProgress />
             <TopAppbar />
             <NetworkStatusBanner />
             <Sidebar />

@@ -3,31 +3,31 @@ import Snackbars from '@/common/components/snackbars/snackbars';
 import ProtectedRoute from '@/common/components/protectedRoute';
 import { getHomeUrl, getSlideshowPageUrl, getCustomizationUrl, getGeneralSettingsUrl, getDisplayHealthUrl, getLogsUrl, getNetworkUrl, getUpdatesyUrl, getUpdateHistoryPageUrl, getServicesOverviewUrl, getServiceDetailUrl } from '@/assets/endpoints/app/appEndpoints';
 import FrameActions from '@/main/frame/frameActions';
-import SlideshowImages from '@/main/slideshowImages/slideshowImages';
-import Customization from '@/main/customization/customization';
-import Updates from '@/main/updates/updates';
-import UpdateHistory from '@/main/updateHistory/updateHistory';
-import Network from '@/main/network/network';
-import General from '@/main/general/general';
-import DisplayHealthPage from '@/main/displayHealth/displayHealth';
-import FrameLogs from '@/main/monitoring/frameLogs';
-import ServicesOverview from '@/main/services/servicesOverview';
-import ServiceDetail from '@/main/services/serviceDetail';
 import { ServiceType } from '@/types';
 import NotFound from '@/common/components/error/notFound/notFound';
 import RouteError from '@/common/components/error/routeError/routeError';
+import LoadingFallback from '@/common/components/loadingFallback';
 import { createBrowserRouter } from 'react-router';
 import { getAuthenticationUrl, getSignInUrl, getSignOutUrl } from '@/assets/endpoints/app/authEndpoints';
 import AuthenticationLayout from '@/main/authentication/layout';
 import SignIn from '@/main/authentication/signIn/signIn';
 import SignOut from '@/main/authentication/signOut/signOut';
 import RouterContext from '@/common/components/routerContext';
+import { lazyPage } from './lazyPage';
+
+const serviceDetail = (serviceId: ServiceType) => ({
+  lazy: async () => {
+    const { default: ServiceDetail } = await import('@/main/services/serviceDetail');
+    return { element: <ServiceDetail serviceId={serviceId} /> };
+  },
+});
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const routes = [
   {
     element: <RouterContext />,
     errorElement: <RouteError />,
+    HydrateFallback: LoadingFallback,
     children: [
       {
         element: <Snackbars />,
@@ -72,78 +72,58 @@ export const routes = [
                       {
                         path: getHomeUrl(),
                         handle: { title: 'Steuerung' },
-                        element: <FrameActions />
+                        element: <FrameActions />,
                       },
                       {
                         path: getSlideshowPageUrl(),
                         handle: { title: 'Diashow' },
-                        element: <SlideshowImages />
+                        ...lazyPage(() => import('@/main/slideshowImages/slideshowImages')),
                       },
                       {
                         path: getCustomizationUrl(),
                         handle: { title: 'Anpassung' },
-                        element: <Customization />
+                        ...lazyPage(() => import('@/main/customization/customization')),
                       },
                       {
                         path: getNetworkUrl(),
                         handle: { title: 'Netzwerk' },
-                        element: <Network />
+                        ...lazyPage(() => import('@/main/network/network')),
                       },
                       {
                         path: getUpdatesyUrl(),
                         handle: { title: 'Updates' },
-                        element: <Updates />
+                        ...lazyPage(() => import('@/main/updates/updates')),
                       },
                       {
                         path: getUpdateHistoryPageUrl(),
                         handle: { title: 'Update-Verlauf' },
-                        element: <UpdateHistory />
+                        ...lazyPage(() => import('@/main/updateHistory/updateHistory')),
                       },
                       {
                         path: getGeneralSettingsUrl(),
                         handle: { title: 'System' },
-                        element: <General />
+                        ...lazyPage(() => import('@/main/general/general')),
                       },
                       {
                         path: getDisplayHealthUrl(),
                         handle: { title: 'Display-Zustand' },
-                        element: <DisplayHealthPage />
+                        ...lazyPage(() => import('@/main/displayHealth/displayHealth')),
                       },
                       {
                         path: getLogsUrl(),
                         handle: { title: 'Protokolle' },
-                        element: <FrameLogs />
+                        ...lazyPage(() => import('@/main/monitoring/frameLogs')),
                       },
                       {
                         path: getServicesOverviewUrl(),
                         handle: { title: 'Dienste' },
-                        element: <ServicesOverview />
+                        ...lazyPage(() => import('@/main/services/servicesOverview')),
                       },
-                      {
-                        path: getServiceDetailUrl('display'),
-                        handle: { title: 'Display' },
-                        element: <ServiceDetail serviceId={ServiceType.DISPLAY} />
-                      },
-                      {
-                        path: getServiceDetailUrl('websocket'),
-                        handle: { title: 'WebSocket' },
-                        element: <ServiceDetail serviceId={ServiceType.WEBSOCKET} />
-                      },
-                      {
-                        path: getServiceDetailUrl('dashboard'),
-                        handle: { title: 'Dashboard' },
-                        element: <ServiceDetail serviceId={ServiceType.DASHBOARD} />
-                      },
-                      {
-                        path: getServiceDetailUrl('heartbeat'),
-                        handle: { title: 'Heartbeat' },
-                        element: <ServiceDetail serviceId={ServiceType.HEARTBEAT} />
-                      },
-                      {
-                        path: getServiceDetailUrl('update'),
-                        handle: { title: 'Update-Dienst' },
-                        element: <ServiceDetail serviceId={ServiceType.UPDATE} />
-                      },
+                      { path: getServiceDetailUrl('display'), handle: { title: 'Display' }, ...serviceDetail(ServiceType.DISPLAY) },
+                      { path: getServiceDetailUrl('websocket'), handle: { title: 'WebSocket' }, ...serviceDetail(ServiceType.WEBSOCKET) },
+                      { path: getServiceDetailUrl('dashboard'), handle: { title: 'Dashboard' }, ...serviceDetail(ServiceType.DASHBOARD) },
+                      { path: getServiceDetailUrl('heartbeat'), handle: { title: 'Heartbeat' }, ...serviceDetail(ServiceType.HEARTBEAT) },
+                      { path: getServiceDetailUrl('update'), handle: { title: 'Update-Dienst' }, ...serviceDetail(ServiceType.UPDATE) },
                     ],
                   },
                 ],

@@ -8,7 +8,8 @@ import { failsWith, server, setBoard, spyOnRequests } from '@tests/mocks';
 
 const openSlideshowImages = async () => {
   const view = renderRoute('/slideshow/', { preloadedState: signedInState() });
-  await screen.findByRole('listitem', { name: /Foto von alice/ });
+  // The page is a lazy route chunk, which takes a moment to load on the first test.
+  await screen.findByRole('listitem', { name: /Foto von alice/ }, { timeout: 5000 });
   return view;
 };
 
