@@ -67,7 +67,7 @@ describe('connecting from the hotspot', () => {
   it('tells after saving a network how to switch over', async () => {
     const { user } = await openNetworkOnHotspot();
 
-    await user.click(screen.getByRole('button', { name: 'Netzwerk hinzufügen' }));
+    await user.click(screen.getByRole('button', { name: 'WLAN hinzufügen' }));
     const dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByLabelText(/Netzwerkname/), 'Garden');
     await user.type(within(dialog).getByLabelText(/^Passwort$/), 'gardenpass');

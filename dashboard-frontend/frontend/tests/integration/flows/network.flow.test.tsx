@@ -26,7 +26,7 @@ describe('network', () => {
     server.use(...withNetworks('Preset', []));
     renderRoute('/network/', { preloadedState: signedInState() });
 
-    expect(await screen.findByText(/Keine gespeicherten Netzwerke gefunden/)).toBeInTheDocument();
+    expect(await screen.findByText(/Noch keine WLANs gespeichert/)).toBeInTheDocument();
   });
 
   it('adds a network and reloads the list', async () => {
@@ -34,7 +34,7 @@ describe('network', () => {
     server.use(connect.handler);
     const { user } = await openNetwork();
 
-    await user.click(screen.getByRole('button', { name: 'Netzwerk hinzufügen' }));
+    await user.click(screen.getByRole('button', { name: 'WLAN hinzufügen' }));
     const dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByLabelText(/Netzwerkname/), 'Garden');
     await user.type(within(dialog).getByLabelText(/^Passwort$/), 'gardenpass');
@@ -51,7 +51,7 @@ describe('network', () => {
     server.use(...failsWith('post', api.getConnectionConnectUrl()));
     const { user } = await openNetwork();
 
-    await user.click(screen.getByRole('button', { name: 'Netzwerk hinzufügen' }));
+    await user.click(screen.getByRole('button', { name: 'WLAN hinzufügen' }));
     const dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByLabelText(/Netzwerkname/), 'Garden');
     await user.type(within(dialog).getByLabelText(/^Passwort$/), 'gardenpass');
@@ -66,7 +66,7 @@ describe('network', () => {
     server.use(connect.handler);
     const { user } = await openNetwork();
 
-    await user.click(screen.getByRole('button', { name: 'Netzwerk hinzufügen' }));
+    await user.click(screen.getByRole('button', { name: 'WLAN hinzufügen' }));
     const dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByLabelText(/Netzwerkname/), 'Garden');
     await user.click(within(dialog).getByRole('button', { name: 'Hinzufügen' }));
@@ -81,7 +81,7 @@ describe('network', () => {
     const { user } = await openNetwork();
 
     const office = within(card('WLAN')).getByText('Office').closest('li') as HTMLElement;
-    await user.click(within(office).getByRole('button', { name: 'delete' }));
+    await user.click(within(office).getByRole('button', { name: '„Office“ entfernen' }));
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Entfernen' }));
 
     expect(await screen.findByText('WLAN entfernt')).toBeInTheDocument();
