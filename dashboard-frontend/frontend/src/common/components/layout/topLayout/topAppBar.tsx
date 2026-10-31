@@ -113,7 +113,7 @@ const TopAppBar = () => {
                             aria-expanded={open}
                             sx={{ width: 44, height: 44 }}
                         >
-                            <Badge badgeContent={badgeNumber} color="error">
+                            <Badge badgeContent={badgeNumber > 0 ? badgeNumber : undefined} color="error">
                                 <InfoIcon />
                             </Badge>
                         </IconButton>

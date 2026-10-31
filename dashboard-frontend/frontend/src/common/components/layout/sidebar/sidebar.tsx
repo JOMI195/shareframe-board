@@ -118,27 +118,32 @@ const Sidebar: React.FC = () => {
             </ListItemButton>
         </ListItem>
     )) : (
-        <ListItem
-            component="label"
-            sx={{
-                ...itemSx,
-                px: 2,
-                cursor: 'pointer',
-                backgroundColor: advancedMode ? 'action.selected' : 'inherit',
-                '&:hover': { backgroundColor: 'action.hover' },
-            }}
-        >
-            <ListItemIcon sx={iconSx}>
-                <TuneIcon color={advancedMode ? 'primary' : 'inherit'} />
-            </ListItemIcon>
-            <ListItemText primary="Erweitert" />
-            <Switch
-                edge="end"
-                size="small"
-                checked={advancedMode}
-                onChange={() => dispatch(toggleAdvancedMode())}
-                slotProps={{ input: { role: 'switch', 'aria-label': 'Erweiterter Modus' } }}
-            />
+        <ListItem disablePadding>
+            <Box
+                component="label"
+                sx={{
+                    ...itemSx,
+                    px: 2,
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                    backgroundColor: advancedMode ? 'action.selected' : 'inherit',
+                    '&:hover': { backgroundColor: 'action.hover' },
+                }}
+            >
+                <ListItemIcon sx={iconSx}>
+                    <TuneIcon color={advancedMode ? 'primary' : 'inherit'} />
+                </ListItemIcon>
+                <ListItemText primary="Erweitert" />
+                <Switch
+                    edge="end"
+                    size="small"
+                    checked={advancedMode}
+                    onChange={() => dispatch(toggleAdvancedMode())}
+                    slotProps={{ input: { role: 'switch', 'aria-label': 'Erweiterter Modus' } }}
+                />
+            </Box>
         </ListItem>
     );
 
