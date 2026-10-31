@@ -98,6 +98,7 @@ const DisplayHealthPage = () => {
                                     {fmtInt(stats?.epd_refresh_total)} ({fmtWear(stats?.wear_percent)})
                                 </Typography>
                                 <LinearProgress
+                                    aria-label="Verschleiß"
                                     variant="determinate"
                                     value={Math.min(100, Math.max(0, wear))}
                                 />

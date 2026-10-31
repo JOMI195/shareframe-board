@@ -102,9 +102,9 @@ const Updates = () => {
                                                 {update_status!.target_version ? ` (${update_status!.target_version})` : ''}
                                             </Typography>
                                             {update_status!.phase === 'downloading' && update_status!.progress >= 0 ? (
-                                                <LinearProgress variant="determinate" value={update_status!.progress} />
+                                                <LinearProgress aria-label="Update-Fortschritt" variant="determinate" value={update_status!.progress} />
                                             ) : (
-                                                <LinearProgress />
+                                                <LinearProgress aria-label="Update-Fortschritt" />
                                             )}
                                         </Box>
                                     )
