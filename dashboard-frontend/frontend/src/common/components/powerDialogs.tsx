@@ -1,13 +1,11 @@
-import ShareframeDialog from "@/common/components/shareframeDialog";
+import ConfirmDialog from "@/common/components/confirmDialog";
 import { usePiConnection } from "@/context/piConnection/piConnectionContextValue";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { closeRestartDialog, closeShutdownDialog, getDialogs } from "@/store/dialogs/dialogs.Slice";
 import { restartPi, shutdownPi } from "@/store/piPower/piPower.Slice";
-import { Stack, Typography } from "@mui/material";
 import { useNavigate } from "react-router";
 
-// Restart/shutdown confirm dialogs. Rendered once globally (in MainLayout) so the
-// power menu in the top bar / sidebar can trigger them from any page.
+// Rendered once in MainLayout so the power menu can open them from any page.
 const PowerDialogs = () => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
@@ -28,46 +26,28 @@ const PowerDialogs = () => {
 
     return (
         <>
-            <ShareframeDialog
+            <ConfirmDialog
                 open={isRestartDialogOpen}
-                title="Bilderrahmen neustarten"
-                onClose={() => dispatch(closeRestartDialog())}
+                title="Bilderrahmen neu starten?"
+                confirmLabel="Neu starten"
                 onConfirm={handleConfirmRestart}
-                confirmText="Neustarten"
-                cancelText="Abbrechen"
+                onCancel={() => dispatch(closeRestartDialog())}
                 confirmDisabled={!isConnected}
             >
-                <Stack spacing={2}>
-                    <Typography variant="body1" gutterBottom>
-                        Möchtest du den Bilderrahmen wirklich neustarten?
-                    </Typography>
-                    <Typography variant="body1">
-                        Während dem Neustart ist das Dashboard nicht verfügbar.
-                    </Typography>
-                </Stack>
-            </ShareframeDialog>
+                Während des Neustarts sind die Einstellungen kurz nicht erreichbar.
+            </ConfirmDialog>
 
-            <ShareframeDialog
+            <ConfirmDialog
                 open={isShutdownDialogOpen}
-                title="Bilderrahmen herunterfahren"
-                onClose={() => dispatch(closeShutdownDialog())}
+                title="Bilderrahmen herunterfahren?"
+                confirmLabel="Herunterfahren"
                 onConfirm={handleConfirmShutdown}
-                confirmText="Herunterfahren"
-                cancelText="Abbrechen"
+                onCancel={() => dispatch(closeShutdownDialog())}
                 confirmDisabled={!isConnected}
+                destructive
             >
-                <Stack spacing={2}>
-                    <Typography variant="body1" gutterBottom>
-                        Möchtest du den Bilderrahmen wirklich herunterfahren?
-                    </Typography>
-                    <Typography variant="body1">
-                        Nach dem Herunterfahren ist das Dashboard nicht mehr verfügbar und die Bildwiedergabe deaktiviert.
-                    </Typography>
-                    <Typography variant="body1">
-                        Zum Einschalten musst du die Stromzufuhr kurz trennen und wieder herstellen – er startet dann automatisch.
-                    </Typography>
-                </Stack>
-            </ShareframeDialog>
+                Die Diashow und die Einstellungen sind danach aus. Zum Einschalten trenne den Strom kurz und stecke ihn wieder ein.
+            </ConfirmDialog>
         </>
     );
 };

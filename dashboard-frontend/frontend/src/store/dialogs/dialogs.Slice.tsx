@@ -1,5 +1,6 @@
 import { RootState } from "@/store";
 import { createSlice } from "@reduxjs/toolkit";
+import { routeChanged } from "@/store/navigation/navigation.Slice";
 
 type SliceState = {
     general: {
@@ -14,7 +15,6 @@ type SliceState = {
     network: {
         addNetwork: { open: boolean };
         forgetNetwork: { open: boolean; ssid: string };
-        renameNetwork: { open: boolean; ssid: string; newName: string };
         changeApPassword: { open: boolean };
         connect: { open: boolean };
     }
@@ -33,7 +33,6 @@ const initialState: SliceState = {
     network: {
         addNetwork: { open: false },
         forgetNetwork: { open: false, ssid: '' },
-        renameNetwork: { open: false, ssid: '', newName: '' },
         changeApPassword: { open: false },
         connect: { open: false }
     }
@@ -75,19 +74,6 @@ const dialogsSlice = createSlice({
             state.network.forgetNetwork.open = false;
             state.network.forgetNetwork.ssid = '';
         },
-        networkRenameNetworkDialogOpened: (state, action) => {
-            state.network.renameNetwork.open = true;
-            state.network.renameNetwork.ssid = action.payload.ssid;
-            state.network.renameNetwork.newName = action.payload.ssid;
-        },
-        networkRenameNetworkDialogClosed: (state) => {
-            state.network.renameNetwork.open = false;
-            state.network.renameNetwork.ssid = '';
-            state.network.renameNetwork.newName = '';
-        },
-        networkRenameNetworkNameChanged: (state, action) => {
-            state.network.renameNetwork.newName = action.payload.newName;
-        },
         generalChangePasswordDialogOpened: (state) => {
             state.general.changePassword.open = true;
         },
@@ -112,6 +98,10 @@ const dialogsSlice = createSlice({
         networkConnectDialogClosed: (state) => {
             state.network.connect.open = false;
         },
+    },
+    // A dialog left open in the store would pop up again on the next visit.
+    extraReducers: (builder) => {
+        builder.addCase(routeChanged, () => initialState);
     },
 });
 
@@ -154,20 +144,6 @@ export const openNetworkForgetNetworkDialog = (ssid: string) => ({
 
 export const closeNetworkForgetNetworkDialog = () => ({
     type: dialogsSlice.actions.networkForgetNetworkDialogClosed.type,
-});
-
-export const openNetworkRenameNetworkDialog = (ssid: string) => ({
-    type: dialogsSlice.actions.networkRenameNetworkDialogOpened.type,
-    payload: { ssid },
-});
-
-export const closeNetworkRenameNetworkDialog = () => ({
-    type: dialogsSlice.actions.networkRenameNetworkDialogClosed.type,
-});
-
-export const updateNetworkRenameNetworkName = (newName: string) => ({
-    type: dialogsSlice.actions.networkRenameNetworkNameChanged.type,
-    payload: { newName },
 });
 
 export const openGeneralChangePasswordDialog = () => ({
@@ -213,9 +189,6 @@ export const {
     networkAddNetworkDialogClosed,
     networkForgetNetworkDialogOpened,
     networkForgetNetworkDialogClosed,
-    networkRenameNetworkDialogOpened,
-    networkRenameNetworkDialogClosed,
-    networkRenameNetworkNameChanged,
     generalChangePasswordDialogOpened,
     generalChangePasswordDialogClosed,
     generalFactoryResetDialogOpened,

@@ -70,7 +70,7 @@ describe('connecting from the hotspot', () => {
     await user.click(screen.getByRole('button', { name: 'Netzwerk hinzufügen' }));
     const dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByLabelText(/Netzwerkname/), 'Garden');
-    await user.type(within(dialog).getByLabelText(/^Passwort/), 'gardenpass');
+    await user.type(within(dialog).getByLabelText(/^Passwort$/), 'gardenpass');
     await user.click(within(dialog).getByRole('button', { name: 'Hinzufügen' }));
 
     expect(await screen.findByText(/mit „Jetzt verbinden“ wechselt der Rahmen ins WLAN/)).toBeInTheDocument();

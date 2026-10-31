@@ -1,7 +1,7 @@
 import { Box, Container, useMediaQuery, useTheme } from "@mui/material";
 import TopAppbar from "./topLayout/topAppBar";
 import NetworkStatusBanner from "@/common/components/networkStatusBanner";
-import { Outlet } from "react-router";
+import { Outlet, useLocation } from "react-router";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { useTimer } from "@/hooks/useTimer";
 import { useEffect, useEffectEvent } from "react";
@@ -12,7 +12,7 @@ import { fetchLatestRelease } from "@/store/updates/updates.Slice";
 import Sidebar from "./sidebar/sidebar";
 import PowerDialogs from "@/common/components/powerDialogs";
 import { getAuthenticationUrl, getSignOutUrl } from "@/assets/endpoints/app/authEndpoints";
-import { getCurrentPath } from "@/store/navigation/navigation.Slice";
+import { getCurrentPath, routeChanged } from "@/store/navigation/navigation.Slice";
 
 const MainLayout = () => {
     const dispatch = useAppDispatch();
@@ -20,6 +20,11 @@ const MainLayout = () => {
     const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
     const prevPath = useAppSelector(getCurrentPath);
+    const { pathname } = useLocation();
+
+    useEffect(() => () => {
+        dispatch(routeChanged());
+    }, [pathname, dispatch]);
 
     const { reset: resetAppIntitialLoadTimer, start: startAppIntitialLoadTimer } = useTimer({
         id: 'app-initial-load-timer',

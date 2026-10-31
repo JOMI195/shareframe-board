@@ -37,7 +37,7 @@ describe('network', () => {
     await user.click(screen.getByRole('button', { name: 'Netzwerk hinzufügen' }));
     const dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByLabelText(/Netzwerkname/), 'Garden');
-    await user.type(within(dialog).getByLabelText(/^Passwort/), 'gardenpass');
+    await user.type(within(dialog).getByLabelText(/^Passwort$/), 'gardenpass');
     server.use(...withNetworks('HomeNet', ['HomeNet', 'Office', 'Garden']));
     await user.click(within(dialog).getByRole('button', { name: 'Hinzufügen' }));
 
@@ -54,7 +54,7 @@ describe('network', () => {
     await user.click(screen.getByRole('button', { name: 'Netzwerk hinzufügen' }));
     const dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByLabelText(/Netzwerkname/), 'Garden');
-    await user.type(within(dialog).getByLabelText(/^Passwort/), 'gardenpass');
+    await user.type(within(dialog).getByLabelText(/^Passwort$/), 'gardenpass');
     await user.click(within(dialog).getByRole('button', { name: 'Hinzufügen' }));
 
     expect(await screen.findByText('Hinzufügen des Netzwerks fehlgeschlagen')).toBeInTheDocument();
@@ -107,15 +107,15 @@ describe('network', () => {
 
     await user.click(screen.getByRole('button', { name: 'AP-Passwort ändern' }));
     const dialog = await screen.findByRole('dialog');
-    const confirm = within(dialog).getByRole('button', { name: 'Ändern' });
+    const confirm = within(dialog).getByRole('button', { name: 'Passwort ändern' });
 
-    await user.type(within(dialog).getByLabelText(/Neues AP-Passwort/), 'newhotspot');
-    await user.type(within(dialog).getByLabelText(/Bestätigen/), 'newhotspoX');
+    await user.type(within(dialog).getByLabelText(/^Neues Hotspot-Passwort$/), 'newhotspot');
+    await user.type(within(dialog).getByLabelText(/Hotspot-Passwort bestätigen/), 'newhotspoX');
     expect(within(dialog).getByText('Passwörter stimmen nicht überein')).toBeInTheDocument();
     expect(confirm).toBeDisabled();
 
-    await user.clear(within(dialog).getByLabelText(/Bestätigen/));
-    await user.type(within(dialog).getByLabelText(/Bestätigen/), 'newhotspot');
+    await user.clear(within(dialog).getByLabelText(/Hotspot-Passwort bestätigen/));
+    await user.type(within(dialog).getByLabelText(/Hotspot-Passwort bestätigen/), 'newhotspot');
     await user.click(confirm);
 
     expect(await screen.findByText('AP-Passwort erfolgreich geändert')).toBeInTheDocument();
@@ -127,9 +127,9 @@ describe('network', () => {
 
     await user.click(screen.getByRole('button', { name: 'AP-Passwort ändern' }));
     const dialog = await screen.findByRole('dialog');
-    await user.type(within(dialog).getByLabelText(/Neues AP-Passwort/), 'short');
-    await user.type(within(dialog).getByLabelText(/Bestätigen/), 'short');
+    await user.type(within(dialog).getByLabelText(/^Neues Hotspot-Passwort$/), 'short');
+    await user.type(within(dialog).getByLabelText(/Hotspot-Passwort bestätigen/), 'short');
 
-    expect(within(dialog).getByRole('button', { name: 'Ändern' })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: 'Passwort ändern' })).toBeDisabled();
   });
 });

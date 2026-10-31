@@ -29,6 +29,7 @@ const navigationSlice = createSlice({
     advancedModeToggled: (state) => {
       state.advancedMode = !state.advancedMode;
     },
+    routeChanged: () => {},
   },
 });
 
@@ -53,7 +54,8 @@ export const {
   sidebarOpened,
   sidebarClosed,
   currentPathSet,
-  advancedModeToggled
+  advancedModeToggled,
+  routeChanged
 } = navigationSlice.actions;
 
 export default navigationSlice.reducer;

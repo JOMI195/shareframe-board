@@ -60,7 +60,7 @@ describe('device password', () => {
     await user.type(within(dialog).getByLabelText(/Aktuelles Passwort/), 'oldpassword');
     await user.type(within(dialog).getByLabelText(/^Neues Passwort(?! bestätigen)/), 'newpassword');
     await user.type(within(dialog).getByLabelText(/Neues Passwort bestätigen/), 'newpassword');
-    await user.click(within(dialog).getByRole('button', { name: 'Ändern' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Passwort ändern' }));
 
     expect(await screen.findByText('Passwort erfolgreich geändert')).toBeInTheDocument();
     expect(await change.calls[0].json()).toEqual({ current_password: 'oldpassword', new_password: 'newpassword' });
@@ -75,7 +75,7 @@ describe('device password', () => {
     await user.type(within(dialog).getByLabelText(/Neues Passwort bestätigen/), 'otherpassword');
 
     expect(within(dialog).getByText('Passwörter stimmen nicht überein')).toBeInTheDocument();
-    expect(within(dialog).getByRole('button', { name: 'Ändern' })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: 'Passwort ändern' })).toBeDisabled();
   });
 
   it('keeps the dialog open when the current password is wrong', async () => {
@@ -85,7 +85,7 @@ describe('device password', () => {
     await user.type(within(dialog).getByLabelText(/Aktuelles Passwort/), 'wrongpassword');
     await user.type(within(dialog).getByLabelText(/^Neues Passwort(?! bestätigen)/), 'newpassword');
     await user.type(within(dialog).getByLabelText(/Neues Passwort bestätigen/), 'newpassword');
-    await user.click(within(dialog).getByRole('button', { name: 'Ändern' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Passwort ändern' }));
 
     expect(await screen.findByText('Aktuelles Passwort ungültig')).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -123,7 +123,7 @@ describe('power', () => {
     const { user, router, store } = await openPowerMenu();
 
     await user.click(await screen.findByRole('menuitem', { name: 'Neustarten' }));
-    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Neustarten' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Neu starten' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
     expect(board.commands).toBe(1);
@@ -160,7 +160,7 @@ describe('power', () => {
     const { user, router, store } = await openPowerMenu();
 
     await user.click(await screen.findByRole('menuitem', { name: 'Neustarten' }));
-    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Neustarten' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Neu starten' }));
 
     expect(await screen.findByText('Neustartprozess fehlgeschlagen')).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/general/');

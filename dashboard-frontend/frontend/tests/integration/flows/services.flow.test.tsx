@@ -35,10 +35,10 @@ describe('services overview', () => {
     server.use(restart.handler);
     const { user } = renderRoute('/services/', { preloadedState: signedInState() });
 
-    await user.click(within(await findCard('Heartbeat')).getByRole('button', { name: 'Neustart' }));
+    await user.click(within(await findCard('Heartbeat')).getByRole('button', { name: 'Neu starten' }));
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByText(/Heartbeat wird neu gestartet/)).toBeInTheDocument();
-    await user.click(within(dialog).getByRole('button', { name: 'Neustart' }));
+    expect(within(dialog).getByText('Heartbeat neu starten?')).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Neu starten' }));
 
     expect(await screen.findByText('Dienst wird neu gestartet')).toBeInTheDocument();
     expect(await restart.calls[0].json()).toEqual({ service: 'heartbeat' });
@@ -47,17 +47,17 @@ describe('services overview', () => {
   it('warns that restarting the dashboard drops the connection', async () => {
     const { user } = renderRoute('/services/', { preloadedState: signedInState() });
 
-    await user.click(within(await findCard('Dashboard')).getByRole('button', { name: 'Neustart' }));
+    await user.click(within(await findCard('Dashboard')).getByRole('button', { name: 'Neu starten' }));
 
-    expect(within(await screen.findByRole('dialog')).getByText(/Das Dashboard ist dabei kurz nicht erreichbar/)).toBeInTheDocument();
+    expect(within(await screen.findByRole('dialog')).getByText(/Die Einstellungen sind dabei kurz nicht erreichbar/)).toBeInTheDocument();
   });
 
   it('shows the reason of a refused restart', async () => {
     server.use(...failsWith('post', api.getServiceRestartUrl(), 400, 'Unbekannter Dienst'));
     const { user } = renderRoute('/services/', { preloadedState: signedInState() });
 
-    await user.click(within(await findCard('Display')).getByRole('button', { name: 'Neustart' }));
-    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Neustart' }));
+    await user.click(within(await findCard('Display')).getByRole('button', { name: 'Neu starten' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Neu starten' }));
 
     expect(await screen.findByText('Unbekannter Dienst')).toBeInTheDocument();
   });

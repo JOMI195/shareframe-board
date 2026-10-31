@@ -1,22 +1,18 @@
-import React from 'react';
+import React, { useId } from 'react';
+import AppDialog from '@/common/components/appDialog';
 import {
-    Dialog,
     DialogProps,
     Box,
     useMediaQuery,
     useTheme,
-    IconButton,
-    Typography,
-    AppBar,
-    Toolbar,
     DialogContent,
     Theme,
     SxProps,
 } from "@mui/material";
-import CloseIcon from '@mui/icons-material/Close';
 import { SlideTransition, ZoomTransition } from "./dialogTransitions";
 import { DialogAction } from '@/types';
 import BottomFloatingActions from './bottomFloatingActions';
+import DialogHeader from './dialogHeader';
 
 interface ReusableDialogProps extends Omit<DialogProps, 'title'> {
     // main dialog props
@@ -45,9 +41,11 @@ const ShareframeMainDialog: React.FC<ReusableDialogProps> = ({
 }) => {
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+    const titleId = useId();
 
     return (
-        <Dialog
+        <AppDialog
+            aria-labelledby={dialogTitle ? titleId : undefined}
             maxWidth="xl"
             fullWidth
             fullScreen={isSmallScreen}
@@ -65,32 +63,7 @@ const ShareframeMainDialog: React.FC<ReusableDialogProps> = ({
                     }
                 }
             }}>
-            <AppBar sx={{ position: 'relative', py: 1 }} color='inherit'>
-                <Toolbar variant="dense">
-                    <Box sx={{ flex: 1, alignSelf: "center" }}>
-                        {dialogTitle && (
-                            <Typography variant='h6' component='div'>
-                                {dialogTitle}
-                            </Typography>
-                        )}
-                        {dialogSubtitle && (
-                            <Typography variant='subtitle2' component='div'>
-                                {dialogSubtitle}
-                            </Typography>
-                        )}
-                    </Box>
-
-                    <IconButton
-                        edge='start'
-                        color='inherit'
-                        onClick={onDialogClose}
-                        aria-label='close'
-                        sx={{ alignSelf: "flex-start" }}
-                    >
-                        <CloseIcon />
-                    </IconButton>
-                </Toolbar>
-            </AppBar>
+            <DialogHeader title={dialogTitle} subtitle={dialogSubtitle} titleId={titleId} onClose={onDialogClose} />
 
             <DialogContent
                 sx={{
@@ -118,7 +91,7 @@ const ShareframeMainDialog: React.FC<ReusableDialogProps> = ({
                     position={"absolute"}
                 />
             )}
-        </Dialog>
+        </AppDialog>
     );
 };
 
