@@ -19,8 +19,8 @@ const KNOWN_MESSAGES: Record<string, string> = {
 export const OFFLINE_MESSAGE = 'Du bist offline. Prüfe die WLAN-Verbindung deines Geräts.';
 export const UNREACHABLE_MESSAGE = 'Der Bilderrahmen ist gerade nicht erreichbar.';
 
+// A server error keeps the caller's text, which says what failed.
 const statusMessage = (status: number): string | undefined => {
-    if (status >= 500) return 'Auf dem Bilderrahmen ist ein Fehler aufgetreten.';
     if (status === 429) return 'Zu viele Versuche. Bitte warte kurz.';
     if (status === 413) return 'Die Datei ist zu groß.';
     if (status === 404) return 'Das gibt es nicht mehr.';
@@ -28,7 +28,7 @@ const statusMessage = (status: number): string | undefined => {
     return undefined;
 };
 
-/** Text for a failed board answer: a known board message, else the HTTP status, else the caller's own text. */
+/** Text for a failed board answer: a known board message, else a telling HTTP status, else the caller's own text. */
 export const boardErrorMessage = (fallback: string, response?: { status: number }, message?: string) =>
     (message && KNOWN_MESSAGES[message]) ?? (response && statusMessage(response.status)) ?? fallback;
 

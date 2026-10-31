@@ -57,7 +57,7 @@ describe('network', () => {
     await user.type(within(dialog).getByLabelText(/^Passwort$/), 'gardenpass');
     await user.click(within(dialog).getByRole('button', { name: 'Hinzufügen' }));
 
-    expect(await screen.findByText('Auf dem Bilderrahmen ist ein Fehler aufgetreten.')).toBeInTheDocument();
+    expect(await screen.findByText('WLAN konnte nicht hinzugefügt werden')).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 

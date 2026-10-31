@@ -8,13 +8,14 @@ describe('board error messages', () => {
     expect(boardErrorMessage('Anmeldung fehlgeschlagen', { status: 401 }, 'OTP invalid')).toBe('Der Einmal-Code stimmt nicht oder ist abgelaufen.');
   });
 
-  it('falls back to the status for unknown messages', () => {
-    expect(boardErrorMessage('Konnte nicht gespeichert werden', { status: 500 }, 'IPC error')).toBe('Auf dem Bilderrahmen ist ein Fehler aufgetreten.');
+  it('falls back to a telling status for unknown messages', () => {
     expect(boardErrorMessage('Konnte nicht gespeichert werden', { status: 429 })).toBe('Zu viele Versuche. Bitte warte kurz.');
+    expect(boardErrorMessage('Konnte nicht gespeichert werden', { status: 403 })).toBe('Dafür fehlt dir die Berechtigung.');
   });
 
   it('keeps the caller text when neither tells more', () => {
     expect(boardErrorMessage('Konnte nicht gespeichert werden', { status: 400 }, 'id is required')).toBe('Konnte nicht gespeichert werden');
+    expect(boardErrorMessage('Konnte nicht gespeichert werden', { status: 500 }, 'IPC error')).toBe('Konnte nicht gespeichert werden');
     expect(boardErrorMessage('Konnte nicht gespeichert werden')).toBe('Konnte nicht gespeichert werden');
   });
 
