@@ -9,4 +9,5 @@ inline constexpr std::string_view ImageNew     = "image.new";
 inline constexpr std::string_view ImageRemoved = "image.removed";
 inline constexpr std::string_view DisplayClear = "display.clear";
 inline constexpr std::string_view WsConnected  = "ws.connected";
+inline constexpr std::string_view FrameRegistration = "frame.registration";
 } // namespace event_topics

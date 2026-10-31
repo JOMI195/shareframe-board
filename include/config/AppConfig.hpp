@@ -66,9 +66,13 @@ struct DisplayConfig
     int nightIntervalSecs = 3600;
     std::string nightStyle = "hold";
     std::string wifiModePath = "/run/shareframe/wifi-mode.json";
-    // With saved networks the setup QR only shows this long after boot, before the first connection.
+    // The setup QR only shows this long after boot, before the first connection.
     int apSetupBootWindowSecs = 600;
     std::string setupUrl = "http://192.168.4.1";
+    // Appended to the server URL, followed by the serial, for the registration QR.
+    std::string registerPath = "/bilderrahmen?register=";
+    // How long the registration QR shows after the server first refuses the frame.
+    int registrationScreenWindowSecs = 600;
     std::string setupFontPath = "assets/font/DejaVuSans.ttf";
     std::string boldFontPath = "assets/font/DejaVuSans-Bold.ttf";
     // Hides a status screen whose reboot never came; outlasts the longest rauc install.

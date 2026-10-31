@@ -58,6 +58,7 @@ protected:
     Recorder<Topic::IMAGE_NEW> newImages{bus};
     Recorder<Topic::IMAGE_REMOVED> removed{bus};
     Recorder<Topic::CLEAR_DISPLAY> clears{bus};
+    Recorder<Topic::FRAME_REGISTRATION> registration{bus};
     EventSubscriber subscriber{url, [this](const std::string& t, const nlohmann::json& p) { displayIpc.onEvent(t, p); }};
 };
 }
@@ -86,4 +87,14 @@ TEST_F(DisplayEventsTest, ConnectEventsAreNotForwardedToTheDisplay)
     ASSERT_TRUE(deliver([&] { wsBus.publish<Topic::WS_CONNECTED>({}); wsBus.publish<Topic::IMAGE_NEW>(1); },
                         [&] { return newImages.size() > 0; }));
     EXPECT_EQ(removed.size() + clears.size(), 0u);
+}
+
+TEST_F(DisplayEventsTest, RefusedRegistrationReachesTheDisplay)
+{
+    ASSERT_TRUE(deliver([&] { wsBus.publish<Topic::FRAME_REGISTRATION>({false}); },
+                        [&] { return registration.size() > 0; }));
+    EXPECT_FALSE(registration.get()[0].registered);
+
+    ASSERT_TRUE(deliver([&] { wsBus.publish<Topic::FRAME_REGISTRATION>({true}); },
+                        [&] { return registration.get().back().registered; }));
 }

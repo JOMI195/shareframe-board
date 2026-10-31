@@ -30,6 +30,9 @@ private:
     // ------- RECONNECT
     void _handleReconnect(int closeCode);
     void _refreshToken();
+    /// Tells the display while the server refuses the frame because nobody owns it, until
+    /// the first connection; later refusals don't bring the setup screen back.
+    void _reportIfUnregistered();
 
     // ------- SEND QUEUE
     void _flushSendQueue();
@@ -39,6 +42,8 @@ private:
     ServerContact& contact_;
     ix::WebSocket ws_;
     std::atomic<int> reconnectCount_{0};
+    std::atomic<bool> everOpened_{false};
+    std::atomic<bool> reportedUnregistered_{false};
     std::mutex sendMtx_;
     std::vector<nlohmann::json> sendQueue_;
 };

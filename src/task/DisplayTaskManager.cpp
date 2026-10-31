@@ -6,6 +6,12 @@
 
 namespace
 {
+int64_t steadySecs()
+{
+    return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch())
+        .count();
+}
+
 const char* name(const DisplayState state)
 {
     switch (state)
@@ -13,6 +19,7 @@ const char* name(const DisplayState state)
     case DisplayState::Boot: return "Boot";
     case DisplayState::Slideshow: return "Slideshow";
     case DisplayState::NightBlank: return "NightBlank";
+    case DisplayState::Registration: return "Registration";
     case DisplayState::ApSetup: return "ApSetup";
     case DisplayState::Status: return "Status";
     }
@@ -22,10 +29,11 @@ const char* name(const DisplayState state)
 
 DisplayTaskManager::DisplayTaskManager(EventBus& bus, const AppConfig& cfg, DisplayManager& display,
                                        DisplayImageLoop& slideshow, ApNetworkSetupScreen& apSetup,
-                                       NightBlankScreen& nightBlank, StatusScreen& status,
-                                       const RuntimeSettings& settings)
+                                       RegistrationScreen& registration, NightBlankScreen& nightBlank,
+                                       StatusScreen& status, const RuntimeSettings& settings)
     : Task(bus, "DisplayTaskManager"), cfg_(cfg), display_(display), slideshow_(slideshow),
-      apSetup_(apSetup), nightBlank_(nightBlank), status_(status), settings_(settings)
+      apSetup_(apSetup), registration_(registration), nightBlank_(nightBlank), status_(status),
+      settings_(settings)
 {
 }
 
@@ -46,6 +54,15 @@ void DisplayTaskManager::subscribe()
             std::lock_guard lk(mtx_);
             latestStatus_ = evt;
             statusSince_ = std::chrono::steady_clock::now();
+            changed_ = true;
+        }
+        cv_.notify_one();
+    });
+    bus_.subscribe<Topic::FRAME_REGISTRATION>([this](const FrameRegistrationEvent& evt)
+    {
+        {
+            std::lock_guard lk(mtx_);
+            registrationWindow_.report(evt.registered, steadySecs(), cfg_.display.registrationScreenWindowSecs);
             changed_ = true;
         }
         cv_.notify_one();
@@ -83,6 +100,7 @@ void DisplayTaskManager::_run(const std::stop_token st)
     {
         ApSetupStateEvent apSetup;
         StatusScreenEvent status;
+        bool registration;
         bool restore;
         {
             std::unique_lock lk(mtx_);
@@ -93,6 +111,9 @@ void DisplayTaskManager::_run(const std::stop_token st)
             if (latestStatus_.kind)
                 wakeAt = std::min(wakeAt.value_or(std::chrono::steady_clock::time_point::max()),
                                   statusSince_ + statusTimeout);
+            if (const auto ends = registrationWindow_.endsAt(steadySecs()))
+                wakeAt = std::min(wakeAt.value_or(std::chrono::steady_clock::time_point::max()),
+                                  std::chrono::steady_clock::time_point(std::chrono::seconds(*ends)));
             if (wakeAt)
                 cv_.wait_until(lk, st, *wakeAt, [this] { return changed_; });
             else
@@ -107,10 +128,11 @@ void DisplayTaskManager::_run(const std::stop_token st)
             }
             apSetup = latest_;
             status = latestStatus_;
+            registration = registrationWindow_.required(steadySecs());
             restore = std::exchange(restore_, false);
             changed_ = false;
         }
-        _apply(apSetup, status, restore);
+        _apply(apSetup, status, registration, restore);
     }
     _stopActive();
 }
@@ -128,11 +150,12 @@ void DisplayTaskManager::_boot(const std::stop_token& st)
 }
 
 void DisplayTaskManager::_apply(const ApSetupStateEvent& apSetup, const StatusScreenEvent& status,
-                                const bool restore)
+                                const bool registration, const bool restore)
 {
     const auto current = state_.load();
     const auto target = status.kind ? DisplayState::Status
         : apSetup.required ? DisplayState::ApSetup
+        : registration ? DisplayState::Registration
         : settings_.isNightBlankNow() ? DisplayState::NightBlank
         : DisplayState::Slideshow;
     const bool stale = (target == DisplayState::Status && (restore || status != shownStatus_))
@@ -162,6 +185,8 @@ void DisplayTaskManager::_apply(const ApSetupStateEvent& apSetup, const StatusSc
         apSetup_.setCredentials(apSetup.ssid, apSetup.password);
         apSetup_.start();
     }
+    else if (target == DisplayState::Registration)
+        registration_.start();
     else if (target == DisplayState::NightBlank)
     {
         shownNightEnd_ = settings_.getNightEndHour();
@@ -180,6 +205,7 @@ void DisplayTaskManager::_stopActive()
     case DisplayState::Slideshow: slideshow_.stop(); break;
     case DisplayState::NightBlank: nightBlank_.stop(); break;
     case DisplayState::ApSetup: apSetup_.stop(); break;
+    case DisplayState::Registration: registration_.stop(); break;
     case DisplayState::Status: status_.stop(); break;
     case DisplayState::Boot: break;
     }
