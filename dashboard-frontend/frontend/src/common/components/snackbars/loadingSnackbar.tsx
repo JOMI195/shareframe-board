@@ -1,49 +1,38 @@
-import { CircularProgress, Paper, Theme, Typography, Box } from "@mui/material";
+import { CircularProgress, Paper, Slide, Typography } from "@mui/material";
 import { useColorThemeContext } from "@/context/colorTheme/colorThemeContextValue";
 import { SnackbarItem } from "@/store/snackbars/snackbars.Slice";
+import { useDelayedLoading } from "@/hooks/loading/useDelayedLoading";
 
 interface ILoadingSnackbarProps {
     snackbar: SnackbarItem;
-    closeSnackbar: () => void;
 }
 
+// Only shows once the action takes a moment, so fast requests don't flash a snackbar.
 const LoadingSnackbar = ({ snackbar }: ILoadingSnackbarProps) => {
     const { colorMode } = useColorThemeContext();
+    const open = useDelayedLoading(true);
 
     return (
-        <Box
-            sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                width: '100%',
-                position: 'relative', // Allow stacking based on parent position
-            }}
-        >
+        <Slide direction="up" in={open} mountOnEnter>
             <Paper
+                role="status"
                 elevation={5}
                 sx={{
-                    py: 2.5,
+                    py: 1.5,
                     px: 3,
                     display: 'flex',
                     alignItems: "center",
-                    justifyContent: "space-between",
-                    flexDirection: "row",
-                    background: (theme: Theme) => colorMode === "light" ? theme.palette.common.black : theme.palette.common.white,
-                    color: (theme: Theme) => colorMode === "light" ? theme.palette.common.white : theme.palette.common.black,
-                    cursor: 'default', // To allow clicking and closing
-                    minWidth: '300px', // Ensuring a minimum width
-                    maxWidth: '500px', // Optional: limit the max width
+                    width: { xs: '100%', sm: 'auto' },
+                    minWidth: { sm: 300 },
+                    maxWidth: { sm: 560 },
+                    background: (theme) => colorMode === "light" ? theme.palette.common.black : theme.palette.common.white,
+                    color: (theme) => colorMode === "light" ? theme.palette.common.white : theme.palette.common.black,
                 }}
             >
-                <CircularProgress
-                    color="inherit"
-                    size={25}
-                />
-                <Typography variant="subtitle2" sx={{ ml: 5 }}>
-                    {snackbar.message}
-                </Typography>
+                <CircularProgress color="inherit" size="1.1rem" />
+                <Typography variant="subtitle2" sx={{ ml: 5 }}>{snackbar.message}</Typography>
             </Paper>
-        </Box>
+        </Slide>
     );
 };
 

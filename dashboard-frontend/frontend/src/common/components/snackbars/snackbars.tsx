@@ -1,9 +1,9 @@
-import { Box, Stack } from "@mui/material";
+import { Box } from "@mui/material";
 import ViewerAlertSnackbar from "../snackbars/alertSnackbar";
 import ViewerLoadingSnackbar from "../snackbars/loadingSnackbar";
 import { useAppSelector, useAppDispatch } from "@/store";
 import { AlertColor } from '@mui/material';
-import { getSnackbars, removeAlertSnackbar, removeAllLoadingSnackbars, removeLoadingSnackbar } from '@/store/snackbars/snackbars.Slice';
+import { getSnackbars, removeAlertSnackbar, removeAllLoadingSnackbars } from '@/store/snackbars/snackbars.Slice';
 import { Outlet } from "react-router";
 import { useEffect } from "react";
 
@@ -28,10 +28,6 @@ export const Snackbars = () => {
         dispatch(removeAlertSnackbar(id));
     };
 
-    const handleCloseLoading = (id: string) => {
-        dispatch(removeLoadingSnackbar(id));
-    };
-
     const allSnackbars = [...snackbars.alerts, ...snackbars.loading]
         .sort((a, b) => b.id.localeCompare(a.id));
 
@@ -42,35 +38,36 @@ export const Snackbars = () => {
     return (
         <Box>
             <Outlet />
-            <Stack
-                sx={{
-                    position: "fixed",
-                    bottom: (theme) => theme.layout.footer.height,
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    maxWidth: "calc(100% - 48px)",
-                    zIndex: 9999,
-                    width: "fit-content",
-                    alignItems: "flex-end",
-                }}
-                spacing={2} // Stack spacing for spacing between snackbars
+            <Box
+                sx={(theme) => ({
+                    position: 'fixed',
+                    // Above the page's floating action buttons on phones.
+                    bottom: {
+                        xs: 'calc(88px + env(safe-area-inset-bottom))',
+                        sm: 'calc(16px + env(safe-area-inset-bottom))',
+                    },
+                    left: 0,
+                    right: 0,
+                    px: 1,
+                    zIndex: theme.zIndex.snackbar,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 1,
+                    pointerEvents: 'none',
+                    '& > *': { pointerEvents: 'auto', maxWidth: '100%' },
+                })}
             >
-                {allSnackbars.map((snackbar) => (
-                    <Box key={snackbar.id}>
-                        {isAlertSnackbar(snackbar) ? (
-                            <ViewerAlertSnackbar
-                                snackbar={snackbar}
-                                closeSnackbar={() => handleCloseAlert(snackbar.id)}
-                            />
-                        ) : (
-                            <ViewerLoadingSnackbar
-                                snackbar={snackbar}
-                                closeSnackbar={() => handleCloseLoading(snackbar.id)}
-                            />
-                        )}
-                    </Box>
+                {allSnackbars.map((snackbar) => isAlertSnackbar(snackbar) ? (
+                    <ViewerAlertSnackbar
+                        key={snackbar.id}
+                        snackbar={snackbar}
+                        closeSnackbar={() => handleCloseAlert(snackbar.id)}
+                    />
+                ) : (
+                    <ViewerLoadingSnackbar key={snackbar.id} snackbar={snackbar} />
                 ))}
-            </Stack>
+            </Box>
         </Box>
     );
 };
