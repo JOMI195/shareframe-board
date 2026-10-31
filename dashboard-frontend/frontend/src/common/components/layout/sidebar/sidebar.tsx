@@ -44,10 +44,13 @@ const Sidebar: React.FC = () => {
         if (isDesktop) dispatch(openSidedbar());
     }, [dispatch, isDesktop]);
 
+    // The stored menu state arrives after mount, so a reload would reopen the phone menu.
+    const rehydrated = useAppSelector((state) => state._persist?.rehydrated ?? false);
+
     // Below desktop the drawer is a modal: it closes on navigation and on the back button.
     useEffect(() => {
         if (!isDesktop) dispatch(closeSidebar());
-    }, [dispatch, isDesktop, location.pathname]);
+    }, [dispatch, isDesktop, location.pathname, rehydrated]);
 
     useBackToClose(!isDesktop && open, () => dispatch(closeSidebar()));
 

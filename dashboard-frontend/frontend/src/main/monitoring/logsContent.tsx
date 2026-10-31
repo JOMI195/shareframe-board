@@ -70,7 +70,7 @@ const LogsContent: React.FC<LogsContentProps> = ({ loading, error, logs, onRetry
             </Box>
             <Divider sx={{ mb: 2 }} />
             <Card variant="outlined" sx={{ bgcolor: 'background.paper' }}>
-                <CardContent sx={{
+                <CardContent role="region" aria-label="Protokolleinträge" tabIndex={0} sx={{
                     p: 2,
                     maxHeight: '400px',
                     overflow: 'auto',
