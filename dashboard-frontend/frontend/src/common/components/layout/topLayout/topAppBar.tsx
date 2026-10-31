@@ -14,6 +14,7 @@ import PowerMenu from '@/common/components/powerMenu';
 import { useColorThemeContext } from '@/context/colorTheme/colorThemeContextValue';
 import { Badge, Typography, useMediaQuery, useTheme } from '@mui/material';
 import Logo from '../../logo';
+import ConnectionModeChip from './connectionModeChip';
 import { usePiConnection } from '@/context/piConnection/piConnectionContextValue';
 import { useAppDispatch, useAppSelector } from '@/store';
 import SignalWifiStatusbarConnectedNoInternet4Icon from '@mui/icons-material/SignalWifiStatusbarConnectedNoInternet4';
@@ -103,6 +104,7 @@ const TopAppBar = () => {
                             flex: 1
                         }}
                     />
+                    <ConnectionModeChip />
                     <Tooltip title={"Benachrichtigungen"}>
                         <IconButton onClick={handleInfoClick}>
                             <Badge badgeContent={badgeNumber} color="error">

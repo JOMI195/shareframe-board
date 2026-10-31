@@ -4,7 +4,7 @@ import uuid from 'react-uuid';
 import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '@/store/snackbars/snackbars.Slice';
 import { IServerResponse } from '@/types';
 import { fetchWithTimeout } from '@/common/utils/fetch';
-import { getConnectionStatusUrl, getConnectionSavedNetworksUrl, getConnectionConnectUrl, getConnectionForgetUrl, getApPasswordUrl } from '@/assets/endpoints/api/frame';
+import { getConnectionStatusUrl, getConnectionSavedNetworksUrl, getConnectionConnectUrl, getConnectionForgetUrl, getApPasswordUrl, getConnectionApplyUrl } from '@/assets/endpoints/api/frame';
 
 // Interfaces
 export interface NetworkCredentials {
@@ -17,6 +17,8 @@ export interface NetworkState {
     savedNetworks: string[];
     loading: boolean;
     error: string | null;
+    // When the board was last asked to leave its hotspot (ms); null = not in this session.
+    connectRequestedAt: number | null;
 }
 
 // Initial State
@@ -24,7 +26,8 @@ const initialState: NetworkState = {
     currentConnection: 'Loading...',
     savedNetworks: [],
     loading: false,
-    error: null
+    error: null,
+    connectRequestedAt: null
 };
 
 // Async Thunks
@@ -58,7 +61,7 @@ export const fetchNetworkData = createAsyncThunk(
 
 export const addNetwork = createAsyncThunk(
     'network/addNetwork',
-    async (credentials: NetworkCredentials, { dispatch, rejectWithValue }) => {
+    async (credentials: NetworkCredentials, { dispatch, getState, rejectWithValue }) => {
         if (!credentials.ssid || !credentials.password) {
             dispatch(addAlertSnackbar(uuid(), "SSID und Passwort benötigt", "error"));
             return rejectWithValue('Missing credentials');
@@ -83,7 +86,10 @@ export const addNetwork = createAsyncThunk(
             const data: IServerResponse = await response.json();
 
             if (data.success) {
-                dispatch(addAlertSnackbar(uuid(), "Netzwerk erfolgreich hinzugefügt", "success"));
+                const onHotspot = (getState() as RootState).connectionMode.mode === 'ap';
+                dispatch(addAlertSnackbar(uuid(), onHotspot
+                    ? "Netzwerk gespeichert – mit „Jetzt verbinden“ wechselt der Rahmen ins WLAN"
+                    : "Netzwerk erfolgreich hinzugefügt", "success"));
                 dispatch(fetchNetworkData());
                 return credentials.ssid;
             } else {
@@ -175,6 +181,25 @@ export const changeApPassword = createAsyncThunk(
     }
 );
 
+// Makes the board leave its hotspot and try the saved networks.
+export const connectToSavedNetworks = createAsyncThunk(
+    'network/connectToSavedNetworks',
+    async (_, { dispatch, rejectWithValue }) => {
+        try {
+            const response = await fetchWithTimeout(getConnectionApplyUrl(), { method: 'POST' });
+            const data: IServerResponse = await response.json();
+            if (data.success) {
+                return true;
+            }
+            dispatch(addAlertSnackbar(uuid(), "Verbinden fehlgeschlagen", "error"));
+            return rejectWithValue(data.message || 'Failed to connect');
+        } catch (error) {
+            dispatch(addAlertSnackbar(uuid(), "Verbinden fehlgeschlagen", "error"));
+            return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
+        }
+    }
+);
+
 // Slice
 export const networkSlice = createSlice({
     name: 'network',
@@ -207,6 +232,10 @@ export const networkSlice = createSlice({
         builder.addCase(addNetwork.rejected, (state, action) => {
             state.loading = false;
             state.error = action.payload as string;
+        });
+
+        builder.addCase(connectToSavedNetworks.fulfilled, (state) => {
+            state.connectRequestedAt = Date.now();
         });
 
         // Forget Network

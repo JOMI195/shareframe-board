@@ -27,12 +27,13 @@ import { addLoadingSnackbar, removeLoadingSnackbar } from '@/store/snackbars/sna
 import { selectConnectionMode } from '@/store/connectionMode/connectionMode.Slice';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import Dialogs from './dialogs/dialogs';
+import HotspotCard from './hotspotCard';
 
 const Network = () => {
     const dispatch = useAppDispatch();
     const { isConnected } = usePiConnection();
     const { currentConnection, savedNetworks, loading } = useAppSelector(selectNetworkState);
-    const { ap_ssid, ap_password } = useAppSelector(selectConnectionMode);
+    const { mode, ap_ssid, ap_password } = useAppSelector(selectConnectionMode);
     const [showApPassword, setShowApPassword] = useState(false);
 
     const isButtonsDisabled = loading || !isConnected;
@@ -62,6 +63,7 @@ const Network = () => {
             <Stack spacing={3} sx={{
                 width: "100%"
             }}>
+                {mode === 'ap' && <HotspotCard />}
                 <ShareframeInfoCard
                     title="Übersicht (WIFI)"
                     sections={[

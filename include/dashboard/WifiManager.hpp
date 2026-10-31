@@ -13,10 +13,13 @@ public:
     [[nodiscard]] nlohmann::json getSavedNetworks() const;
     nlohmann::json connect(const std::string& ssid, const std::string& password) const;
     nlohmann::json forget(const std::string& ssid) const;
+    /// Asks wifi-mode-manager to leave the AP and try the saved networks.
+    nlohmann::json requestConnect() const;
 
     // Network mode published by the wifi-mode-manager daemon; drives the status
     // banner and the offline AP-setup flow.
     [[nodiscard]] nlohmann::json getWifiMode() const;
+    [[nodiscard]] bool isApMode() const;
 
     // Persists the AP-fallback password to /data/wifi/ap.conf (and restarts
     // hostapd when the AP is live) via `shareframe-ap setpass`.
