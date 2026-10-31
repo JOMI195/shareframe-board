@@ -13,7 +13,7 @@ const lightTheme = createTheme({
         },
         text: {
             primary: '#2c1212',
-            secondary: '#2c1212',
+            secondary: '#5c4a4a',
         },
         background: {
             default: '#F2F2F2',

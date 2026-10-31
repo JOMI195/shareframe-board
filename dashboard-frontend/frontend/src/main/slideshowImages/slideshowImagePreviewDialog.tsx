@@ -26,7 +26,7 @@ interface SlideshowImagePreviewDialogProps {
 const MetaItem: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
     <Grid size={{ xs: 6, sm: 4, md: 2 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-            <Typography sx={{ mb: 0.5 }} color="GrayText">{label}</Typography>
+            <Typography sx={{ mb: 0.5 }} color="text.secondary">{label}</Typography>
             {children}
         </Box>
     </Grid>

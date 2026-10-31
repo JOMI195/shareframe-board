@@ -13,10 +13,11 @@ const darkTheme = createTheme({
         },
         text: {
             primary: '#fffdfd',
-            secondary: '#fffdfd',
+            secondary: '#c9c3c3',
         },
         background: {
             default: '#252627',
+            paper: '#2e2f31',
         },
         accent: {
             main: "#EDBF59"

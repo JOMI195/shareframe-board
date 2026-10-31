@@ -1,4 +1,7 @@
 import '@fontsource/inter'
+import '@fontsource/inter/500.css'
+import '@fontsource/inter/600.css'
+import '@fontsource/inter/700.css'
 import { createRoot } from 'react-dom/client'
 import { ColorThemeProvider } from './context/colorTheme/colorThemeContext.tsx'
 import { CssBaseline } from '@mui/material'
