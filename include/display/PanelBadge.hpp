@@ -26,7 +26,7 @@ constexpr panel_text::Rect area(const Corner corner)
 
 std::string nightText(int endHour);
 
-inline constexpr std::string_view NO_IMAGES_TEXT = "Noch keine Bilder auf dem Rahmen";
+inline constexpr std::string_view NO_IMAGES_TEXT = "Noch keine Fotos auf dem Rahmen";
 
 /// A `width`×`height` box at a random spot inside the visible area, clear of every rect in
 /// `avoid` when such a spot is found. Larger boxes are shrunk to the visible area.
