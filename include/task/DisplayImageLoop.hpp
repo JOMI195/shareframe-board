@@ -1,5 +1,6 @@
 #pragma once
 #include "display/DisplayManager.hpp"
+#include "display/PanelText.hpp"
 #include "repository/ImageRepository.hpp"
 #include "settings/PlaybackOrder.hpp"
 #include "task/Task.hpp"
@@ -7,6 +8,8 @@
 #include <filesystem>
 #include <functional>
 #include <mutex>
+#include <optional>
+#include <random>
 #include <vector>
 
 class RuntimeSettings;
@@ -49,13 +52,14 @@ protected:
 
 private:
     void _armNextChange(); // schedule next change = now + interval
-    /// Paints `path` with its badges; an empty `sender` never gets one.
-    [[nodiscard]] bool _paint(const std::filesystem::path& path, const std::string& sender,
-                              const std::stop_token& st) const;
+    /// Paints `path` with its badges; an empty `sender` never gets one. A `sample` gets the
+    /// no-images note at a new spot each time.
+    [[nodiscard]] bool _paint(const std::filesystem::path& path, const std::string& sender, bool sample,
+                              const std::stop_token& st);
     /// Waits until the armed change is due or `wake` holds (checked under the lock). Repaints
     /// `current` once the refresh interval allows if the daily clear wiped it before then.
     void _waitForNext(const std::stop_token& st, const std::filesystem::path& current, const std::string& sender,
-                      const std::function<bool()>& wake);
+                      bool sample, const std::function<bool()>& wake);
     void _onScheduledClear();
     void _onImageRemoved(const std::vector<int64_t>& removedIds);
     void _onImageNew();
@@ -83,6 +87,8 @@ private:
     bool newImage_ = false;
     bool restoreCurrent_ = false;
     size_t defaultImageIdx_ = 0;
+    std::mt19937 noteRng_{std::random_device{}()};
+    std::optional<panel_text::Rect> lastNote_;
     // steady_clock ms at which the next image change is due; 0 = none scheduled.
     std::atomic<int64_t> nextChangeAtMs_{0};
     std::atomic<bool> ready_{false};

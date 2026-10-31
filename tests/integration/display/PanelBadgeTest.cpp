@@ -65,3 +65,23 @@ TEST(PanelBadgeDraw, MissingFontLeavesThePhotoAlone)
     panel_badge::draw(buffer, "/nonexistent.ttf", "alice", Corner::TopRight);
     EXPECT_EQ(buffer, std::vector<uint8_t>(DisplayManager::BUFFER_SIZE, 0xFF));
 }
+
+TEST(PanelBadgeDraw, AnywhereInksOnlyTheReturnedBox)
+{
+    std::mt19937 rng(7);
+    std::vector<uint8_t> buffer(DisplayManager::BUFFER_SIZE, 0xFF);
+    const auto box = panel_badge::drawAnywhere(buffer, kFont, std::string(panel_badge::NO_IMAGES_TEXT), rng, {});
+
+    ASSERT_TRUE(box.has_value());
+    const int inked = count(buffer, true, *box);
+    EXPECT_GT(inked, 0);
+    EXPECT_EQ(count(buffer, true, {0, 0, DisplayManager::WIDTH, DisplayManager::HEIGHT}), inked);
+}
+
+TEST(PanelBadgeDraw, AnywhereLeavesTheBufferWithoutAFont)
+{
+    std::mt19937 rng(7);
+    std::vector<uint8_t> buffer(DisplayManager::BUFFER_SIZE, 0xFF);
+    EXPECT_FALSE(panel_badge::drawAnywhere(buffer, "/nonexistent.ttf", "x", rng, {}).has_value());
+    EXPECT_EQ(buffer, std::vector<uint8_t>(DisplayManager::BUFFER_SIZE, 0xFF));
+}
