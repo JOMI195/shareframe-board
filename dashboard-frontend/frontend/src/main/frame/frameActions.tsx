@@ -401,8 +401,9 @@ const FrameActions: React.FC = () => {
                                                     }}
                                                 />
                                                 <FormControl sx={{ minWidth: 120 }}>
-                                                    <InputLabel>Einheit</InputLabel>
+                                                    <InputLabel id="interval-unit-label">Einheit</InputLabel>
                                                     <Select
+                                                        labelId="interval-unit-label"
                                                         value={intervalUnit}
                                                         label="Einheit"
                                                         onChange={(e) => setIntervalUnit(e.target.value as 'minutes' | 'hours')}
@@ -481,8 +482,9 @@ const FrameActions: React.FC = () => {
                                             </TextField>
                                             <Box sx={{ display: 'flex', gap: 1 }}>
                                                 <FormControl sx={{ flex: 1 }}>
-                                                    <InputLabel>Von</InputLabel>
+                                                    <InputLabel id="night-start-label">Von</InputLabel>
                                                     <Select
+                                                        labelId="night-start-label"
                                                         value={nightStart}
                                                         label="Von"
                                                         onChange={(e) => setNightStart(Number(e.target.value))}
@@ -494,8 +496,9 @@ const FrameActions: React.FC = () => {
                                                     </Select>
                                                 </FormControl>
                                                 <FormControl sx={{ flex: 1 }}>
-                                                    <InputLabel>Bis</InputLabel>
+                                                    <InputLabel id="night-end-label">Bis</InputLabel>
                                                     <Select
+                                                        labelId="night-end-label"
                                                         value={nightEnd}
                                                         label="Bis"
                                                         onChange={(e) => setNightEnd(Number(e.target.value))}

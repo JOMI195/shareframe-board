@@ -103,11 +103,11 @@ const Sidebar: React.FC = () => {
         ));
     };
 
-    const renderAdvancedToggle = () => withTooltip('Erweiterter Modus', (
+    // A real switch in a label, so the row is one control instead of a button around a switch.
+    const renderAdvancedToggle = () => shouldShowIconsOnly ? withTooltip('Erweiterter Modus', (
         <ListItem disablePadding>
             <ListItemButton
-                role="switch"
-                aria-checked={advancedMode}
+                aria-pressed={advancedMode}
                 aria-label="Erweiterter Modus"
                 onClick={() => dispatch(toggleAdvancedMode())}
                 sx={{ ...itemSx, backgroundColor: advancedMode ? 'action.selected' : 'inherit' }}
@@ -115,13 +115,32 @@ const Sidebar: React.FC = () => {
                 <ListItemIcon sx={iconSx}>
                     <TuneIcon color={advancedMode ? 'primary' : 'inherit'} />
                 </ListItemIcon>
-                {!shouldShowIconsOnly && <ListItemText primary="Erweitert" />}
-                {!shouldShowIconsOnly && (
-                    <Switch edge="end" size="small" checked={advancedMode} tabIndex={-1} aria-hidden />
-                )}
             </ListItemButton>
         </ListItem>
-    ));
+    )) : (
+        <ListItem
+            component="label"
+            sx={{
+                ...itemSx,
+                px: 2,
+                cursor: 'pointer',
+                backgroundColor: advancedMode ? 'action.selected' : 'inherit',
+                '&:hover': { backgroundColor: 'action.hover' },
+            }}
+        >
+            <ListItemIcon sx={iconSx}>
+                <TuneIcon color={advancedMode ? 'primary' : 'inherit'} />
+            </ListItemIcon>
+            <ListItemText primary="Erweitert" />
+            <Switch
+                edge="end"
+                size="small"
+                checked={advancedMode}
+                onChange={() => dispatch(toggleAdvancedMode())}
+                slotProps={{ input: { role: 'switch', 'aria-label': 'Erweiterter Modus' } }}
+            />
+        </ListItem>
+    );
 
     const content = (
         <Box

@@ -81,7 +81,7 @@ describe('navigation', () => {
 describe('notifications', () => {
   const openNotifications = async (badge = '') => {
     const view = renderRoute('/', { preloadedState: signedInState() });
-    const button = await screen.findByRole('button', { name: 'Benachrichtigungen' });
+    const button = await screen.findByRole('button', { name: /^Benachrichtigungen/ });
     if (badge) await waitFor(() => expect(button).toHaveTextContent(badge));
     await view.user.click(button);
     return within(await screen.findByRole('menu'));

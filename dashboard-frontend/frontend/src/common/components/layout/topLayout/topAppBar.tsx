@@ -108,7 +108,7 @@ const TopAppBar = () => {
                     <Tooltip title="Benachrichtigungen">
                         <IconButton
                             onClick={handleInfoClick}
-                            aria-label="Benachrichtigungen"
+                            aria-label={badgeNumber > 0 ? `Benachrichtigungen (${badgeNumber})` : "Benachrichtigungen"}
                             aria-haspopup="menu"
                             aria-expanded={open}
                             sx={{ width: 44, height: 44 }}
