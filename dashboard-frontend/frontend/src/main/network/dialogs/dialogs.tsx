@@ -69,12 +69,11 @@ const Dialogs: React.FC = () => {
     const handleForgetNetwork = async (): Promise<void> => {
         setSubmitting(true);
         try {
-            await dispatch(forgetNetwork(dialogs.forgetNetwork.ssid)).unwrap();
-            dispatch(closeNetworkForgetNetworkDialog());
-        } catch {
-            // The thunk reports the failure; the input stays for another try.
+            await dispatch(forgetNetwork(dialogs.forgetNetwork.ssid));
         } finally {
             setSubmitting(false);
+            // Closed either way: an open modal would hide the error snackbar from screen readers.
+            dispatch(closeNetworkForgetNetworkDialog());
         }
     };
 
@@ -108,12 +107,11 @@ const Dialogs: React.FC = () => {
     const handleConnect = async (): Promise<void> => {
         setSubmitting(true);
         try {
-            await dispatch(connectToSavedNetworks()).unwrap();
-            dispatch(closeNetworkConnectDialog());
-        } catch {
-            // The thunk reports the failure; the input stays for another try.
+            await dispatch(connectToSavedNetworks());
         } finally {
             setSubmitting(false);
+            // Closed either way: an open modal would hide the error snackbar from screen readers.
+            dispatch(closeNetworkConnectDialog());
         }
     };
 
