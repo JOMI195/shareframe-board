@@ -9,14 +9,20 @@ import { Provider } from 'react-redux'
 import { store } from './store/index.ts'
 import { PiConnectionProvider } from './context/piConnection/piConnectionContext.tsx'
 import App from './App.tsx'
+import ErrorBoundary from './common/components/error/errorBoundary/errorBoundary.tsx'
+import { initStaleChunkReload } from './common/utils/staleChunkReload.ts'
+
+initStaleChunkReload()
 
 createRoot(document.getElementById('root')!).render(
-  <Provider store={store}>
-    <ColorThemeProvider>
-      <CssBaseline enableColorScheme />
-      <PiConnectionProvider>
-        <App />
-      </PiConnectionProvider>
-    </ColorThemeProvider>
-  </Provider>
+  <ErrorBoundary>
+    <Provider store={store}>
+      <ColorThemeProvider>
+        <CssBaseline enableColorScheme />
+        <PiConnectionProvider>
+          <App />
+        </PiConnectionProvider>
+      </ColorThemeProvider>
+    </Provider>
+  </ErrorBoundary>
 )

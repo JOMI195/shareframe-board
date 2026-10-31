@@ -14,7 +14,8 @@ import FrameLogs from '@/main/monitoring/frameLogs';
 import ServicesOverview from '@/main/services/servicesOverview';
 import ServiceDetail from '@/main/services/serviceDetail';
 import { ServiceType } from '@/types';
-import NotFound from '@/common/components/notFound';
+import NotFound from '@/common/components/error/notFound/notFound';
+import RouteError from '@/common/components/error/routeError/routeError';
 import { createBrowserRouter } from 'react-router';
 import { getAuthenticationUrl, getSignInUrl, getSignOutUrl } from '@/assets/endpoints/app/authEndpoints';
 import AuthenticationLayout from '@/main/authentication/layout';
@@ -26,6 +27,7 @@ import RouterContext from '@/common/components/routerContext';
 export const routes = [
   {
     element: <RouterContext />,
+    errorElement: <RouteError />,
     children: [
       {
         element: <Snackbars />,
@@ -61,83 +63,88 @@ export const routes = [
                 element: <MainLayout />,
                 children: [
                   {
-                    path: "*",
-                    element: <NotFound />,
-                  },
-                  {
-                    path: getHomeUrl(),
-                    handle: { title: 'Steuerung' },
-                    element: <FrameActions />
-                  },
-                  {
-                    path: getSlideshowPageUrl(),
-                    handle: { title: 'Diashow' },
-                    element: <SlideshowImages />
-                  },
-                  {
-                    path: getCustomizationUrl(),
-                    handle: { title: 'Anpassung' },
-                    element: <Customization />
-                  },
-                  {
-                    path: getNetworkUrl(),
-                    handle: { title: 'Netzwerk' },
-                    element: <Network />
-                  },
-                  {
-                    path: getUpdatesyUrl(),
-                    handle: { title: 'Updates' },
-                    element: <Updates />
-                  },
-                  {
-                    path: getUpdateHistoryPageUrl(),
-                    handle: { title: 'Update-Verlauf' },
-                    element: <UpdateHistory />
-                  },
-                  {
-                    path: getGeneralSettingsUrl(),
-                    handle: { title: 'System' },
-                    element: <General />
-                  },
-                  {
-                    path: getDisplayHealthUrl(),
-                    handle: { title: 'Display-Zustand' },
-                    element: <DisplayHealthPage />
-                  },
-                  {
-                    path: getLogsUrl(),
-                    handle: { title: 'Protokolle' },
-                    element: <FrameLogs />
-                  },
-                  {
-                    path: getServicesOverviewUrl(),
-                    handle: { title: 'Dienste' },
-                    element: <ServicesOverview />
-                  },
-                  {
-                    path: getServiceDetailUrl('display'),
-                    handle: { title: 'Display' },
-                    element: <ServiceDetail serviceId={ServiceType.DISPLAY} />
-                  },
-                  {
-                    path: getServiceDetailUrl('websocket'),
-                    handle: { title: 'WebSocket' },
-                    element: <ServiceDetail serviceId={ServiceType.WEBSOCKET} />
-                  },
-                  {
-                    path: getServiceDetailUrl('dashboard'),
-                    handle: { title: 'Dashboard' },
-                    element: <ServiceDetail serviceId={ServiceType.DASHBOARD} />
-                  },
-                  {
-                    path: getServiceDetailUrl('heartbeat'),
-                    handle: { title: 'Heartbeat' },
-                    element: <ServiceDetail serviceId={ServiceType.HEARTBEAT} />
-                  },
-                  {
-                    path: getServiceDetailUrl('update'),
-                    handle: { title: 'Update-Dienst' },
-                    element: <ServiceDetail serviceId={ServiceType.UPDATE} />
+                    errorElement: <RouteError />,
+                    children: [
+                      {
+                        path: "*",
+                        element: <NotFound />,
+                      },
+                      {
+                        path: getHomeUrl(),
+                        handle: { title: 'Steuerung' },
+                        element: <FrameActions />
+                      },
+                      {
+                        path: getSlideshowPageUrl(),
+                        handle: { title: 'Diashow' },
+                        element: <SlideshowImages />
+                      },
+                      {
+                        path: getCustomizationUrl(),
+                        handle: { title: 'Anpassung' },
+                        element: <Customization />
+                      },
+                      {
+                        path: getNetworkUrl(),
+                        handle: { title: 'Netzwerk' },
+                        element: <Network />
+                      },
+                      {
+                        path: getUpdatesyUrl(),
+                        handle: { title: 'Updates' },
+                        element: <Updates />
+                      },
+                      {
+                        path: getUpdateHistoryPageUrl(),
+                        handle: { title: 'Update-Verlauf' },
+                        element: <UpdateHistory />
+                      },
+                      {
+                        path: getGeneralSettingsUrl(),
+                        handle: { title: 'System' },
+                        element: <General />
+                      },
+                      {
+                        path: getDisplayHealthUrl(),
+                        handle: { title: 'Display-Zustand' },
+                        element: <DisplayHealthPage />
+                      },
+                      {
+                        path: getLogsUrl(),
+                        handle: { title: 'Protokolle' },
+                        element: <FrameLogs />
+                      },
+                      {
+                        path: getServicesOverviewUrl(),
+                        handle: { title: 'Dienste' },
+                        element: <ServicesOverview />
+                      },
+                      {
+                        path: getServiceDetailUrl('display'),
+                        handle: { title: 'Display' },
+                        element: <ServiceDetail serviceId={ServiceType.DISPLAY} />
+                      },
+                      {
+                        path: getServiceDetailUrl('websocket'),
+                        handle: { title: 'WebSocket' },
+                        element: <ServiceDetail serviceId={ServiceType.WEBSOCKET} />
+                      },
+                      {
+                        path: getServiceDetailUrl('dashboard'),
+                        handle: { title: 'Dashboard' },
+                        element: <ServiceDetail serviceId={ServiceType.DASHBOARD} />
+                      },
+                      {
+                        path: getServiceDetailUrl('heartbeat'),
+                        handle: { title: 'Heartbeat' },
+                        element: <ServiceDetail serviceId={ServiceType.HEARTBEAT} />
+                      },
+                      {
+                        path: getServiceDetailUrl('update'),
+                        handle: { title: 'Update-Dienst' },
+                        element: <ServiceDetail serviceId={ServiceType.UPDATE} />
+                      },
+                    ],
                   },
                 ],
               },

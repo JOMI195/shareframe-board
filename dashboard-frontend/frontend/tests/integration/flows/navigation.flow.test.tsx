@@ -65,7 +65,7 @@ describe('navigation', () => {
   it('shows a 404 for unknown pages', async () => {
     renderRoute('/nope', { preloadedState: signedInState() });
 
-    expect(await screen.findByText('Page not found')).toBeInTheDocument();
+    expect(await screen.findByText('Seite nicht gefunden')).toBeInTheDocument();
   });
 
   it('switches the color mode and remembers it', async () => {
