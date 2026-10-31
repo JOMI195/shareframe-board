@@ -9,34 +9,34 @@ test('protected pages redirect to sign-in', async ({ page }) => {
 test('a wrong password is rejected', async ({ page }) => {
   await page.goto('/auth/sign-in');
   await page.getByRole('button', { name: 'Mit Passwort anmelden' }).click();
-  await page.getByLabel(/Passwort/).fill('wrong-password');
+  await page.getByRole('textbox', { name: 'Passwort', exact: true }).fill('wrong-password');
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
-  await expect(page.getByText('Passwort ungültig')).toBeVisible();
+  await expect(page.getByText('Das Passwort stimmt nicht.')).toBeVisible();
   await expect(page).toHaveURL(/\/auth\/sign-in/);
 });
 
 test('a valid password signs in', async ({ page }) => {
   await page.goto('/auth/sign-in');
   await page.getByRole('button', { name: 'Mit Passwort anmelden' }).click();
-  await page.getByLabel(/Passwort/).fill(DASHBOARD_PASSWORD);
+  await page.getByRole('textbox', { name: 'Passwort', exact: true }).fill(DASHBOARD_PASSWORD);
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByText('Bilderwiedergabe').first()).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Diashow' })).toBeVisible();
 });
 
-test('an OTP is verified against the server', async ({ page }) => {
+test('a one-time code is verified against the server', async ({ page }) => {
   await page.goto('/auth/sign-in');
-  await page.getByLabel(/OTP/).fill('123456');
+  await page.getByRole('textbox', { name: 'Einmal-Code', exact: true }).fill('123456');
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByText('Bilderwiedergabe').first()).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Diashow' })).toBeVisible();
 });
 
-test('an invalid OTP is rejected by the server', async ({ page }) => {
+test('an invalid one-time code is rejected by the server', async ({ page }) => {
   await page.goto('/auth/sign-in');
-  await page.getByLabel(/OTP/).fill('000000');
+  await page.getByRole('textbox', { name: 'Einmal-Code', exact: true }).fill('000000');
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
-  await expect(page.getByText('OTP invalid')).toBeVisible();
+  await expect(page.getByText('Der Einmal-Code stimmt nicht oder ist abgelaufen.')).toBeVisible();
 });
 
 test('signing out ends the session on the board', async ({ page }) => {

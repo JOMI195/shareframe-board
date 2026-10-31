@@ -14,7 +14,7 @@ test('the sender name shows once turned on and survives a restart', async ({ pag
   await signIn(page);
   await page.goto('/customization/');
   await page.getByLabel('Name des Absenders anzeigen').check();
-  await expect(page.getByText('Der Name des Absenders wird ab dem nächsten Bildwechsel angezeigt')).toBeVisible();
+  await expect(page.getByText('Der Name des Absenders wird ab dem nächsten Fotowechsel angezeigt')).toBeVisible();
 
   await board.restartService('display');
   expect(await board.get('/api/frame/display/customization')).toEqual({ show_sender: true });

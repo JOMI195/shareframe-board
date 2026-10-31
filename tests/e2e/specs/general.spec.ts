@@ -20,10 +20,10 @@ test('a changed password replaces the initial one', async ({ page, board, reques
   await dialog.getByLabel(/Aktuelles Passwort/).fill(DASHBOARD_PASSWORD);
   await dialog.getByLabel(/^Neues Passwort(?! bestätigen)/).fill('changed-e2e');
   await dialog.getByLabel(/Neues Passwort bestätigen/).fill('changed-e2e');
-  await dialog.getByRole('button', { name: 'Ändern' }).click();
+  await dialog.getByRole('button', { name: 'Passwort ändern' }).click();
 
   try {
-    await expect(page.getByText('Passwort erfolgreich geändert')).toBeVisible();
+    await expect(page.getByText('Passwort geändert')).toBeVisible();
     expect(await login('changed-e2e')).toBe(200);
     expect(await login(DASHBOARD_PASSWORD)).toBe(401);
   } finally {
@@ -34,8 +34,8 @@ test('a changed password replaces the initial one', async ({ page, board, reques
 test('restarting from the power menu reboots the board', async ({ page }) => {
   await signIn(page);
   await page.getByRole('button', { name: 'Energieoptionen' }).click();
-  await page.getByRole('menuitem', { name: 'Neustarten' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Neustarten' }).click();
+  await page.getByRole('menuitem', { name: 'Neu starten' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Neu starten' }).click();
   await expectShimCall('reboot');
   await waitForPanel(showsStatus('reboot'), 'reboot status screen');
 });

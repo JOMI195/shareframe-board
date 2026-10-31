@@ -13,12 +13,12 @@ test('lists the pictures on the frame with their details', async ({ page, server
   await signIn(page);
   await page.goto('/slideshow/');
 
-  await expect(page.getByText('2 Bilder auf dem Bilderrahmen')).toBeVisible();
-  await page.getByRole('listitem', { name: /Bild von ben/ }).click();
+  await expect(page.getByText('2 Fotos auf dem Bilderrahmen')).toBeVisible();
+  await page.getByRole('listitem', { name: /Foto von ben/ }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByText('Position 2 von 2')).toBeVisible();
   await expect(dialog.getByText(/^\d+ × \d+ px$/)).toBeVisible();
-  await expect(dialog.getByRole('img', { name: 'Bild von ben' })).toBeVisible();
+  await expect(dialog.getByRole('img', { name: 'Foto von ben' })).toBeVisible();
 });
 
 test('a hand-picked order decides which picture the panel shows next', async ({ page, board, server }) => {
@@ -30,9 +30,9 @@ test('a hand-picked order decides which picture the panel shows next', async ({ 
   await signIn(page);
   await page.goto('/slideshow/');
   await page.getByRole('button', { name: 'Eigene Reihenfolge' }).click();
-  await page.getByRole('button', { name: 'Bild von carla nach vorne verschieben' }).click();
+  await page.getByRole('button', { name: 'Foto von carla nach vorne verschieben' }).click();
   await page.getByRole('button', { name: 'Reihenfolge speichern' }).click();
-  await expect(page.getByText('Eigene Reihenfolge ab dem nächsten Bild')).toBeVisible();
+  await expect(page.getByText('Eigene Reihenfolge ab dem nächsten Foto')).toBeVisible();
 
   await board.skip();
   await waitForPanel(showsImage(c), `custom order: ${c} after ${a}`);
@@ -50,7 +50,7 @@ test('newest first jumps from the oldest picture to the latest', async ({ page, 
   await signIn(page);
   await page.goto('/slideshow/');
   await page.getByRole('button', { name: 'Neueste zuerst' }).click();
-  await expect(page.getByText('Neueste zuerst ab dem nächsten Bild')).toBeVisible();
+  await expect(page.getByText('Neueste zuerst ab dem nächsten Foto')).toBeVisible();
 
   await board.skip();
   await waitForPanel(showsImage(c), `newest first: ${c} after ${a}`);
@@ -64,9 +64,9 @@ test('show now puts the chosen picture on the panel', async ({ page, server }) =
 
   await signIn(page);
   await page.goto('/slideshow/');
-  await page.getByRole('listitem', { name: /Bild von carla/ }).click();
+  await page.getByRole('listitem', { name: /Foto von carla/ }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Jetzt anzeigen' }).click();
 
   await waitForPanel(showsImage(c), `show now: ${c} instead of ${b}`);
-  await expect(page.getByText('Bild wird auf dem Bilderrahmen angezeigt')).toBeVisible();
+  await expect(page.getByText('Foto wird auf dem Bilderrahmen angezeigt')).toBeVisible();
 });
