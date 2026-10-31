@@ -8,6 +8,11 @@ describe('board error messages', () => {
     expect(boardErrorMessage('Anmeldung fehlgeschlagen', { status: 401 }, 'OTP invalid')).toBe('Der Einmal-Code stimmt nicht oder ist abgelaufen.');
   });
 
+  it('explains the outage answers the board\'s nginx sends while the backend is down', () => {
+    expect(boardErrorMessage('Konnte nicht gespeichert werden', { status: 502 }, 'Dashboard service unavailable'))
+      .toBe('Der Bilderrahmen startet seine Einstellungen gerade neu. Versuche es gleich noch einmal.');
+  });
+
   it('falls back to a telling status for unknown messages', () => {
     expect(boardErrorMessage('Konnte nicht gespeichert werden', { status: 429 })).toBe('Zu viele Versuche. Bitte warte kurz.');
     expect(boardErrorMessage('Konnte nicht gespeichert werden', { status: 403 })).toBe('Dafür fehlt dir die Berechtigung.');

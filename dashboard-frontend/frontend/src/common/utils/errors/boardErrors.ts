@@ -14,6 +14,8 @@ const KNOWN_MESSAGES: Record<string, string> = {
     'Failed to check for updates': 'Die Suche nach Updates ist gerade nicht möglich.',
     'Picture not found': 'Das Foto ist nicht mehr auf dem Bilderrahmen.',
     'Picture file missing': 'Das Foto ist nicht mehr auf dem Bilderrahmen.',
+    'Dashboard service unavailable': 'Der Bilderrahmen startet seine Einstellungen gerade neu. Versuche es gleich noch einmal.',
+    'Dashboard service timed out': 'Der Bilderrahmen antwortet gerade nicht. Versuche es gleich noch einmal.',
 };
 
 export const OFFLINE_MESSAGE = 'Du bist offline. Prüfe die WLAN-Verbindung deines Geräts.';
