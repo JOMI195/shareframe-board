@@ -21,8 +21,7 @@ void WifiModeWatcher::execute()
 {
     const auto mode = WifiMode::read(cfg_.display.wifiModePath);
     ApSetupStateEvent state;
-    const int userNetworks = WifiMode::userNetworkCount(mode);
-    state.required = debounce_.update(mode.value("mode", ""), userNetworks > 0, uptimeSecs());
+    state.required = debounce_.update(mode.value("mode", ""), uptimeSecs());
     if (state.required)
     {
         state.ssid = mode.value("ap_ssid", "");
@@ -37,7 +36,7 @@ void WifiModeWatcher::execute()
     if (state == last_)
         return;
     last_ = state;
-    logger_->info("Wi-Fi setup screen {} (mode={}, user_networks={})", state.required ? "required" : "not required",
-                  mode.value("mode", ""), userNetworks);
+    logger_->info("Wi-Fi setup screen {} (mode={})", state.required ? "required" : "not required",
+                  mode.value("mode", ""));
     bus_.publish<Topic::AP_SETUP_STATE>(state);
 }
