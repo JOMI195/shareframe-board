@@ -106,6 +106,7 @@ const App = () => {
           maxWidth={200}
           marginRight={0}
           clickable={false}
+          alt="ShareFrame"
         />
         <CircularProgress size={"50px"} />
       </Box>

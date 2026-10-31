@@ -44,10 +44,12 @@ export const routes = [
               },
               {
                 path: getAuthenticationUrl() + getSignInUrl(),
+                handle: { title: 'Anmelden' },
                 element: <SignIn />,
               },
               {
                 path: getAuthenticationUrl() + getSignOutUrl(),
+                handle: { title: 'Abmelden' },
                 element: <SignOut />,
               },
             ],
@@ -64,62 +66,77 @@ export const routes = [
                   },
                   {
                     path: getHomeUrl(),
+                    handle: { title: 'Steuerung' },
                     element: <FrameActions />
                   },
                   {
                     path: getSlideshowPageUrl(),
+                    handle: { title: 'Diashow' },
                     element: <SlideshowImages />
                   },
                   {
                     path: getCustomizationUrl(),
+                    handle: { title: 'Anpassung' },
                     element: <Customization />
                   },
                   {
                     path: getNetworkUrl(),
+                    handle: { title: 'Netzwerk' },
                     element: <Network />
                   },
                   {
                     path: getUpdatesyUrl(),
+                    handle: { title: 'Updates' },
                     element: <Updates />
                   },
                   {
                     path: getUpdateHistoryPageUrl(),
+                    handle: { title: 'Update-Verlauf' },
                     element: <UpdateHistory />
                   },
                   {
                     path: getGeneralSettingsUrl(),
+                    handle: { title: 'System' },
                     element: <General />
                   },
                   {
                     path: getDisplayHealthUrl(),
+                    handle: { title: 'Display-Zustand' },
                     element: <DisplayHealthPage />
                   },
                   {
                     path: getLogsUrl(),
+                    handle: { title: 'Protokolle' },
                     element: <FrameLogs />
                   },
                   {
                     path: getServicesOverviewUrl(),
+                    handle: { title: 'Dienste' },
                     element: <ServicesOverview />
                   },
                   {
                     path: getServiceDetailUrl('display'),
+                    handle: { title: 'Display' },
                     element: <ServiceDetail serviceId={ServiceType.DISPLAY} />
                   },
                   {
                     path: getServiceDetailUrl('websocket'),
+                    handle: { title: 'WebSocket' },
                     element: <ServiceDetail serviceId={ServiceType.WEBSOCKET} />
                   },
                   {
                     path: getServiceDetailUrl('dashboard'),
+                    handle: { title: 'Dashboard' },
                     element: <ServiceDetail serviceId={ServiceType.DASHBOARD} />
                   },
                   {
                     path: getServiceDetailUrl('heartbeat'),
+                    handle: { title: 'Heartbeat' },
                     element: <ServiceDetail serviceId={ServiceType.HEARTBEAT} />
                   },
                   {
                     path: getServiceDetailUrl('update'),
+                    handle: { title: 'Update-Dienst' },
                     element: <ServiceDetail serviceId={ServiceType.UPDATE} />
                   },
                 ],

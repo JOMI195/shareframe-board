@@ -4,6 +4,7 @@ import Typography from "@mui/material/Typography";
 import Logo from "@/common/components/logo";
 import Stack from "@mui/material/Stack";
 import { Outlet } from "react-router";
+import { usePageTitle } from "@/hooks/navigation/usePageTitle";
 import { TypographyProps, useMediaQuery, useTheme } from "@mui/material";
 
 function Copyright(props: TypographyProps) {
@@ -27,6 +28,7 @@ function Copyright(props: TypographyProps) {
 }
 
 const AuthenticationLayout = () => {
+  usePageTitle();
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -62,6 +64,7 @@ const AuthenticationLayout = () => {
             darkLogoSrc="/logo-dark-full-shareframe.svg"
             lightLogoSrc="/logo-light-full-shareframe.svg"
             clickable={false}
+            alt="ShareFrame"
             maxWidth={280}
           />
         </Stack>

@@ -5,11 +5,16 @@ import { signedInState } from '@tests/helpers/preloadedState';
 import { makeRelease } from '@tests/fixtures';
 import { boardUnreachable, server, withConnectionMode, withRelease } from '@tests/mocks';
 
-const sidebar = () => screen.getByRole('sidebar');
+const sidebar = () => screen.getByRole('navigation', { name: 'Hauptmenü' });
+
+const openMenu = async (user: { click: (element: Element) => Promise<void> }) => {
+  await user.click(await screen.findByRole('button', { name: 'Menü öffnen' }));
+};
 
 describe('navigation', () => {
   it('opens a page from the sidebar', async () => {
-    const { user, router } = renderRoute('/', { preloadedState: signedInState({ navigation: { sidebar: { open: true } } }) });
+    const { user, router } = renderRoute('/', { preloadedState: signedInState() });
+    await openMenu(user);
 
     await user.click(within(sidebar()).getByRole('link', { name: 'Netzwerk' }));
 
@@ -18,11 +23,12 @@ describe('navigation', () => {
   });
 
   it('reveals the admin pages in advanced mode', async () => {
-    const { user } = renderRoute('/', { preloadedState: signedInState({ navigation: { sidebar: { open: true } } }) });
+    const { user } = renderRoute('/', { preloadedState: signedInState() });
+    await openMenu(user);
 
     expect(within(sidebar()).queryByRole('link', { name: 'Protokolle' })).not.toBeInTheDocument();
 
-    await user.click(within(sidebar()).getByText('Erweitert'));
+    await user.click(within(sidebar()).getByRole('switch', { name: 'Erweiterter Modus' }));
 
     expect(within(sidebar()).getByRole('link', { name: 'Protokolle' })).toBeInTheDocument();
     expect(within(sidebar()).getByText('Verwaltung')).toBeInTheDocument();
@@ -31,11 +37,29 @@ describe('navigation', () => {
   it('toggles the sidebar from the top bar', async () => {
     const { user, store } = renderRoute('/', { preloadedState: signedInState() });
 
-    await user.click(await screen.findByRole('button', { name: 'toggle sidebar' }));
-    expect(store.getState().navigation.sidebar.open).toBe(true);
+    const toggle = await screen.findByRole('button', { name: 'Menü öffnen' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
 
-    await user.click(screen.getByRole('button', { name: 'toggle sidebar' }));
+    await user.click(toggle);
+    expect(store.getState().navigation.sidebar.open).toBe(true);
+    expect(toggle).toHaveAccessibleName('Menü schließen');
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+
+    await user.keyboard('{Escape}');
     expect(store.getState().navigation.sidebar.open).toBe(false);
+  });
+
+  it('closes the menu after picking a page and names the page in the title', async () => {
+    const { user, store } = renderRoute('/', { preloadedState: signedInState() });
+    await openMenu(user);
+
+    await user.click(within(sidebar()).getByRole('link', { name: 'Diashow' }));
+
+    await waitFor(() => expect(store.getState().navigation.sidebar.open).toBe(false));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Diashow' })).toBeInTheDocument();
+    expect(document.title).toBe('Diashow – ShareFrame');
+    // The closed phone menu stays mounted but hidden, so it is out of reach for role queries.
+    expect(document.querySelector('nav[aria-label="Hauptmenü"] [aria-current="page"]')).toHaveTextContent('Diashow');
   });
 
   it('shows a 404 for unknown pages', async () => {

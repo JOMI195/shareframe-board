@@ -27,6 +27,7 @@ import { closeSidebar, getSidebar, openSidedbar } from '@/store/navigation/navig
 import { selectAuth } from '@/store/auth/auth.Slice';
 import { getAuthenticationUrl, getSignOutUrl } from '@/assets/endpoints/app/authEndpoints';
 import { useNavigate } from 'react-router';
+import { getHomeUrl } from '@/assets/endpoints/app/appEndpoints';
 
 const TopAppBar = () => {
     const dispatch = useAppDispatch();
@@ -43,7 +44,8 @@ const TopAppBar = () => {
     const isNewVersion = latest_release?.is_newer ?? false;
 
     const theme = useTheme();
-    const isSmallScreen = useMediaQuery(theme.breakpoints.down('md'));
+    const isPhone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true });
+    const themeToggleLabel = colorMode === "dark" ? "Wechsel in den hellen Modus" : "Wechsel in den dunklen Modus";
 
     const handleSidebarButtonClick = () => {
         dispatch(sidebarOpen ? closeSidebar() : openSidedbar());
@@ -80,58 +82,69 @@ const TopAppBar = () => {
                 }}
             >
                 <Toolbar sx={{ height: "100%" }}>
-                    <Tooltip title={`Seitenmenü ${sidebarOpen ? "schließen" : "öffnen"}`} placement="bottom">
-                        <IconButton
-                            size="small"
-                            aria-label="toggle sidebar"
-                            aria-haspopup="true"
-                            onClick={handleSidebarButtonClick}
-                            className='ignore-clickaway'
-                            sx={{ mr: 2 }}
-                        >
-                            {sidebarOpen ? <MenuOpenIcon /> : <MenuIcon />}
-                        </IconButton>
-                    </Tooltip>
+                    <IconButton
+                        aria-label={`Menü ${sidebarOpen ? "schließen" : "öffnen"}`}
+                        aria-expanded={sidebarOpen}
+                        onClick={handleSidebarButtonClick}
+                        sx={{ mr: 1, width: 44, height: 44 }}
+                    >
+                        {sidebarOpen ? <MenuOpenIcon /> : <MenuIcon />}
+                    </IconButton>
                     <Logo
                         darkLogoSrc="/logo-dark-full-shareframe.svg"
                         lightLogoSrc="/logo-light-full-shareframe.svg"
-                        maxWidth={130}
+                        maxWidth={isPhone ? 100 : 130}
+                        minWidth={0}
                         marginRight={0}
-                        clickable={false}
+                        linkUrl={getHomeUrl()}
+                        alt="ShareFrame – Start"
                     />
                     <Box
                         sx={{
                             flex: 1
                         }}
                     />
-                    <ConnectionModeChip />
-                    <Tooltip title={"Benachrichtigungen"}>
-                        <IconButton onClick={handleInfoClick}>
+                    <ConnectionModeChip compact={isPhone} />
+                    <Tooltip title="Benachrichtigungen">
+                        <IconButton
+                            onClick={handleInfoClick}
+                            aria-label="Benachrichtigungen"
+                            aria-haspopup="menu"
+                            aria-expanded={open}
+                            sx={{ width: 44, height: 44 }}
+                        >
                             <Badge badgeContent={badgeNumber} color="error">
-                                <InfoIcon fontSize={isSmallScreen ? "medium" : "medium"} />
+                                <InfoIcon />
                             </Badge>
                         </IconButton>
                     </Tooltip>
-                    <Tooltip title={colorMode === "dark" ? "Wechsel in den hellen Modus" : "Wechsel in den dunklen Modus"}>
-                        <IconButton size={isSmallScreen ? "medium" : "medium"} onClick={toggleColorMode}>
-                            <IconComponent fontSize={isSmallScreen ? "medium" : "medium"} />
+                    <Tooltip title={themeToggleLabel}>
+                        <IconButton onClick={toggleColorMode} aria-label={themeToggleLabel} sx={{ width: 44, height: 44 }}>
+                            <IconComponent />
                         </IconButton>
                     </Tooltip>
-                    {isAuthenticated && (
+                    {/* On phones both live in the side menu, the bar has no room for them. */}
+                    {isAuthenticated && !isPhone && (
                         <PowerMenu
-                            renderTrigger={(open) => (
-                                <Tooltip title={"Energieoptionen"}>
-                                    <IconButton onClick={open}>
-                                        <PowerSettingsNewIcon fontSize="medium" />
+                            renderTrigger={(openMenu, isOpen) => (
+                                <Tooltip title="Energieoptionen">
+                                    <IconButton
+                                        onClick={openMenu}
+                                        aria-label="Energieoptionen"
+                                        aria-haspopup="menu"
+                                        aria-expanded={isOpen}
+                                        sx={{ width: 44, height: 44 }}
+                                    >
+                                        <PowerSettingsNewIcon />
                                     </IconButton>
                                 </Tooltip>
                             )}
                         />
                     )}
-                    {isAuthenticated && (
-                        <Tooltip title={"Abmelden"}>
-                            <IconButton onClick={handleLogoutButtonClick}>
-                                <LogoutIcon fontSize={isSmallScreen ? "medium" : "medium"} />
+                    {isAuthenticated && !isPhone && (
+                        <Tooltip title="Abmelden">
+                            <IconButton onClick={handleLogoutButtonClick} aria-label="Abmelden" sx={{ width: 44, height: 44 }}>
+                                <LogoutIcon />
                             </IconButton>
                         </Tooltip>
                     )}
@@ -153,12 +166,12 @@ const TopAppBar = () => {
                 }}
             >
                 {badgeNumber === 0 && (
-                    <MenuItem onClick={handleInfoClose} sx={{ pointerEvents: 'none', width: "100%", minWidth: "400px" }}>
+                    <MenuItem onClick={handleInfoClose} sx={{ pointerEvents: 'none', whiteSpace: 'normal', maxWidth: 400 }}>
                         <Typography>Keine Benachrichtigungen verfügbar</Typography>
                     </MenuItem>
                 )}
                 {!isConnected && (
-                    <MenuItem onClick={handleInfoClose} sx={{ pointerEvents: 'none', width: "100%", minWidth: "400px" }}>
+                    <MenuItem onClick={handleInfoClose} sx={{ pointerEvents: 'none', whiteSpace: 'normal', maxWidth: 400 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <ConnectionStatusIcon color={isConnected ? "success" : "error"} />
                             <Typography>Keine Verbindung zum Bilderrahmen</Typography>
@@ -166,7 +179,7 @@ const TopAppBar = () => {
                     </MenuItem>
                 )}
                 {isNewVersion && (
-                    <MenuItem onClick={handleInfoClose} sx={{ pointerEvents: 'none', width: "100%", minWidth: "400px" }}>
+                    <MenuItem onClick={handleInfoClose} sx={{ pointerEvents: 'none', whiteSpace: 'normal', maxWidth: 400 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <UpdateIcon color={"error"} />
                             <Typography>{`Neue Version (${latest_release?.version}) verfügbar`}</Typography>

@@ -47,7 +47,7 @@ const ShareframeInfoCard: React.FC<ShareframeInfoCardProps> = ({
                 flexDirection: 'column'
             }}>
                 {title && (
-                    <Typography variant="h6" gutterBottom sx={{
+                    <Typography variant="h6" component="h2" gutterBottom sx={{
                         color: "text.secondary"
                     }}>
                         {title}

@@ -6,7 +6,7 @@ import SignalWifiStatusbarConnectedNoInternet4Icon from '@mui/icons-material/Sig
 import { useAppSelector } from '@/store';
 import { selectConnectionMode } from '@/store/connectionMode/connectionMode.Slice';
 
-const ConnectionModeChip = () => {
+const ConnectionModeChip = ({ compact = false }: { compact?: boolean }) => {
     const { mode, ssid, internet, ap_ssid, loaded } = useAppSelector(selectConnectionMode);
     if (!loaded) return null;
 
@@ -23,9 +23,10 @@ const ConnectionModeChip = () => {
                 variant="outlined"
                 color={color}
                 icon={<Icon />}
-                label={label}
+                label={compact ? undefined : label}
+                role="img"
                 aria-label={`Verbindung: ${label}`}
-                sx={{ mr: 1 }}
+                sx={compact ? { mr: 0.5, '& .MuiChip-icon': { mx: 0.75 } } : { mr: 1 }}
             />
         </Tooltip>
     );

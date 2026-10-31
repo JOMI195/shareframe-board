@@ -1,14 +1,15 @@
-import React, { useEffect, useEffectEvent } from 'react';
+import React, { useEffect } from 'react';
 import {
     Drawer,
     List,
     ListItem,
+    ListItemButton,
     ListItemIcon,
     ListItemText,
     ListSubheader,
     Switch,
     Box,
-    ClickAwayListener,
+    SwipeableDrawer,
     useTheme,
     useMediaQuery,
     Tooltip,
@@ -20,10 +21,13 @@ import PowerMenu from '@/common/components/powerMenu';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { closeSidebar, getSidebar, openSidedbar, getAdvancedMode, toggleAdvancedMode } from '@/store/navigation/navigation.Slice';
 import { sidebarSections } from '@/assets/sidebarMenu/sideBarMenu';
-import { getHomeUrl } from '@/assets/endpoints/app/appEndpoints';
 import { Link as RouterLink, useLocation } from 'react-router';
 import { getAuthenticationUrl, getSignOutUrl } from '@/assets/endpoints/app/authEndpoints';
 import { IAppBarMenuItem } from '@/types';
+import { useBackToClose } from '@/hooks/navigation/useBackToClose';
+import { SIDEBAR_ICON_WIDTH, SIDEBAR_WIDTH } from './sidebarWidth';
+
+const toPath = (url: string) => (url.startsWith('/') ? url : `/${url}`);
 
 const Sidebar: React.FC = () => {
     const dispatch = useAppDispatch();
@@ -32,246 +36,202 @@ const Sidebar: React.FC = () => {
     const theme = useTheme();
     const location = useLocation();
 
-    const isDesktop = useMediaQuery(theme.breakpoints.up('lg'));
-    const fullWidth = 240;
-    const iconOnlyWidth = 75;
+    const isDesktop = useMediaQuery(theme.breakpoints.up('lg'), { noSsr: true });
     const shouldShowIconsOnly = isDesktop && !open;
-    const currentWidth = shouldShowIconsOnly ? iconOnlyWidth : fullWidth;
-
-    const openOnDesktop = useEffectEvent(() => {
-        if (isDesktop) {
-            dispatch(openSidedbar());
-        }
-    });
+    const currentWidth = shouldShowIconsOnly ? SIDEBAR_ICON_WIDTH : SIDEBAR_WIDTH;
 
     useEffect(() => {
-        openOnDesktop();
-    }, []);
+        if (isDesktop) dispatch(openSidedbar());
+    }, [dispatch, isDesktop]);
 
-    const handleSidebarClose = (event: MouseEvent | TouchEvent | React.MouseEvent) => {
-        // Don't close sidebar on desktop when in icon-only mode
-        if (isDesktop || shouldShowIconsOnly) {
-            return;
-        }
+    // Below desktop the drawer is a modal: it closes on navigation and on the back button.
+    useEffect(() => {
+        if (!isDesktop) dispatch(closeSidebar());
+    }, [dispatch, isDesktop, location.pathname]);
 
-        const target = event.target as HTMLElement;
-        if (target && target.closest('.ignore-clickaway')) {
-            return;
-        }
-        if (open) {
-            dispatch(closeSidebar());
-        }
+    useBackToClose(!isDesktop && open, () => dispatch(closeSidebar()));
+
+    // A link to another page closes the drawer through the route change; closing here as well
+    // would take its history entry back while the router is still navigating.
+    const handleItemClick = (itemPath: string) => {
+        if (!isDesktop && itemPath === location.pathname) dispatch(closeSidebar());
     };
 
-    const sidebarBottomItems = [
-        { name: 'Abmelden', icon: LogoutIcon, url: getAuthenticationUrl() + getSignOutUrl() },
-    ];
+    const iconSx = {
+        width: shouldShowIconsOnly ? '100%' : 'auto',
+        minWidth: shouldShowIconsOnly ? 'auto' : 50,
+        justifyContent: 'flex-start',
+    };
 
-    const renderListItem = (item: IAppBarMenuItem, isBottomItem = false) => {
-        const homeUrl = getHomeUrl();
-        const itemUrl = !isBottomItem && location.pathname === homeUrl ? item.url : `/${item.url}`;
-        const isActive = !isBottomItem && location.pathname === itemUrl;
+    const itemSx = {
+        borderRadius: 0.5,
+        minHeight: 48,
+    };
 
-        const listItemContent = (
-            <ListItem
-                component={RouterLink}
-                to={item.url}
-                key={item.name}
-                onClick={handleSidebarClose}
-                sx={{
-                    backgroundColor: isActive ? 'primary.light' : 'inherit',
-                    color: isActive ? 'primary.contrastText' : 'inherit',
-                    borderRadius: 0.5,
-                    //px: shouldShowIconsOnly ? 1 : 2,
-                    minHeight: 48,
-                    '&:hover': {
-                        backgroundColor: isActive ? 'primary.main' : 'action.hover',
-                    },
-                }}
-            >
-                <ListItemIcon
+    const withTooltip = (title: string, element: React.ReactElement) => shouldShowIconsOnly ? (
+        <Tooltip key={title} title={title} placement="right">{element}</Tooltip>
+    ) : element;
+
+    const renderListItem = (item: IAppBarMenuItem) => {
+        const itemPath = toPath(item.url);
+        const isSignOut = item.url.includes(getSignOutUrl());
+        const isActive = !isSignOut && location.pathname === itemPath;
+
+        return withTooltip(item.name, (
+            <ListItem key={item.name} disablePadding>
+                <ListItemButton
+                    component={RouterLink}
+                    to={itemPath}
+                    onClick={() => handleItemClick(itemPath)}
+                    aria-current={isActive ? 'page' : undefined}
+                    aria-label={shouldShowIconsOnly ? item.name : undefined}
                     sx={{
-                        width: shouldShowIconsOnly ? '100%' : 'auto',
-                        minWidth: shouldShowIconsOnly ? 'auto' : 50,
-                        justifyContent: 'flex-start',
-                        //mr: shouldShowIconsOnly ? 0 : 2,
+                        ...itemSx,
+                        backgroundColor: isActive ? 'primary.main' : 'inherit',
+                        color: isActive ? 'primary.contrastText' : 'inherit',
+                        '&:hover': {
+                            backgroundColor: isActive ? 'primary.dark' : 'action.hover',
+                        },
                     }}
                 >
-                    <item.icon />
-                </ListItemIcon>
-                {!shouldShowIconsOnly && <ListItemText primary={item.name} />}
+                    <ListItemIcon sx={{ ...iconSx, color: 'inherit' }}>
+                        <item.icon />
+                    </ListItemIcon>
+                    {!shouldShowIconsOnly && <ListItemText primary={item.name} />}
+                </ListItemButton>
             </ListItem>
-        );
-
-        // Wrap with tooltip when showing icons only
-        if (shouldShowIconsOnly) {
-            return (
-                <Tooltip key={item.name} title={item.name} placement="right">
-                    {listItemContent}
-                </Tooltip>
-            );
-        }
-
-        return listItemContent;
+        ));
     };
 
-    const renderAdvancedToggle = () => {
-        const content = (
-            <ListItem
+    const renderAdvancedToggle = () => withTooltip('Erweiterter Modus', (
+        <ListItem disablePadding>
+            <ListItemButton
+                role="switch"
+                aria-checked={advancedMode}
+                aria-label="Erweiterter Modus"
                 onClick={() => dispatch(toggleAdvancedMode())}
-                sx={{
-                    backgroundColor: advancedMode ? 'action.selected' : 'inherit',
-                    borderRadius: 0.5,
-                    minHeight: 48,
-                    cursor: 'pointer',
-                    '&:hover': { backgroundColor: 'action.hover' },
-                }}
+                sx={{ ...itemSx, backgroundColor: advancedMode ? 'action.selected' : 'inherit' }}
             >
-                <ListItemIcon
-                    sx={{
-                        width: shouldShowIconsOnly ? '100%' : 'auto',
-                        minWidth: shouldShowIconsOnly ? 'auto' : 50,
-                        justifyContent: 'flex-start',
-                    }}
-                >
+                <ListItemIcon sx={iconSx}>
                     <TuneIcon color={advancedMode ? 'primary' : 'inherit'} />
                 </ListItemIcon>
                 {!shouldShowIconsOnly && <ListItemText primary="Erweitert" />}
                 {!shouldShowIconsOnly && (
-                    <Switch edge="end" size="small" checked={advancedMode} tabIndex={-1} />
+                    <Switch edge="end" size="small" checked={advancedMode} tabIndex={-1} aria-hidden />
                 )}
-            </ListItem>
-        );
+            </ListItemButton>
+        </ListItem>
+    ));
 
-        return shouldShowIconsOnly ? (
-            <Tooltip title="Erweiterter Modus" placement="right">
-                {content}
-            </Tooltip>
-        ) : content;
-    };
-
-    return (
-        <ClickAwayListener
-            mouseEvent="onMouseUp"
-            touchEvent="onTouchStart"
-            onClickAway={handleSidebarClose}
+    const content = (
+        <Box
+            sx={{
+                width: currentWidth,
+                height: '100%',
+                p: 1,
+                '&:hover': {
+                    backgroundColor: shouldShowIconsOnly ? 'action.hover' : 'transparent',
+                },
+            }}
         >
             <Box
-                onClickCapture={(e) => {
-                    // Prevent sidebar from opening if a list item or its child is clicked
-                    const target = e.target as HTMLElement;
-                    const isListItemClick = target.closest('.MuiListItem-root');
+                component="nav"
+                aria-label="Hauptmenü"
+                sx={{ height: '100%', display: "flex", flexDirection: "column" }}
+            >
+                <List sx={{ flex: 1 }}>
+                    {sidebarSections
+                        .filter((sec) => !sec.advanced || advancedMode)
+                        .map((sec) => (
+                            <React.Fragment key={sec.section ?? 'section'}>
+                                {sec.section && !shouldShowIconsOnly && (
+                                    <ListSubheader disableSticky sx={{ bgcolor: 'transparent', lineHeight: '2.5em' }}>
+                                        {sec.section}
+                                    </ListSubheader>
+                                )}
+                                {sec.items.map((item) => renderListItem(item))}
+                            </React.Fragment>
+                        ))}
+                </List>
+                <List>
+                    {renderAdvancedToggle()}
+                    <PowerMenu
+                        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                        transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                        renderTrigger={(openMenu, isOpen) => withTooltip('Energieoptionen', (
+                            <ListItem disablePadding>
+                                <ListItemButton
+                                    onClick={openMenu}
+                                    aria-haspopup="menu"
+                                    aria-expanded={isOpen}
+                                    aria-label={shouldShowIconsOnly ? 'Energieoptionen' : undefined}
+                                    sx={itemSx}
+                                >
+                                    <ListItemIcon sx={iconSx}>
+                                        <PowerSettingsNewIcon />
+                                    </ListItemIcon>
+                                    {!shouldShowIconsOnly && <ListItemText primary="Energie" />}
+                                </ListItemButton>
+                            </ListItem>
+                        ))}
+                    />
+                    {renderListItem({ name: 'Abmelden', icon: LogoutIcon, url: getAuthenticationUrl() + getSignOutUrl() })}
+                </List>
+            </Box>
+        </Box>
+    );
 
-                    if (shouldShowIconsOnly && !open && !isListItemClick) {
-                        dispatch(openSidedbar());
-                    }
-                }}
+    const paperSx = {
+        top: theme.layout.appbar.height,
+        height: `calc(100% - ${theme.layout.appbar.height}px)`,
+        width: currentWidth,
+        overflowX: 'hidden',
+        // Same surface as the desktop sidebar; dark mode would lighten the modal drawer.
+        backgroundImage: 'none',
+    };
+
+    if (!isDesktop) {
+        return (
+            <SwipeableDrawer
+                open={open}
+                onOpen={() => dispatch(openSidedbar())}
+                onClose={() => dispatch(closeSidebar())}
+                disableSwipeToOpen
+                ModalProps={{ keepMounted: true }}
+                sx={{ '& .MuiDrawer-paper': paperSx }}
+            >
+                {content}
+            </SwipeableDrawer>
+        );
+    }
+
+    return (
+        <Box
+            onClickCapture={(e) => {
+                const target = e.target as HTMLElement;
+                const isListItemClick = target.closest('.MuiListItemButton-root');
+                if (shouldShowIconsOnly && !isListItemClick) dispatch(openSidedbar());
+            }}
+            sx={{ cursor: shouldShowIconsOnly ? 'pointer' : 'default' }}
+        >
+            <Drawer
+                variant="persistent"
+                open
                 sx={{
-                    cursor: shouldShowIconsOnly ? 'pointer' : 'default',
+                    width: currentWidth,
+                    flexShrink: 0,
+                    '& .MuiDrawer-paper': {
+                        ...paperSx,
+                        transition: theme.transitions.create('width', {
+                            easing: theme.transitions.easing.sharp,
+                            duration: theme.transitions.duration.standard,
+                        }),
+                    },
                 }}
             >
-                <Drawer
-                    variant="persistent"
-                    open={open || shouldShowIconsOnly}
-                    sx={{
-                        width: currentWidth,
-                        flexShrink: 0,
-                        '& .MuiDrawer-paper': {
-                            top: theme => theme.layout.appbar.height,
-                            height: `calc(100% - ${theme.layout.appbar.height}px)`,
-                            width: currentWidth,
-                            transition: theme.transitions.create('width', {
-                                easing: theme.transitions.easing.sharp,
-                                duration: theme.transitions.duration.standard,
-                            }),
-                            overflowX: 'hidden',
-
-                        },
-                    }}
-                >
-                    <Box
-                        sx={{
-                            width: currentWidth,
-                            height: '100%',
-                            backgroundColor: 'background.paper',
-                            p: 1,
-                            borderRadius: 1,
-                            '&:hover': {
-                                backgroundColor: !open ? 'action.hover' : "none",
-                            },
-                        }}
-                        role="sidebar"
-                    >
-                        <Box
-                            sx={{
-                                height: '100%',
-                                display: "flex",
-                                flexDirection: "column",
-                            }}
-                        >
-                            <List
-                                sx={{
-                                    flex: 1
-                                }}
-                            >
-                                {sidebarSections
-                                    .filter((sec) => !sec.advanced || advancedMode)
-                                    .map((sec) => (
-                                        <React.Fragment key={sec.section ?? 'section'}>
-                                            {sec.section && !shouldShowIconsOnly && (
-                                                <ListSubheader
-                                                    disableSticky
-                                                    sx={{ bgcolor: 'transparent', lineHeight: '2.5em' }}
-                                                >
-                                                    {sec.section}
-                                                </ListSubheader>
-                                            )}
-                                            {sec.items.map((item) => renderListItem(item))}
-                                        </React.Fragment>
-                                    ))}
-                            </List>
-                            <List>
-                                {renderAdvancedToggle()}
-                                <PowerMenu
-                                    anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-                                    transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-                                    renderTrigger={(open) => {
-                                        const content = (
-                                            <ListItem
-                                                onClick={open}
-                                                sx={{
-                                                    borderRadius: 0.5,
-                                                    minHeight: 48,
-                                                    cursor: 'pointer',
-                                                    '&:hover': { backgroundColor: 'action.hover' },
-                                                }}
-                                            >
-                                                <ListItemIcon
-                                                    sx={{
-                                                        width: shouldShowIconsOnly ? '100%' : 'auto',
-                                                        minWidth: shouldShowIconsOnly ? 'auto' : 50,
-                                                        justifyContent: 'flex-start',
-                                                    }}
-                                                >
-                                                    <PowerSettingsNewIcon />
-                                                </ListItemIcon>
-                                                {!shouldShowIconsOnly && <ListItemText primary="Energie" />}
-                                            </ListItem>
-                                        );
-                                        return shouldShowIconsOnly ? (
-                                            <Tooltip title="Energieoptionen" placement="right">
-                                                {content}
-                                            </Tooltip>
-                                        ) : content;
-                                    }}
-                                />
-                                {sidebarBottomItems.map((item) => renderListItem(item, true))}
-                            </List>
-                        </Box>
-                    </Box>
-                </Drawer>
-            </Box>
-        </ClickAwayListener>
+                {content}
+            </Drawer>
+        </Box>
     );
 };
 
