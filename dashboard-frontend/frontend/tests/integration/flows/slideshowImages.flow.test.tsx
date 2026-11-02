@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import * as api from '@/assets/endpoints/api/frame';
 import { renderRoute } from '@tests/helpers/renderRoute';
 import { signedInState } from '@tests/helpers/preloadedState';
+import { desktopViewport, floatingButton } from '@tests/helpers/viewport';
 import { makeSlideshowImages } from '@tests/fixtures';
 import { failsWith, server, setBoard, spyOnRequests } from '@tests/mocks';
 
@@ -55,6 +56,19 @@ describe('slideshow images', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Reihenfolge speichern' })).not.toBeInTheDocument());
   });
 
+  it('saves from the actions row on desktop', async () => {
+    desktopViewport();
+    const order = spyOnRequests('post', api.getSlideshowOrderUrl());
+    server.use(order.handler);
+    const { user } = await openSlideshowImages();
+
+    await user.click(screen.getByRole('button', { name: 'Eigene Reihenfolge' }));
+    expect(floatingButton()).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Reihenfolge speichern' }));
+
+    await waitFor(() => expect(order.calls).toHaveLength(1));
+  });
+
   it('discarding a draft restores the order and sends nothing', async () => {
     const order = spyOnRequests('post', api.getSlideshowOrderUrl());
     server.use(order.handler);
@@ -94,6 +108,21 @@ describe('slideshow images', () => {
     expect(within(dialog).getByText('Position 2 von 3')).toBeInTheDocument();
     expect(within(dialog).getByText('09.10.2025, 09:03:20')).toBeInTheDocument();
     expect(await within(dialog).findByRole('img', { name: 'Foto von bob' })).toHaveAttribute('src', expect.stringMatching(/^blob:/));
+  });
+
+  it('shows the preview actions inline on desktop', async () => {
+    desktopViewport();
+    const show = spyOnRequests('post', api.getShowSlideshowImageUrl());
+    server.use(show.handler);
+    const { user } = await openSlideshowImages();
+
+    await user.click(screen.getByRole('listitem', { name: /Foto von carol/ }));
+    const button = within(await screen.findByRole('dialog')).getByRole('button', { name: 'Jetzt anzeigen' });
+    expect(floatingButton()).toBeNull();
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
+
+    await waitFor(() => expect(show.calls).toHaveLength(1));
   });
 
   it('puts a picture on the panel from its preview', async () => {

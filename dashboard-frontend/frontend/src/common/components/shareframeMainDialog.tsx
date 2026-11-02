@@ -13,6 +13,8 @@ import { SlideTransition, ZoomTransition } from "./dialogTransitions";
 import { DialogAction } from '@/types';
 import BottomFloatingActions from './bottomFloatingActions';
 import DialogHeader from './dialogHeader';
+import PageActionsBar from './pageActionsBar';
+import { useDesktopActions } from '@/hooks/layout/useDesktopActions';
 
 interface ReusableDialogProps extends Omit<DialogProps, 'title'> {
     // main dialog props
@@ -42,6 +44,12 @@ const ShareframeMainDialog: React.FC<ReusableDialogProps> = ({
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
     const titleId = useId();
+    const isDesktop = useDesktopActions();
+    const actions = actionsShown
+        ? [...actionsAdditional, ...(actionPrimary ? [actionPrimary] : [])]
+            .map((action) => ({ ...action, disabled: actionsDisabled || action.disabled }))
+        : [];
+    const floatingActions = !isDesktop && actions.length > 0;
 
     return (
         <AppDialog
@@ -69,10 +77,11 @@ const ShareframeMainDialog: React.FC<ReusableDialogProps> = ({
                 sx={{
                     overflow: 'auto',
                     flexGrow: 1,
-                    mb: 10,
+                    mb: isDesktop ? 0 : 10,
                     ...dialogContentSx
                 }}
             >
+                <PageActionsBar actions={actions} contained sx={{ mb: 2 }} />
                 <Box
                     sx={{
                         display: "flex",
@@ -83,7 +92,7 @@ const ShareframeMainDialog: React.FC<ReusableDialogProps> = ({
                 </Box>
             </DialogContent>
 
-            {actionsShown && ((actionsAdditional.length > 0) || (actionPrimary)) && (
+            {floatingActions && (
                 <BottomFloatingActions
                     actionPrimary={actionPrimary}
                     actionsAdditional={actionsAdditional}

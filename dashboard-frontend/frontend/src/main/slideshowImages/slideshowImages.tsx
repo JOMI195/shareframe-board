@@ -6,8 +6,10 @@ import { fetchSlideshowImages, selectSlideshowImages, updatePlaybackOrder } from
 import { useMinimumLoading } from '@/hooks/loading/useMinimumLoading';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import BottomFloatingActions from '@/common/components/bottomFloatingActions';
+import PageActionsBar from '@/common/components/pageActionsBar';
+import { useDesktopActions } from '@/hooks/layout/useDesktopActions';
 import DataNotFound from '@/common/components/dataNotFound';
-import { PlaybackMode } from '@/types';
+import { DialogAction, PlaybackMode } from '@/types';
 import PlaybackOrderSelect from './playbackOrderSelect';
 import SlideshowImagesGrid from './slideshowImagesGrid';
 import SlideshowImagePreviewDialog from './slideshowImagePreviewDialog';
@@ -20,6 +22,7 @@ const SlideshowImages: React.FC = () => {
     const [draft, setDraft] = useState<number[] | null>(null);
     const [previewId, setPreviewId] = useState<number | null>(null);
     const isEditing = draft !== null;
+    const isDesktop = useDesktopActions();
     const showSkeleton = useMinimumLoading(isLoading && lastFetchedAt === null);
 
     useEffect(() => {
@@ -48,6 +51,22 @@ const SlideshowImages: React.FC = () => {
         if (updatePlaybackOrder.fulfilled.match(result)) setDraft(null);
     };
 
+    const saveAction: DialogAction = {
+        icon: <SaveOutlined />,
+        label: 'Reihenfolge speichern',
+        color: 'primary',
+        onClick: handleSave,
+        disabled: isUpdatingOrder,
+    };
+
+    const discardAction: DialogAction = {
+        icon: <CloseOutlined />,
+        label: 'Verwerfen',
+        color: 'inherit',
+        onClick: () => setDraft(null),
+        disabled: isUpdatingOrder,
+    };
+
     const renderSkeleton = () => (
         <ImageList cols={2} gap={12} sx={{ m: 0 }}>
             {[...Array(4)].map((_, index) => (
@@ -60,7 +79,8 @@ const SlideshowImages: React.FC = () => {
 
     return (
         <>
-            <Grid container spacing={3} sx={{ pb: isEditing ? 12 : 0 }}>
+            {isEditing && <PageActionsBar actions={[discardAction, saveAction]} sx={{ mb: 3 }} />}
+            <Grid container spacing={3} sx={{ pb: isEditing && !isDesktop ? 12 : 0 }}>
                 <Grid size={12}>
                     <ShareframeInfoCard
                         title="Wiedergabereihenfolge"
@@ -139,23 +159,8 @@ const SlideshowImages: React.FC = () => {
                 onClose={() => setPreviewId(null)}
             />
 
-            {isEditing && (
-                <BottomFloatingActions
-                    actionPrimary={{
-                        icon: <SaveOutlined />,
-                        label: 'Reihenfolge speichern',
-                        color: 'primary',
-                        onClick: handleSave,
-                        disabled: isUpdatingOrder,
-                    }}
-                    actionSecondary={{
-                        icon: <CloseOutlined />,
-                        label: 'Verwerfen',
-                        color: 'inherit',
-                        onClick: () => setDraft(null),
-                        disabled: isUpdatingOrder,
-                    }}
-                />
+            {isEditing && !isDesktop && (
+                <BottomFloatingActions actionPrimary={saveAction} actionSecondary={discardAction} />
             )}
         </>
     );
