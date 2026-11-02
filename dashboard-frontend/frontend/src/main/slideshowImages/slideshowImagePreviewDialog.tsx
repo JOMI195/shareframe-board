@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Grid, ListItemAvatar, ListItemText, Stack, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Box, Stack, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { DownloadOutlined, SlideshowOutlined, VisibilityOutlined } from '@mui/icons-material';
 import uuid from 'react-uuid';
 import ShareframeMainDialog from '@/common/components/shareframeMainDialog';
@@ -14,6 +14,7 @@ import { selectSlideshowStatus } from '@/store/slideshowStatus/slideshowStatus.S
 import { selectSlideshowOperation, showImageThunk } from '@/store/slideshowOperation/slideshowOperation.Slice';
 import { addAlertSnackbar } from '@/store/snackbars/snackbars.Slice';
 import { useTimer } from '@/hooks/useTimer';
+import { useDesktopActions } from '@/hooks/layout/useDesktopActions';
 import { formatTimeLeft, formatUnix } from './slideshowImagesUtils';
 
 interface SlideshowImagePreviewDialogProps {
@@ -23,18 +24,23 @@ interface SlideshowImagePreviewDialogProps {
     onClose: () => void;
 }
 
+const DETAILS_WIDTH = 260;
+// Fills the desktop dialog below header and actions row without scrolling.
+const MAX_HEIGHT_DESKTOP = 'calc(85vh - 165px)';
+const FALLBACK_RATIO = 800 / 480;
+
 const MetaItem: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-    <Grid size={{ xs: 6, sm: 4, md: 2 }}>
-        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-            <Typography sx={{ mb: 0.5 }} color="text.secondary">{label}</Typography>
-            {children}
-        </Box>
-    </Grid>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <Typography sx={{ mb: 0.5 }} color="text.secondary">{label}</Typography>
+        {children}
+    </Box>
 );
 
 const SlideshowImagePreviewDialog: React.FC<SlideshowImagePreviewDialogProps> = ({ image, count, isCurrent, onClose }) => {
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+    const isDesktop = useDesktopActions();
+    const maxHeight = isDesktop ? MAX_HEIGHT_DESKTOP : isSmallScreen ? '50vh' : '60vh';
     const dispatch = useAppDispatch();
     const { isActive, isRefreshing } = useAppSelector(selectSlideshowStatus);
     const { isToggling, isClearingDisplay, isSkippingImage, isShowingImage } = useAppSelector(selectSlideshowOperation);
@@ -45,6 +51,8 @@ const SlideshowImagePreviewDialog: React.FC<SlideshowImagePreviewDialogProps> = 
             : !isActive ? 'Diashow pausiert'
                 : isRefreshing || isActionsTimerActive ? 'Display wird gerade aktualisiert'
                     : undefined;
+
+    const ratio = image?.width && image.height ? image.width / image.height : FALLBACK_RATIO;
 
     const handleShow = () => {
         if (image) dispatch(showImageThunk(image.id));
@@ -88,20 +96,37 @@ const SlideshowImagePreviewDialog: React.FC<SlideshowImagePreviewDialogProps> = 
             open={image !== null}
             onDialogClose={onClose}
             dialogTitle="Foto auf dem Bilderrahmen"
-            dialogContentSx={{ padding: 2 }}
+            dialogContentSx={{ padding: { xs: 2, md: 3 } }}
             actionsShown={image !== null}
             actionPrimary={primaryAction}
             actionsAdditional={dialogActions}
         >
             {image && (
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-                    <Grid container spacing={2} sx={{ pb: 2, width: '100%' }}>
+                <Box
+                    sx={isDesktop
+                        ? { display: 'grid', gridTemplateColumns: `minmax(0, 1fr) ${DETAILS_WIDTH}px`, columnGap: 3, alignItems: 'start', width: '100%' }
+                        : { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: '100%' }}
+                >
+                    <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', order: isDesktop ? 0 : 1 }}>
+                        <Box sx={{ width: `min(100%, calc(${maxHeight} * ${ratio}))`, aspectRatio: `${ratio}` }}>
+                            <AuthenticatedImage
+                                key={image.id}
+                                url={getImageFileUrl(image.id)}
+                                alt={`Foto von ${image.sender}`}
+                                style={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain', borderRadius: 8 }}
+                            />
+                        </Box>
+                    </Box>
+                    <Box
+                        component="aside"
+                        sx={isDesktop
+                            ? { display: 'flex', flexDirection: 'column', gap: 2 }
+                            : { display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))' }, gap: 2, alignSelf: 'stretch' }}
+                    >
                         <MetaItem label="Absender">
-                            <Stack direction="row" spacing={-1.5} sx={{ alignItems: 'center' }}>
-                                <ListItemAvatar>
-                                    <UserAvatar username={image.sender} size={36} />
-                                </ListItemAvatar>
-                                <ListItemText primary={image.sender} />
+                            <Stack direction="row" sx={{ alignItems: 'center', gap: 1, minWidth: 0 }}>
+                                <UserAvatar username={image.sender} size={36} />
+                                <Typography noWrap>{image.sender}</Typography>
                             </Stack>
                         </MetaItem>
                         <MetaItem label="Empfangen am">
@@ -126,14 +151,7 @@ const SlideshowImagePreviewDialog: React.FC<SlideshowImagePreviewDialogProps> = 
                                 </Box>
                             )}
                         </MetaItem>
-                    </Grid>
-                    <AuthenticatedImage
-                        key={image.id}
-                        url={getImageFileUrl(image.id)}
-                        alt={`Foto von ${image.sender}`}
-                        style={{ maxWidth: '100%', maxHeight: isSmallScreen ? '50vh' : '60vh', borderRadius: 8 }}
-                        aspectRatio={image.height ? image.width / image.height : undefined}
-                    />
+                    </Box>
                 </Box>
             )}
         </ShareframeMainDialog>
