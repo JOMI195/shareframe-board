@@ -13,8 +13,8 @@ const signInOnHotspot = async (page: import('@playwright/test').Page) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/auth\/sign-in$/);
   await expect(page.getByText(/stellt den Hotspot „shareframe-e2e“ bereit/)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Mit OTP anmelden' })).toHaveCount(0);
-  await page.getByLabel(/Passwort/).fill(DASHBOARD_PASSWORD);
+  await expect(page.getByRole('button', { name: 'Mit Einmal-Code anmelden' })).toHaveCount(0);
+  await page.getByRole('textbox', { name: 'Passwort', exact: true }).fill(DASHBOARD_PASSWORD);
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(page).toHaveURL(/\/network\/$/);
 };
@@ -23,26 +23,26 @@ test('on the hotspot the owner signs in with the device password and lands on th
   await signInOnHotspot(page);
 
   await expect(page.getByLabel('Verbindung: Hotspot')).toBeVisible();
-  await expect(card(page, 'Hotspot aktiv')).toBeVisible();
+  await expect(card(page, 'WLAN einrichten')).toBeVisible();
 });
 
 test('on the hotspot a saved network is only tried on request', async ({ page }) => {
   await signInOnHotspot(page);
 
-  await page.getByRole('button', { name: 'Netzwerk hinzufügen' }).click();
+  await page.getByRole('button', { name: 'WLAN hinzufügen' }).click();
   const add = page.getByRole('dialog');
   await add.getByLabel(/Netzwerkname/).fill('HomeNet');
-  await add.getByLabel(/^Passwort/).fill('homepass1');
+  await add.getByLabel(/^Passwort$/).fill('homepass1');
   await add.getByRole('button', { name: 'Hinzufügen' }).click();
   await expectShimCall('shareframe-wifi add HomeNet homepass1');
   expect(existsSync(retryFlag), 'saving alone switched the board over').toBe(false);
 
-  await card(page, 'Hotspot aktiv').getByRole('button', { name: 'Jetzt verbinden' }).click();
+  await card(page, 'WLAN einrichten').getByRole('button', { name: 'Jetzt verbinden' }).click();
   const connect = page.getByRole('dialog');
   await expect(connect.getByText('http://shareframe-e2e.local')).toBeVisible();
   await connect.getByRole('button', { name: 'Verbinden' }).click();
 
-  await expect(card(page, 'Hotspot aktiv').getByText(/Der Rahmen verbindet sich/)).toBeVisible();
+  await expect(card(page, 'WLAN einrichten').getByText(/Der Rahmen verbindet sich/)).toBeVisible();
   await expect.poll(() => existsSync(retryFlag), { message: 'retry requested from the Wi-Fi daemon' }).toBe(true);
 });
 
@@ -50,7 +50,7 @@ test('the hotspot says when the last attempt failed', async ({ page }) => {
   await signInOnHotspot(page);
   await setWifiMode('ap', { last_failed_at: Math.floor(Date.now() / 1000) - 120 });
 
-  await expect(card(page, 'Hotspot aktiv').getByText(/Letzter Verbindungsversuch vor 2 Minuten fehlgeschlagen/))
+  await expect(card(page, 'WLAN einrichten').getByText(/Vor 2 Minuten war keines der gespeicherten/))
     .toBeVisible({ timeout: 15_000 });
 });
 

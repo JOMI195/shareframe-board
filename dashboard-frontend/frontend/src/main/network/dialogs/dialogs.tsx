@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import {
-    Alert, Typography, TextField, IconButton, InputAdornment
+    Alert, DialogContentText, Typography, TextField, IconButton, InputAdornment
 } from '@mui/material';
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
-import ShareframeDialog from '@/common/components/shareframeDialog';
+import ConfirmDialog from '@/common/components/confirmDialog';
+import FormDialog from '@/common/components/formDialog';
 import { usePiConnection } from '@/context/piConnection/piConnectionContextValue';
 import { useAppDispatch, useAppSelector } from '@/store';
 import {
@@ -43,7 +44,6 @@ const Dialogs: React.FC = () => {
     const [apPassword, setApPassword] = useState('');
     const [apPasswordConfirm, setApPasswordConfirm] = useState('');
 
-    const isActionsDisabled = submitting || loading || !isConnected;
 
     const apPasswordInvalidChars = !AP_PASSWORD_PATTERN.test(apPassword);
     const apPasswordMismatch = apPasswordConfirm.length > 0 && apPassword !== apPasswordConfirm;
@@ -51,7 +51,7 @@ const Dialogs: React.FC = () => {
         && apPassword.length <= AP_PASSWORD_MAX
         && !apPasswordInvalidChars
         && apPassword === apPasswordConfirm
-        && !isActionsDisabled;
+        && !loading && isConnected;
 
     const handleSubmitNetwork = async (): Promise<void> => {
         setSubmitting(true);
@@ -60,7 +60,7 @@ const Dialogs: React.FC = () => {
             dispatch(closeNetworkAddNetworkDialog());
             setNewNetwork({ ssid: '', password: '' });
         } catch {
-            // Error handling is done in the thunk
+            // The thunk reports the failure; the input stays for another try.
         } finally {
             setSubmitting(false);
         }
@@ -69,21 +69,22 @@ const Dialogs: React.FC = () => {
     const handleForgetNetwork = async (): Promise<void> => {
         setSubmitting(true);
         try {
-            await dispatch(forgetNetwork(dialogs.forgetNetwork.ssid)).unwrap();
-            dispatch(closeNetworkForgetNetworkDialog());
-        } catch {
-            // Error handling is done in the thunk
+            await dispatch(forgetNetwork(dialogs.forgetNetwork.ssid));
         } finally {
             setSubmitting(false);
+            // Closed either way: an open modal would hide the error snackbar from screen readers.
+            dispatch(closeNetworkForgetNetworkDialog());
         }
     };
 
     const handleCloseAddDialog = (): void => {
+        if (submitting) return;
         dispatch(closeNetworkAddNetworkDialog());
         setNewNetwork({ ssid: '', password: '' });
     };
 
     const handleCloseApPasswordDialog = (): void => {
+        if (submitting) return;
         dispatch(closeNetworkChangeApPasswordDialog());
         setApPassword('');
         setApPasswordConfirm('');
@@ -93,9 +94,11 @@ const Dialogs: React.FC = () => {
         setSubmitting(true);
         try {
             await dispatch(changeApPassword(apPassword)).unwrap();
-            handleCloseApPasswordDialog();
+            dispatch(closeNetworkChangeApPasswordDialog());
+            setApPassword('');
+            setApPasswordConfirm('');
         } catch {
-            // Error handling is done in the thunk
+            // The thunk reports the failure; the input stays for another try.
         } finally {
             setSubmitting(false);
         }
@@ -104,12 +107,11 @@ const Dialogs: React.FC = () => {
     const handleConnect = async (): Promise<void> => {
         setSubmitting(true);
         try {
-            await dispatch(connectToSavedNetworks()).unwrap();
-            dispatch(closeNetworkConnectDialog());
-        } catch {
-            // Error handling is done in the thunk
+            await dispatch(connectToSavedNetworks());
         } finally {
             setSubmitting(false);
+            // Closed either way: an open modal would hide the error snackbar from screen readers.
+            dispatch(closeNetworkConnectDialog());
         }
     };
 
@@ -117,25 +119,29 @@ const Dialogs: React.FC = () => {
         setShowPassword(!showPassword);
     };
 
-    const handleMouseDownPassword = (
-        event: React.MouseEvent<HTMLButtonElement>
-    ) => {
-        event.preventDefault();
-    };
+    const passwordVisibilityAdornment = (
+        <InputAdornment position="end">
+            <IconButton
+                aria-label={showPassword ? "Passwort verbergen" : "Passwort anzeigen"}
+                onClick={handleClickShowPassword}
+                onMouseDown={(e) => e.preventDefault()}
+                edge="end"
+            >
+                {showPassword ? <VisibilityOff /> : <Visibility />}
+            </IconButton>
+        </InputAdornment>
+    );
 
     return (
         <>
-            {/* Add Network Dialog */}
-            <ShareframeDialog
+            <FormDialog
                 open={dialogs.addNetwork.open}
-                title={"Neues Netzwerk hinzufügen"}
+                title="WLAN hinzufügen"
+                submitLabel="Hinzufügen"
+                onSubmit={handleSubmitNetwork}
                 onClose={handleCloseAddDialog}
-                onConfirm={handleSubmitNetwork}
-                confirmDisabled={isActionsDisabled}
-                confirmText="Hinzufügen"
-                cancelText="Abbrechen"
-                fullWidth={true}
-                showActions={true}
+                submitDisabled={loading || !isConnected}
+                loading={submitting}
             >
                 <TextField
                     autoFocus
@@ -143,149 +149,105 @@ const Dialogs: React.FC = () => {
                     id="ssid"
                     label="Netzwerkname (SSID)"
                     type="text"
+                    autoComplete="off"
+                    autoCapitalize="none"
                     fullWidth
-                    variant="outlined"
                     value={newNetwork.ssid}
                     onChange={(e) => setNewNetwork({ ...newNetwork, ssid: e.target.value })}
+                    slotProps={{ htmlInput: { autoCorrect: 'off', spellCheck: false } }}
                 />
                 <TextField
                     margin="dense"
                     id="password"
                     label="Passwort"
                     type={showPassword ? "text" : "password"}
+                    autoComplete="off"
                     fullWidth
-                    variant="outlined"
                     value={newNetwork.password}
                     onChange={(e) => setNewNetwork({ ...newNetwork, password: e.target.value })}
-                    slotProps={{
-                        input: {
-                            endAdornment: (
-                                <InputAdornment position="end">
-                                    <IconButton
-                                        aria-label="toggle current password visibility"
-                                        onClick={handleClickShowPassword}
-                                        onMouseDown={handleMouseDownPassword}
-                                        edge="end"
-                                    >
-                                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                                    </IconButton>
-                                </InputAdornment>
-                            ),
-                        }
-                    }}
+                    slotProps={{ input: { endAdornment: passwordVisibilityAdornment } }}
                 />
-            </ShareframeDialog>
+            </FormDialog>
 
-            {/* Forget Network Dialog */}
-            <ShareframeDialog
+            <ConfirmDialog
                 open={dialogs.forgetNetwork.open}
-                title="Netzwerk entfernen"
-                onClose={() => dispatch(closeNetworkForgetNetworkDialog())}
+                title={`„${dialogs.forgetNetwork.ssid}“ entfernen?`}
+                confirmLabel="Entfernen"
                 onConfirm={handleForgetNetwork}
-                confirmText="Entfernen"
-                cancelText="Abbrechen"
-                confirmDisabled={isActionsDisabled}
+                onCancel={() => { if (!submitting) dispatch(closeNetworkForgetNetworkDialog()); }}
+                confirmDisabled={loading || !isConnected}
+                loading={submitting}
+                destructive
             >
-                <Typography variant="body1" gutterBottom>
-                    Möchtest du das Netzwerk <Typography color='primary' component="b">{dialogs.forgetNetwork.ssid}</Typography> wirklich aus den gespeicherten Netzwerken entfernen?
-                </Typography>
-                <Typography variant="body1" sx={{
-                    color: "text.secondary"
-                }}>
-                    Du kannst das Netzwerk jederzeit erneut hinzufügen.
-                </Typography>
-            </ShareframeDialog>
+                Du kannst das WLAN jederzeit wieder hinzufügen.
+            </ConfirmDialog>
 
-            <ShareframeDialog
+            <ConfirmDialog
                 open={dialogs.connect.open}
-                title="Mit WLAN verbinden"
-                onClose={() => dispatch(closeNetworkConnectDialog())}
+                title="Mit WLAN verbinden?"
+                confirmLabel="Verbinden"
                 onConfirm={handleConnect}
-                confirmText="Verbinden"
-                cancelText="Abbrechen"
-                confirmDisabled={isActionsDisabled}
+                onCancel={() => { if (!submitting) dispatch(closeNetworkConnectDialog()); }}
+                confirmDisabled={loading || !isConnected}
+                loading={submitting}
             >
-                <Typography variant="body1" gutterBottom>
-                    Der Rahmen beendet den Hotspot und versucht etwa eine Minute lang, sich mit
-                    einem gespeicherten WLAN zu verbinden. Dein Gerät verliert dabei die Verbindung
-                    zu dieser Seite.
-                </Typography>
-                <Typography variant="body2" gutterBottom sx={{ color: "text.secondary" }}>
+                <DialogContentText gutterBottom>
+                    Der Rahmen beendet den Hotspot und versucht etwa eine Minute lang, sich mit einem
+                    gespeicherten WLAN zu verbinden. Dein Gerät verliert dabei die Verbindung zu dieser Seite.
+                </DialogContentText>
+                <DialogContentText variant="body2">
                     Klappt es, verbinde dein Gerät wieder mit deinem WLAN und öffne{' '}
-                    <b>{boardAddress(ap_ssid)}</b>.
-                </Typography>
-                <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                    Klappt es nicht, erscheint der Hotspot wieder. Verbinde dich erneut damit und
-                    prüfe die Zugangsdaten.
-                </Typography>
-            </ShareframeDialog>
+                    <b>{boardAddress(ap_ssid)}</b>. Klappt es nicht, erscheint der Hotspot wieder.
+                    Verbinde dich erneut damit und prüfe die Zugangsdaten.
+                </DialogContentText>
+            </ConfirmDialog>
 
-            {/* Change AP Password Dialog */}
-            <ShareframeDialog
+            <FormDialog
                 open={dialogs.changeApPassword.open}
-                title="AP-Passwort ändern"
+                title="Hotspot-Passwort ändern"
+                submitLabel="Passwort ändern"
+                onSubmit={handleSubmitApPassword}
                 onClose={handleCloseApPasswordDialog}
-                onConfirm={handleSubmitApPassword}
-                confirmDisabled={!canSubmitApPassword}
-                confirmText="Ändern"
-                cancelText="Abbrechen"
-                fullWidth={true}
-                showActions={true}
+                submitDisabled={!canSubmitApPassword}
+                loading={submitting}
             >
-                <Typography variant="body2" gutterBottom sx={{
-                    color: "text.secondary"
-                }}>
+                <Typography variant="body2" sx={{ color: "text.secondary" }}>
                     Passwort des WLAN-Hotspots, den der Bilderrahmen öffnet, wenn er kein
-                    bekanntes Netzwerk findet.
+                    bekanntes WLAN findet.
                 </Typography>
                 {mode === 'ap' && (
-                    <Alert severity="warning" sx={{ mb: 1 }}>
-                        Du bist über den AP verbunden – nach der Änderung wird die Verbindung
-                        getrennt und du musst dich mit dem neuen Passwort neu verbinden.
+                    <Alert severity="warning">
+                        Du bist mit dem Hotspot verbunden. Nach der Änderung wird die Verbindung
+                        getrennt und du verbindest dich mit dem neuen Passwort neu.
                     </Alert>
                 )}
                 <TextField
                     autoFocus
                     margin="dense"
-                    label="Neues AP-Passwort"
+                    label="Neues Hotspot-Passwort"
                     type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
                     fullWidth
-                    variant="outlined"
                     value={apPassword}
                     onChange={(e) => setApPassword(e.target.value)}
                     error={apPasswordInvalidChars}
                     helperText={apPasswordInvalidChars
                         ? "Nur ASCII-Zeichen erlaubt (keine Umlaute)"
-                        : "8–63 Zeichen, nur ASCII"}
-                    slotProps={{
-                        input: {
-                            endAdornment: (
-                                <InputAdornment position="end">
-                                    <IconButton
-                                        aria-label="Passwort anzeigen"
-                                        onClick={handleClickShowPassword}
-                                        onMouseDown={handleMouseDownPassword}
-                                        edge="end"
-                                    >
-                                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                                    </IconButton>
-                                </InputAdornment>
-                            ),
-                        }
-                    }}
+                        : "8 bis 63 Zeichen, nur ASCII"}
+                    slotProps={{ input: { endAdornment: passwordVisibilityAdornment } }}
                 />
                 <TextField
                     margin="dense"
-                    label="Bestätigen"
+                    label="Neues Hotspot-Passwort bestätigen"
                     type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
                     fullWidth
-                    variant="outlined"
                     value={apPasswordConfirm}
                     onChange={(e) => setApPasswordConfirm(e.target.value)}
                     error={apPasswordMismatch}
                     helperText={apPasswordMismatch ? "Passwörter stimmen nicht überein" : " "}
                 />
-            </ShareframeDialog>
+            </FormDialog>
         </>
     );
 };

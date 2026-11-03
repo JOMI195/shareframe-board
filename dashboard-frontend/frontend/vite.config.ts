@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       compression({
-        algorithms: [defineAlgorithm('brotliCompress')],
+        algorithms: [defineAlgorithm('gzip')],
         include: /\.(js|css|html|svg|json|txt|ico|xml)$/,
         deleteOriginalAssets: false,
       }),
@@ -27,7 +27,16 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: buildDir,
       emptyOutDir: true,
-      sourcemap: false
+      sourcemap: false,
+      rollupOptions: {
+        output: {
+          manualChunks: (id: string) => {
+            if (!id.includes('node_modules')) return undefined;
+            if (/node_modules\/(react|react-dom|scheduler|react-router|react-redux|@reduxjs|redux|redux-persist|immer|reselect)\//.test(id)) return 'vendor-react';
+            return undefined;
+          },
+        },
+      },
     },
     resolve: {
       alias: {

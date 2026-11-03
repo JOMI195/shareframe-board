@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, Grid, ImageList, ImageListItem, Skeleton, Stack, Typography } from '@mui/material';
-import { CloseOutlined, EditOutlined, SaveOutlined } from '@mui/icons-material';
+import { Button, Grid, ImageList, ImageListItem, Skeleton, Stack, Typography } from '@mui/material';
+import { CloseOutlined, EditOutlined, Refresh, SaveOutlined } from '@mui/icons-material';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { fetchSlideshowImages, selectSlideshowImages, updatePlaybackOrder } from '@/store/slideshowImages/slideshowImages.Slice';
 import { useMinimumLoading } from '@/hooks/loading/useMinimumLoading';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import BottomFloatingActions from '@/common/components/bottomFloatingActions';
+import PageActionsBar from '@/common/components/pageActionsBar';
+import { useDesktopActions } from '@/hooks/layout/useDesktopActions';
 import DataNotFound from '@/common/components/dataNotFound';
-import { PlaybackMode } from '@/types';
+import { DialogAction, PlaybackMode } from '@/types';
 import PlaybackOrderSelect from './playbackOrderSelect';
 import SlideshowImagesGrid from './slideshowImagesGrid';
 import SlideshowImagePreviewDialog from './slideshowImagePreviewDialog';
@@ -20,6 +22,7 @@ const SlideshowImages: React.FC = () => {
     const [draft, setDraft] = useState<number[] | null>(null);
     const [previewId, setPreviewId] = useState<number | null>(null);
     const isEditing = draft !== null;
+    const isDesktop = useDesktopActions();
     const showSkeleton = useMinimumLoading(isLoading && lastFetchedAt === null);
 
     useEffect(() => {
@@ -48,6 +51,22 @@ const SlideshowImages: React.FC = () => {
         if (updatePlaybackOrder.fulfilled.match(result)) setDraft(null);
     };
 
+    const saveAction: DialogAction = {
+        icon: <SaveOutlined />,
+        label: 'Reihenfolge speichern',
+        color: 'primary',
+        onClick: handleSave,
+        disabled: isUpdatingOrder,
+    };
+
+    const discardAction: DialogAction = {
+        icon: <CloseOutlined />,
+        label: 'Verwerfen',
+        color: 'inherit',
+        onClick: () => setDraft(null),
+        disabled: isUpdatingOrder,
+    };
+
     const renderSkeleton = () => (
         <ImageList cols={2} gap={12} sx={{ m: 0 }}>
             {[...Array(4)].map((_, index) => (
@@ -60,7 +79,8 @@ const SlideshowImages: React.FC = () => {
 
     return (
         <>
-            <Grid container spacing={3} sx={{ pb: isEditing ? 12 : 0 }}>
+            {isEditing && <PageActionsBar actions={[discardAction, saveAction]} sx={{ mb: 3 }} />}
+            <Grid container spacing={3} sx={{ pb: isEditing && !isDesktop ? 12 : 0 }}>
                 <Grid size={12}>
                     <ShareframeInfoCard
                         title="Wiedergabereihenfolge"
@@ -78,13 +98,13 @@ const SlideshowImages: React.FC = () => {
                                             />
                                             {isEditing && (
                                                 <Typography variant="body2" color="text.secondary">
-                                                    Ziehe die Bilder in die gewünschte Reihenfolge und speichere sie anschließend.
-                                                    Neue Bilder werden hinten angehängt.
+                                                    Ziehe die Fotos in die gewünschte Reihenfolge und speichere sie anschließend.
+                                                    Neue Fotos werden hinten angehängt.
                                                 </Typography>
                                             )}
                                             {!isEditing && mode === 'shuffle' && (
                                                 <Typography variant="body2" color="text.secondary">
-                                                    Jedes Bild kommt einmal pro Durchlauf an die Reihe, danach wird neu gemischt.
+                                                    Jedes Foto kommt einmal pro Durchlauf an die Reihe, danach wird neu gemischt.
                                                     Unten siehst du den aktuellen Durchlauf.
                                                 </Typography>
                                             )}
@@ -107,12 +127,6 @@ const SlideshowImages: React.FC = () => {
                     />
                 </Grid>
 
-                {error && lastFetchedAt === null && (
-                    <Grid size={12}>
-                        <Alert severity="error">Die Bilder konnten nicht geladen werden.</Alert>
-                    </Grid>
-                )}
-
                 <Grid size={12}>
                     {showSkeleton ? renderSkeleton() : shown.length > 0 ? (
                         <Stack spacing={1}>
@@ -124,11 +138,16 @@ const SlideshowImages: React.FC = () => {
                                 onOpen={setPreviewId}
                             />
                             <Typography variant="subtitle2" color="text.secondary" sx={{ textAlign: 'center', pt: 1 }}>
-                                {shown.length} {shown.length === 1 ? 'Bild' : 'Bilder'} auf dem Bilderrahmen
+                                {shown.length} {shown.length === 1 ? 'Foto' : 'Fotos'} auf dem Bilderrahmen
                             </Typography>
                         </Stack>
                     ) : lastFetchedAt !== null ? (
-                        <DataNotFound notFoundMessage="Keine Bilder auf dem Bilderrahmen. Es werden die Standardbilder angezeigt." />
+                        <DataNotFound notFoundMessage="Noch keine Fotos auf dem Bilderrahmen. Bis dahin zeigt er Beispielbilder." />
+                    ) : error ? (
+                        <DataNotFound
+                            notFoundMessage="Fotos konnten nicht geladen werden"
+                            action={{ label: 'Erneut versuchen', icon: <Refresh />, onClick: () => dispatch(fetchSlideshowImages()) }}
+                        />
                     ) : null}
                 </Grid>
             </Grid>
@@ -140,23 +159,8 @@ const SlideshowImages: React.FC = () => {
                 onClose={() => setPreviewId(null)}
             />
 
-            {isEditing && (
-                <BottomFloatingActions
-                    actionPrimary={{
-                        icon: <SaveOutlined />,
-                        label: 'Reihenfolge speichern',
-                        color: 'primary',
-                        onClick: handleSave,
-                        disabled: isUpdatingOrder,
-                    }}
-                    actionSecondary={{
-                        icon: <CloseOutlined />,
-                        label: 'Verwerfen',
-                        color: 'inherit',
-                        onClick: () => setDraft(null),
-                        disabled: isUpdatingOrder,
-                    }}
-                />
+            {isEditing && !isDesktop && (
+                <BottomFloatingActions actionPrimary={saveAction} actionSecondary={discardAction} />
             )}
         </>
     );

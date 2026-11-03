@@ -17,7 +17,7 @@ describe('network', () => {
   it('lists the current and the saved networks', async () => {
     await openNetwork();
 
-    const overview = card('Übersicht (WIFI)');
+    const overview = card('WLAN');
     expect(within(overview).getAllByText('HomeNet')).toHaveLength(2);
     expect(within(overview).getByText('Office')).toBeInTheDocument();
   });
@@ -26,7 +26,7 @@ describe('network', () => {
     server.use(...withNetworks('Preset', []));
     renderRoute('/network/', { preloadedState: signedInState() });
 
-    expect(await screen.findByText(/Keine gespeicherten Netzwerke gefunden/)).toBeInTheDocument();
+    expect(await screen.findByText(/Noch keine WLANs gespeichert/)).toBeInTheDocument();
   });
 
   it('adds a network and reloads the list', async () => {
@@ -34,30 +34,30 @@ describe('network', () => {
     server.use(connect.handler);
     const { user } = await openNetwork();
 
-    await user.click(screen.getByRole('button', { name: 'Netzwerk hinzufügen' }));
+    await user.click(screen.getByRole('button', { name: 'WLAN hinzufügen' }));
     const dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByLabelText(/Netzwerkname/), 'Garden');
-    await user.type(within(dialog).getByLabelText(/^Passwort/), 'gardenpass');
+    await user.type(within(dialog).getByLabelText(/^Passwort$/), 'gardenpass');
     server.use(...withNetworks('HomeNet', ['HomeNet', 'Office', 'Garden']));
     await user.click(within(dialog).getByRole('button', { name: 'Hinzufügen' }));
 
-    expect(await screen.findByText('Netzwerk erfolgreich hinzugefügt')).toBeInTheDocument();
+    expect(await screen.findByText('WLAN hinzugefügt')).toBeInTheDocument();
     expect(await connect.calls[0].json()).toEqual({ ssid: 'Garden', password: 'gardenpass' });
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    expect(await within(card('Übersicht (WIFI)')).findByText('Garden')).toBeInTheDocument();
+    expect(await within(card('WLAN')).findByText('Garden')).toBeInTheDocument();
   });
 
   it('keeps the dialog open when adding fails', async () => {
     server.use(...failsWith('post', api.getConnectionConnectUrl()));
     const { user } = await openNetwork();
 
-    await user.click(screen.getByRole('button', { name: 'Netzwerk hinzufügen' }));
+    await user.click(screen.getByRole('button', { name: 'WLAN hinzufügen' }));
     const dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByLabelText(/Netzwerkname/), 'Garden');
-    await user.type(within(dialog).getByLabelText(/^Passwort/), 'gardenpass');
+    await user.type(within(dialog).getByLabelText(/^Passwort$/), 'gardenpass');
     await user.click(within(dialog).getByRole('button', { name: 'Hinzufügen' }));
 
-    expect(await screen.findByText('Hinzufügen des Netzwerks fehlgeschlagen')).toBeInTheDocument();
+    expect(await screen.findByText('WLAN konnte nicht hinzugefügt werden')).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
@@ -66,12 +66,12 @@ describe('network', () => {
     server.use(connect.handler);
     const { user } = await openNetwork();
 
-    await user.click(screen.getByRole('button', { name: 'Netzwerk hinzufügen' }));
+    await user.click(screen.getByRole('button', { name: 'WLAN hinzufügen' }));
     const dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByLabelText(/Netzwerkname/), 'Garden');
     await user.click(within(dialog).getByRole('button', { name: 'Hinzufügen' }));
 
-    expect(await screen.findByText('SSID und Passwort benötigt')).toBeInTheDocument();
+    expect(await screen.findByText('Gib Netzwerkname und Passwort ein')).toBeInTheDocument();
     expect(connect.calls).toHaveLength(0);
   });
 
@@ -80,22 +80,22 @@ describe('network', () => {
     server.use(forget.handler);
     const { user } = await openNetwork();
 
-    const office = within(card('Übersicht (WIFI)')).getByText('Office').closest('li') as HTMLElement;
-    await user.click(within(office).getByRole('button', { name: 'delete' }));
+    const office = within(card('WLAN')).getByText('Office').closest('li') as HTMLElement;
+    await user.click(within(office).getByRole('button', { name: '„Office“ entfernen' }));
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Entfernen' }));
 
-    expect(await screen.findByText('Netzwerk erfolgreich entfernt')).toBeInTheDocument();
+    expect(await screen.findByText('WLAN entfernt')).toBeInTheDocument();
     expect(await forget.calls[0].json()).toEqual({ ssid: 'Office' });
   });
 
   it('shows the hotspot password only on request', async () => {
     const { user } = await openNetwork();
 
-    const ap = card('Access Point');
+    const ap = card('Hotspot');
     expect(await within(ap).findByText('shareframe-board')).toBeInTheDocument();
     expect(within(ap).queryByText('hotspot123')).not.toBeInTheDocument();
 
-    await user.click(within(ap).getByRole('button', { name: 'AP-Passwort anzeigen' }));
+    await user.click(within(ap).getByRole('button', { name: 'Hotspot-Passwort anzeigen' }));
 
     expect(within(ap).getByText('hotspot123')).toBeInTheDocument();
   });
@@ -105,31 +105,31 @@ describe('network', () => {
     server.use(apPassword.handler);
     const { user } = await openNetwork();
 
-    await user.click(screen.getByRole('button', { name: 'AP-Passwort ändern' }));
+    await user.click(screen.getByRole('button', { name: 'Hotspot-Passwort ändern' }));
     const dialog = await screen.findByRole('dialog');
-    const confirm = within(dialog).getByRole('button', { name: 'Ändern' });
+    const confirm = within(dialog).getByRole('button', { name: 'Passwort ändern' });
 
-    await user.type(within(dialog).getByLabelText(/Neues AP-Passwort/), 'newhotspot');
-    await user.type(within(dialog).getByLabelText(/Bestätigen/), 'newhotspoX');
+    await user.type(within(dialog).getByLabelText(/^Neues Hotspot-Passwort$/), 'newhotspot');
+    await user.type(within(dialog).getByLabelText(/Hotspot-Passwort bestätigen/), 'newhotspoX');
     expect(within(dialog).getByText('Passwörter stimmen nicht überein')).toBeInTheDocument();
     expect(confirm).toBeDisabled();
 
-    await user.clear(within(dialog).getByLabelText(/Bestätigen/));
-    await user.type(within(dialog).getByLabelText(/Bestätigen/), 'newhotspot');
+    await user.clear(within(dialog).getByLabelText(/Hotspot-Passwort bestätigen/));
+    await user.type(within(dialog).getByLabelText(/Hotspot-Passwort bestätigen/), 'newhotspot');
     await user.click(confirm);
 
-    expect(await screen.findByText('AP-Passwort erfolgreich geändert')).toBeInTheDocument();
+    expect(await screen.findByText('Hotspot-Passwort geändert')).toBeInTheDocument();
     expect(await apPassword.calls[0].json()).toEqual({ password: 'newhotspot' });
   });
 
   it('rejects a hotspot password shorter than eight characters', async () => {
     const { user } = await openNetwork();
 
-    await user.click(screen.getByRole('button', { name: 'AP-Passwort ändern' }));
+    await user.click(screen.getByRole('button', { name: 'Hotspot-Passwort ändern' }));
     const dialog = await screen.findByRole('dialog');
-    await user.type(within(dialog).getByLabelText(/Neues AP-Passwort/), 'short');
-    await user.type(within(dialog).getByLabelText(/Bestätigen/), 'short');
+    await user.type(within(dialog).getByLabelText(/^Neues Hotspot-Passwort$/), 'short');
+    await user.type(within(dialog).getByLabelText(/Hotspot-Passwort bestätigen/), 'short');
 
-    expect(within(dialog).getByRole('button', { name: 'Ändern' })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: 'Passwort ändern' })).toBeDisabled();
   });
 });

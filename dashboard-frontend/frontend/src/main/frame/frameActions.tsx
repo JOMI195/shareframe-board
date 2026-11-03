@@ -55,7 +55,7 @@ const INFO_CARD_HEIGHT = "250px";
 
 const NIGHT_STYLE_OPTIONS: { value: NightStyle; label: string }[] = [
     { value: 'slower', label: 'Seltener wechseln' },
-    { value: 'hold', label: 'Aktuelles Bild behalten' },
+    { value: 'hold', label: 'Aktuelles Foto behalten' },
     { value: 'pause', label: 'Bildschirm pausieren' },
 ];
 
@@ -199,7 +199,7 @@ const FrameActions: React.FC = () => {
             <Grid container spacing={3} sx={{ pb: isSmallScreen ? 7 : 0 }}>
                 <Grid size={12}>
                     <ShareframeInfoCard
-                        title="Nächster Bildwechsel"
+                        title="Nächster Fotowechsel"
                         minHeight="100px"
                         sections={[
                             {
@@ -241,7 +241,7 @@ const FrameActions: React.FC = () => {
                                                 <Chip
                                                     label={
                                                         (isConnected && lastCheckedAt !== null && imageCount != null)
-                                                            ? `${imageCount} ${imageCount === 1 ? 'Bild' : 'Bilder'}`
+                                                            ? `${imageCount} ${imageCount === 1 ? 'Foto' : 'Fotos'}`
                                                             : '—'
                                                     }
                                                     size="small"
@@ -263,7 +263,7 @@ const FrameActions: React.FC = () => {
                 {!isSlideshowActionsTimerActive && isAppIntialLoadTimerActive && (
                     <Grid size={12}>
                         <Alert severity="info" sx={{ display: 'flex', alignItems: 'center' }}>
-                            Bitte warte einen Augenblick bis der aktuelle Status der Bildwiedergabe ermittelt wurde
+                            Einen Moment, der Status der Diashow wird abgefragt.
                         </Alert>
                     </Grid>
                 )}
@@ -271,7 +271,7 @@ const FrameActions: React.FC = () => {
                 {!isTimerRunning && isLoopLoading && (
                     <Grid size={12}>
                         <Alert severity="info" sx={{ display: 'flex', alignItems: 'center' }}>
-                            Der Bilderrahmen startet noch. Bitte warte einen Moment.
+                            Der Bilderrahmen startet noch. Einen Moment bitte.
                         </Alert>
                     </Grid>
                 )}
@@ -290,7 +290,7 @@ const FrameActions: React.FC = () => {
                         sm: 6
                     }}>
                     <ShareframeInfoCard
-                        title="Bilderwiedergabe"
+                        title="Diashow"
                         minHeight={INFO_CARD_HEIGHT}
                         sections={[
                             {
@@ -304,7 +304,7 @@ const FrameActions: React.FC = () => {
                                             }}>
                                             <PhotoLibraryOutlined sx={{ mr: 1 }} />
                                             <Typography variant="body2">
-                                                Die Bildwiedergabe auf dem Bilderrahmen starten oder stoppen.
+                                                Starte oder stoppe die Diashow auf dem Bilderrahmen.
                                             </Typography>
                                         </Box>
                                     )
@@ -329,7 +329,7 @@ const FrameActions: React.FC = () => {
                                     value: (
                                         <Stack spacing={2}>
                                             <Typography variant="body2">
-                                                Das Stoppen der Bildwiedergabe leert zusätzlich den Bilderrahmen um das Display vor Schaden zu schützen.
+                                                Beim Stoppen wird der Bildschirm zusätzlich geleert, damit das Display keinen Schaden nimmt.
                                             </Typography>
 
                                         </Stack>
@@ -358,7 +358,7 @@ const FrameActions: React.FC = () => {
                         sm: 6
                     }}>
                     <ShareframeInfoCard
-                        title="Bildwechsel-Intervall"
+                        title="Wechselintervall"
                         minHeight={INFO_CARD_HEIGHT}
                         sections={[
                             {
@@ -373,7 +373,7 @@ const FrameActions: React.FC = () => {
                                                 }}>
                                                 <TimerOutlined sx={{ mr: 1 }} />
                                                 <Typography variant="body2">
-                                                    Zeitintervall zwischen den Bildwechseln der Bildwiedergabe konfigurieren.
+                                                    Lege fest, wie lange jedes Foto angezeigt wird.
                                                 </Typography>
                                             </Box>
                                             <Box>
@@ -401,8 +401,9 @@ const FrameActions: React.FC = () => {
                                                     }}
                                                 />
                                                 <FormControl sx={{ minWidth: 120 }}>
-                                                    <InputLabel>Einheit</InputLabel>
+                                                    <InputLabel id="interval-unit-label">Einheit</InputLabel>
                                                     <Select
+                                                        labelId="interval-unit-label"
                                                         value={intervalUnit}
                                                         label="Einheit"
                                                         onChange={(e) => setIntervalUnit(e.target.value as 'minutes' | 'hours')}
@@ -453,7 +454,7 @@ const FrameActions: React.FC = () => {
                                                 }}>
                                                 <BedtimeOutlined sx={{ mr: 1 }} />
                                                 <Typography variant="body2">
-                                                    In den Nachtstunden seltener wechseln, das aktuelle Bild behalten oder den Bildschirm pausieren, um ihn zu schonen.
+                                                    Wechsle nachts seltener, behalte das aktuelle Foto oder pausiere den Bildschirm, um ihn zu schonen.
                                                 </Typography>
                                             </Box>
                                             <FormControlLabel
@@ -481,8 +482,9 @@ const FrameActions: React.FC = () => {
                                             </TextField>
                                             <Box sx={{ display: 'flex', gap: 1 }}>
                                                 <FormControl sx={{ flex: 1 }}>
-                                                    <InputLabel>Von</InputLabel>
+                                                    <InputLabel id="night-start-label">Von</InputLabel>
                                                     <Select
+                                                        labelId="night-start-label"
                                                         value={nightStart}
                                                         label="Von"
                                                         onChange={(e) => setNightStart(Number(e.target.value))}
@@ -494,8 +496,9 @@ const FrameActions: React.FC = () => {
                                                     </Select>
                                                 </FormControl>
                                                 <FormControl sx={{ flex: 1 }}>
-                                                    <InputLabel>Bis</InputLabel>
+                                                    <InputLabel id="night-end-label">Bis</InputLabel>
                                                     <Select
+                                                        labelId="night-end-label"
                                                         value={nightEnd}
                                                         label="Bis"
                                                         onChange={(e) => setNightEnd(Number(e.target.value))}
@@ -551,7 +554,7 @@ const FrameActions: React.FC = () => {
                         sm: 6
                     }}>
                     <ShareframeInfoCard
-                        title="Bild überspringen"
+                        title="Foto überspringen"
                         minHeight={INFO_CARD_HEIGHT}
                         sections={[
                             {
@@ -566,14 +569,14 @@ const FrameActions: React.FC = () => {
                                                 }}>
                                                 <SkipNextOutlined sx={{ mr: 1 }} />
                                                 <Typography variant="body2">
-                                                    Aktuelles Bild in der Bildwiedergabe überspringen.
+                                                    Springe zum nächsten Foto der Diashow.
                                                 </Typography>
                                             </Box>
                                             <Typography variant="body2">
-                                                Überspringt das aktuell auf dem Bilderrahmen angezeigte Bild und lädt das nächste Bild.
+                                                Der Bilderrahmen zeigt sofort das nächste Foto.
                                             </Typography>
                                             <Typography variant="body2">
-                                                Kann nur bei laufender Bildwiedergabe ausgeführt werden.
+                                                Das geht nur, während die Diashow läuft.
                                             </Typography>
                                         </Stack>
                                     )
@@ -588,7 +591,7 @@ const FrameActions: React.FC = () => {
                                 fullWidth
                                 disabled={isButtonsDisabled || !isActive}
                             >
-                                Bild überspringen
+                                Foto überspringen
                             </Button>
                         }
                     />
@@ -615,14 +618,14 @@ const FrameActions: React.FC = () => {
                                                 }}>
                                                 <DeleteOutlined sx={{ mr: 1 }} />
                                                 <Typography variant="body2">
-                                                    Die aktuelle Anzeige löschen und einen leeren Bildschirm anzeigen.
+                                                    Löscht die aktuelle Anzeige und zeigt einen leeren Bildschirm.
                                                 </Typography>
                                             </Box>
                                             <Typography variant="body2">
-                                                Wenn der Bilderrahmen längere Zeit nicht benutzt wird, MUSS die Anzeige gelöscht werden, da der Bildschirm sonst Schaden nimmt.
+                                                Leere den Bildschirm, wenn der Bilderrahmen länger nicht benutzt wird. Sonst nimmt das Display Schaden.
                                             </Typography>
                                             <Typography variant="body2">
-                                                Um den Bildschirm zu leeren, muss vorher die Bildwiedergabe gestoppt werden.
+                                                Stoppe dafür zuerst die Diashow.
                                             </Typography>
                                         </Stack>
                                     )

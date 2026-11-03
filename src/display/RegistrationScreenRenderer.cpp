@@ -16,8 +16,8 @@ std::vector<uint8_t> RegistrationScreenRenderer::render(const std::string& url, 
 
     if (panel_text::Font font; font.load(fontPath))
         qr_layout::drawText(canvas, font, {
-                                "Rahmen registrieren",
-                                "1. QR-Code scannen und bei Shareframe anmelden",
+                                "Rahmen hinzufügen",
+                                "1. QR-Code scannen und bei ShareFrame anmelden",
                                 "2. Oder auf " + host + " unter Bilderrahmen hinzufügen: " + serial
                             });
     else

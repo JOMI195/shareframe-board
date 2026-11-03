@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import reducer, * as dialogs from '@/store/dialogs/dialogs.Slice';
+import { routeChanged } from '@/store/navigation/navigation.Slice';
 
 const initial = () => reducer(undefined, { type: '@@tests/INIT' });
 
@@ -25,14 +26,9 @@ describe('dialogs slice', () => {
     expect(reducer(opened, dialogs.closeNetworkForgetNetworkDialog()).network.forgetNetwork).toEqual({ open: false, ssid: '' });
   });
 
-  it('seeds the rename field with the current name', () => {
-    let state = reducer(initial(), dialogs.openNetworkRenameNetworkDialog('HomeNet'));
-    expect(state.network.renameNetwork).toEqual({ open: true, ssid: 'HomeNet', newName: 'HomeNet' });
+  it('closes every dialog when the route changes', () => {
+    const opened = reducer(reducer(initial(), dialogs.openRestartDialog()), dialogs.openNetworkForgetNetworkDialog('HomeNet'));
 
-    state = reducer(state, dialogs.updateNetworkRenameNetworkName('Office'));
-    expect(state.network.renameNetwork.newName).toBe('Office');
-
-    state = reducer(state, dialogs.closeNetworkRenameNetworkDialog());
-    expect(state.network.renameNetwork).toEqual({ open: false, ssid: '', newName: '' });
+    expect(reducer(opened, routeChanged())).toEqual(initial());
   });
 });

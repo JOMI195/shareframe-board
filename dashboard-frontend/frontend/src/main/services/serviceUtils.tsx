@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import {
-    Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Typography,
-} from '@mui/material';
+import { Button, Chip } from '@mui/material';
+import ConfirmDialog from '@/common/components/confirmDialog';
 import CircleIcon from '@mui/icons-material/Circle';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import { useAppDispatch, useAppSelector } from '@/store';
@@ -39,23 +38,19 @@ export const RestartButton: React.FC<{ id: string; size?: 'small' | 'medium' }> 
                 disabled={restarting === id}
                 onClick={() => setOpen(true)}
             >
-                Neustart
+                Neu starten
             </Button>
-            <Dialog open={open} onClose={() => setOpen(false)}>
-                <DialogTitle>Dienst neu starten?</DialogTitle>
-                <DialogContent>
-                    <Typography>
-                        {(SERVICE_LABELS[id] ?? id)} wird neu gestartet.
-                        {id === 'dashboard' && ' Das Dashboard ist dabei kurz nicht erreichbar.'}
-                    </Typography>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setOpen(false)}>Abbrechen</Button>
-                    <Button color="warning" onClick={() => { dispatch(restartService(id)); setOpen(false); }}>
-                        Neustart
-                    </Button>
-                </DialogActions>
-            </Dialog>
+            <ConfirmDialog
+                open={open}
+                title={`${SERVICE_LABELS[id] ?? id} neu starten?`}
+                confirmLabel="Neu starten"
+                onConfirm={() => { dispatch(restartService(id)); setOpen(false); }}
+                onCancel={() => setOpen(false)}
+            >
+                {id === 'dashboard'
+                    ? 'Die Einstellungen sind dabei kurz nicht erreichbar.'
+                    : 'Der Dienst ist dabei kurz nicht verfügbar.'}
+            </ConfirmDialog>
         </>
     );
 };

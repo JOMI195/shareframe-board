@@ -41,6 +41,7 @@ export interface UpdatesState {
     latest_release: Release | null;
     update_status: UpdateStatus | null;
     history: UpdateHistoryEntry[];
+    historyFailed: boolean;
     loading: boolean;
 }
 
@@ -48,6 +49,7 @@ const initialState: UpdatesState = {
     latest_release: null,
     update_status: null,
     history: [],
+    historyFailed: false,
     loading: false,
 };
 
@@ -61,12 +63,12 @@ export const fetchLatestRelease = createAsyncThunk(
             if (payload.success) {
                 return payload.data;
             } else {
-                dispatch(addAlertSnackbar(uuid(), "Suche nach neuster Version fehlgeschlagen", "error"));
+                dispatch(addAlertSnackbar(uuid(), "Updates konnten nicht gesucht werden", "error"));
                 return rejectWithValue('Failed to fetch latest release');
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            dispatch(addAlertSnackbar(uuid(), "Suche nach neuer Version fehlgeschlagen", "error"));
+            dispatch(addAlertSnackbar(uuid(), "Updates konnten nicht gesucht werden", "error"));
             return rejectWithValue(errorMessage);
         }
     }
@@ -77,22 +79,22 @@ export const performUpdate = createAsyncThunk(
     async (navigate: (path: string) => void, { dispatch, rejectWithValue }) => {
         const snackbarId = uuid();
         try {
-            dispatch(addLoadingSnackbar(snackbarId, "Starte Updateprozess"));
+            dispatch(addLoadingSnackbar(snackbarId, "Update wird gestartet"));
 
             const response = await fetchWithTimeout(getPerformUpdateUrl(), { method: 'POST', });
             const payload: IServerResponse = await response.json();
 
             if (payload.success) {
-                dispatch(addAlertSnackbar(uuid(), "Updateprozess gestartet", "success"));
+                dispatch(addAlertSnackbar(uuid(), "Update gestartet", "success"));
                 navigate(getHomeUrl());
-                dispatch(showLoadingWall("Die Updates werden installiert. Während dieser Zeit ist das Dashboard nicht verfügbar. Die Applikation wird anschließend neu gestartet. Lade diese Seite in ein paar Minuten einfach ein paar Mal erneut, bis sie wieder verfügbar ist."));
+                dispatch(showLoadingWall("Das Update wird installiert. Die Einstellungen sind solange nicht erreichbar und der Bilderrahmen startet danach neu. Lade diese Seite in ein paar Minuten neu."));
             } else {
-                dispatch(addAlertSnackbar(uuid(), "Updateprozess fehlgeschlagen", "error"));
+                dispatch(addAlertSnackbar(uuid(), "Update konnte nicht gestartet werden", "error"));
                 return rejectWithValue('Failed start update process');
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            dispatch(addAlertSnackbar(uuid(), "Updateprozess fehlgeschlagen", "error"));
+            dispatch(addAlertSnackbar(uuid(), "Update konnte nicht gestartet werden", "error"));
             return rejectWithValue(errorMessage);
         } finally {
             dispatch(removeLoadingSnackbar(snackbarId));
@@ -153,8 +155,14 @@ export const UpdatesSlice = createSlice({
         builder.addCase(fetchUpdateStatus.fulfilled, (state, action) => {
             state.update_status = action.payload;
         });
+        builder.addCase(fetchUpdateHistory.pending, (state) => {
+            state.historyFailed = false;
+        });
         builder.addCase(fetchUpdateHistory.fulfilled, (state, action) => {
             state.history = action.payload;
+        });
+        builder.addCase(fetchUpdateHistory.rejected, (state) => {
+            state.historyFailed = true;
         });
     }
 });

@@ -12,8 +12,8 @@ test('restarting a service from the overview restarts the process', async ({ pag
   await signIn(page);
   await page.goto('/services/');
 
-  await card(page, 'Heartbeat').getByRole('button', { name: 'Neustart' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Neustart' }).click();
+  await card(page, 'Heartbeat').getByRole('button', { name: 'Neu starten' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Neu starten' }).click();
   await expect(page.getByText('Dienst wird neu gestartet')).toBeVisible();
 
   await expectShimCall('s6-svc -r /run/service/shareframe-heartbeat');

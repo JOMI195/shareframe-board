@@ -42,7 +42,7 @@ const PowerMenu: React.FC<PowerMenuProps> = ({
             >
                 <MenuItem onClick={handleRestart}>
                     <ListItemIcon><RestartAltIcon fontSize="small" /></ListItemIcon>
-                    <ListItemText>Neustarten</ListItemText>
+                    <ListItemText>Neu starten</ListItemText>
                 </MenuItem>
                 <MenuItem onClick={handleShutdown}>
                     <ListItemIcon><PowerSettingsNewIcon fontSize="small" color="error" /></ListItemIcon>

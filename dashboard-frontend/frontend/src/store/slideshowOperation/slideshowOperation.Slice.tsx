@@ -186,7 +186,7 @@ export const fetchDisplayImagesLoopInterval = () => async (
 
         dispatch(addAlertSnackbar(
             uuid(),
-            'Abrufen des Intervalls der Bilderwiedergabe fehlgeschlagen',
+            'Intervall konnte nicht geladen werden',
             'error'
         ));
     }
@@ -213,7 +213,7 @@ export const updateDisplayImagesLoopInterval = (intervalMins: number) => async (
 
         dispatch(addLoadingSnackbar(
             actionId,
-            'Intervall der Bilderwiedergabe wird aktualisiert'
+            'Intervall wird gespeichert'
         ));
 
         // Convert minutes to seconds for the API
@@ -236,7 +236,7 @@ export const updateDisplayImagesLoopInterval = (intervalMins: number) => async (
 
             dispatch(addAlertSnackbar(
                 uuid(),
-                `Intervall der Bilderwiedergabe erfolgreich auf ${intervalMins} Minuten aktualisiert`,
+                `Intervall auf ${intervalMins} Minuten gesetzt`,
                 'success'
             ));
 
@@ -264,7 +264,7 @@ export const updateDisplayImagesLoopInterval = (intervalMins: number) => async (
 
         dispatch(addAlertSnackbar(
             uuid(),
-            'Aktualisierung des Intervalls der Bilderwiedergabes fehlgeschlagen',
+            'Intervall konnte nicht gespeichert werden',
             'error'
         ));
 
@@ -331,7 +331,7 @@ export const fetchNightMode = () => async (
 
         dispatch(addAlertSnackbar(
             uuid(),
-            'Abrufen des Nachtmodus fehlgeschlagen',
+            'Nachtmodus konnte nicht geladen werden',
             'error'
         ));
     }
@@ -339,7 +339,7 @@ export const fetchNightMode = () => async (
 
 const NIGHT_STYLE_SUFFIX: Record<NightStyle, (intervalMins: number) => string> = {
     slower: (intervalMins) => `${intervalMins} Minuten Intervall`,
-    hold: () => 'angehaltenem Bild',
+    hold: () => 'festgehaltenem Foto',
     pause: () => 'ausgeschaltetem Bildschirm',
 };
 
@@ -366,7 +366,7 @@ export const updateNightMode = (
 
         dispatch(addLoadingSnackbar(
             actionId,
-            'Nachtmodus wird aktualisiert'
+            'Nachtmodus wird gespeichert'
         ));
 
         const response = await fetchWithTimeout(getSlideshowNightModeUrl(), {
@@ -398,7 +398,7 @@ export const updateNightMode = (
                 uuid(),
                 !enabled
                     ? 'Nachtmodus deaktiviert'
-                    : `Nachtmodus aktiv von ${startHour}:00 bis ${endHour}:00 Uhr mit ${NIGHT_STYLE_SUFFIX[style](intervalMins)}`,
+                    : `Nachtmodus von ${startHour}:00 bis ${endHour}:00 Uhr mit ${NIGHT_STYLE_SUFFIX[style](intervalMins)} gespeichert`,
                 'success'
             ));
         } else {
@@ -422,7 +422,7 @@ export const updateNightMode = (
 
         dispatch(addAlertSnackbar(
             uuid(),
-            'Aktualisierung des Nachtmodus fehlgeschlagen',
+            'Nachtmodus konnte nicht gespeichert werden',
             'error'
         ));
 
@@ -430,7 +430,7 @@ export const updateNightMode = (
     }
 };
 
-const SKIP_WHILE_REFRESHING = 'Display wird gerade aktualisiert, bitte gleich erneut versuchen';
+const SKIP_WHILE_REFRESHING = 'Das Display wird gerade aktualisiert. Versuche es gleich noch einmal.';
 
 export const skipImageThunk = () => async (
     dispatch: AppDispatch,
@@ -453,7 +453,7 @@ export const skipImageThunk = () => async (
 
         dispatch(addLoadingSnackbar(
             actionId,
-            'Aktuelles Bild wird übersprungen'
+            'Foto wird übersprungen'
         ));
 
         const skipResponse = await fetchWithTimeout(getSkipSlideshowImageUrl(), {
@@ -468,13 +468,13 @@ export const skipImageThunk = () => async (
         const clearData: IServerResponse = await skipResponse.json();
 
         if (!clearData.success) {
-            throw new Error('Bild überspringen fehlgeschlagen');
+            throw new Error('Foto konnte nicht übersprungen werden');
         }
 
 
         dispatch(addAlertSnackbar(
             uuid(),
-            'Aktuelles Bild erfolgreich übersprungen',
+            'Foto übersprungen',
             'success'
         ));
 
@@ -500,7 +500,7 @@ export const skipImageThunk = () => async (
             uuid(),
             error instanceof Error && error.message === SKIP_WHILE_REFRESHING
                 ? SKIP_WHILE_REFRESHING
-                : 'Aktuelles Bild überspringen fehlgeschlagen',
+                : 'Foto konnte nicht übersprungen werden',
             'error'
         ));
 
@@ -508,7 +508,7 @@ export const skipImageThunk = () => async (
     }
 };
 
-const SHOW_WHILE_PAUSED = 'Die Diashow ist pausiert, starte sie zuerst';
+const SHOW_WHILE_PAUSED = 'Die Diashow ist gestoppt. Starte sie zuerst.';
 
 export const showImageThunk = (id: number) => async (
     dispatch: AppDispatch,
@@ -525,7 +525,7 @@ export const showImageThunk = (id: number) => async (
 
     try {
         dispatch(slideshowOperationSlice.actions.setShowImageStatus({ isShowingImage: true }));
-        dispatch(addLoadingSnackbar(actionId, 'Bild wird angezeigt'));
+        dispatch(addLoadingSnackbar(actionId, 'Foto wird angezeigt'));
 
         const response = await fetchWithTimeout(getShowSlideshowImageUrl(), {
             method: 'POST',
@@ -538,10 +538,10 @@ export const showImageThunk = (id: number) => async (
             throw new Error(data.message === 'Slideshow is paused' ? SHOW_WHILE_PAUSED : SKIP_WHILE_REFRESHING);
         }
         if (!data.success) {
-            throw new Error('Bild anzeigen fehlgeschlagen');
+            throw new Error('Foto konnte nicht angezeigt werden');
         }
 
-        dispatch(addAlertSnackbar(uuid(), 'Bild wird auf dem Bilderrahmen angezeigt', 'success'));
+        dispatch(addAlertSnackbar(uuid(), 'Foto wird auf dem Bilderrahmen angezeigt', 'success'));
 
         dispatch(resetTimer('slideshow-actions-timer'));
         dispatch(startTimer('slideshow-actions-timer'));
@@ -551,7 +551,7 @@ export const showImageThunk = (id: number) => async (
         dispatch(slideshowOperationSlice.actions.setError(message));
         dispatch(addAlertSnackbar(
             uuid(),
-            message === SKIP_WHILE_REFRESHING || message === SHOW_WHILE_PAUSED ? message : 'Bild anzeigen fehlgeschlagen',
+            message === SKIP_WHILE_REFRESHING || message === SHOW_WHILE_PAUSED ? message : 'Foto konnte nicht angezeigt werden',
             'error'
         ));
     } finally {
@@ -594,13 +594,13 @@ export const clearDisplayThunk = () => async (
         const clearData: IServerResponse = await clearResponse.json();
 
         if (!clearData.success) {
-            throw new Error('Bildschirm leeren fehlgeschlagen');
+            throw new Error('Bildschirm konnte nicht geleert werden');
         }
 
         // Success notification
         dispatch(addAlertSnackbar(
             uuid(),
-            'Bildschirm erfolgreich geleert',
+            'Bildschirm geleert',
             'success'
         ));
 
@@ -629,7 +629,7 @@ export const clearDisplayThunk = () => async (
         // Error notification
         dispatch(addAlertSnackbar(
             uuid(),
-            'Fehler beim Leeren des Bildschirms',
+            'Bildschirm konnte nicht geleert werden',
             'error'
         ));
 
@@ -660,7 +660,7 @@ export const toggleSlideshowThunk = () => async (
         // Add loading snackbar
         dispatch(addLoadingSnackbar(
             actionId,
-            'Status der Bilderwiedergabe wird gewechselt'
+            'Diashow wird umgeschaltet'
         ));
 
         // Fetch current slideshow status
@@ -668,7 +668,7 @@ export const toggleSlideshowThunk = () => async (
         const statusData = await statusResponse.json();
 
         if (!statusData.success) {
-            throw new Error('Aktueller Status konnte nicht abgerufen werden');
+            throw new Error('Status der Diashow konnte nicht geladen werden');
         }
 
         const wasActive = statusData.data.active;
@@ -683,7 +683,7 @@ export const toggleSlideshowThunk = () => async (
         const toggleData: IServerResponse = await toggleResponse.json();
 
         if (!toggleData.success) {
-            throw new Error('Statusänderung fehlgeschlagen');
+            throw new Error('Diashow konnte nicht umgeschaltet werden');
         }
 
         const monitorOperation = async () => {
@@ -720,7 +720,7 @@ export const toggleSlideshowThunk = () => async (
                         // Success notification
                         dispatch(addAlertSnackbar(
                             uuid(),
-                            `Bilderwiedergabe erfolgreich ${action === 'stop' ? 'gestoppt' : 'gestartet'}`,
+                            `Diashow ${action === 'stop' ? 'gestoppt' : 'gestartet'}`,
                             'success'
                         ));
 
@@ -741,13 +741,13 @@ export const toggleSlideshowThunk = () => async (
             }));
 
             dispatch(slideshowOperationSlice.actions.setError(
-                'Zeitüberschreitung bei Statusänderung'
+                'Der Bilderrahmen hat die Diashow nicht rechtzeitig umgeschaltet'
             ));
 
             // Error notification
             dispatch(addAlertSnackbar(
                 uuid(),
-                'Zeitüberschreitung bei Statusänderung',
+                'Der Bilderrahmen hat die Diashow nicht rechtzeitig umgeschaltet',
                 'error'
             ));
 
@@ -771,7 +771,7 @@ export const toggleSlideshowThunk = () => async (
         // Error notification
         dispatch(addAlertSnackbar(
             uuid(),
-            'Fehler bei der Statusänderung der Bildwiedergabe',
+            'Diashow konnte nicht umgeschaltet werden',
             'error'
         ));
 

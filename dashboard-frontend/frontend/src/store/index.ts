@@ -7,6 +7,7 @@ import {
   persistReducer,
   PersistConfig,
   createMigrate,
+  createTransform,
   PersistedState,
 } from 'redux-persist';
 import storage from 'redux-persist/es/storage';
@@ -15,11 +16,21 @@ import autoMergeLevel2 from 'redux-persist/es/stateReconciler/autoMergeLevel2';
 import migrations from './migrations';
 import { serializableCheckOptions } from './setupStore';
 
+type NavigationState = ReturnType<typeof rootReducer>['navigation'];
+
+// The phone menu is a modal; rehydrating it open after mount would cover the page on every reload.
+const closePhoneMenu = createTransform<NavigationState, NavigationState>(
+  (inbound) => inbound,
+  (outbound) => ({ ...outbound, sidebar: { open: outbound.sidebar.open && window.matchMedia('(min-width: 1200px)').matches } }),
+  { whitelist: ['navigation'] },
+);
+
 const persistConfig: PersistConfig<ReturnType<typeof rootReducer>> = {
   key: 'shareframe-dashboard-data',
   version: 4,
   storage,
   stateReconciler: autoMergeLevel2,
+  transforms: [closePhoneMenu],
   blacklist: ['slideshowImages', 'dialogs', 'displayCustomization'],
   migrate: createMigrate(migrations, { debug: import.meta.env.VITE_APP_PRODUCTION === "False" ? true : false }),
 };

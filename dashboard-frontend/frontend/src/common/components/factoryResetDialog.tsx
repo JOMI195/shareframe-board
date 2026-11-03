@@ -1,9 +1,8 @@
-import ShareframeDialog from "@/common/components/shareframeDialog";
+import ConfirmDialog from "@/common/components/confirmDialog";
 import { usePiConnection } from "@/context/piConnection/piConnectionContextValue";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { closeGeneralFactoryResetDialog, getDialogs } from "@/store/dialogs/dialogs.Slice";
 import { factoryResetPi } from "@/store/piPower/piPower.Slice";
-import { Stack, Typography } from "@mui/material";
 import { useNavigate } from "react-router";
 
 const FactoryResetDialog = () => {
@@ -18,29 +17,17 @@ const FactoryResetDialog = () => {
     };
 
     return (
-        <ShareframeDialog
+        <ConfirmDialog
             open={isOpen}
-            title="Auf Werkseinstellungen zurücksetzen"
-            onClose={() => dispatch(closeGeneralFactoryResetDialog())}
+            title="Auf Werkseinstellungen zurücksetzen?"
+            confirmLabel="Zurücksetzen"
             onConfirm={handleConfirm}
-            confirmText="Zurücksetzen"
-            cancelText="Abbrechen"
-            confirmColor="error"
+            onCancel={() => dispatch(closeGeneralFactoryResetDialog())}
             confirmDisabled={!isConnected}
+            destructive
         >
-            <Stack spacing={2}>
-                <Typography variant="body1">
-                    Möchtest du den Bilderrahmen wirklich auf Werkseinstellungen zurücksetzen?
-                </Typography>
-                <Typography variant="body1">
-                    Alle Bilder, gespeicherten WLAN-Netzwerke, das Geräte-Passwort und alle Einstellungen werden gelöscht. Das kann nicht rückgängig gemacht werden.
-                </Typography>
-                <Typography variant="body1">
-                    Danach startet der Bilderrahmen neu im Einrichtungsmodus und muss über sein WLAN neu eingerichtet werden.
-                    Der Hotspot nutzt dann wieder sein ursprüngliches Passwort.
-                </Typography>
-            </Stack>
-        </ShareframeDialog>
+            Alle Fotos, gespeicherten WLANs, das Geräte-Passwort und alle Einstellungen werden endgültig gelöscht. Danach startet der Bilderrahmen im Einrichtungsmodus und sein Hotspot nutzt wieder das ursprüngliche Passwort.
+        </ConfirmDialog>
     );
 };
 

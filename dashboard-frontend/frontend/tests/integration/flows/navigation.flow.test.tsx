@@ -5,24 +5,30 @@ import { signedInState } from '@tests/helpers/preloadedState';
 import { makeRelease } from '@tests/fixtures';
 import { boardUnreachable, server, withConnectionMode, withRelease } from '@tests/mocks';
 
-const sidebar = () => screen.getByRole('sidebar');
+const sidebar = () => screen.getByRole('navigation', { name: 'Hauptmenü' });
+
+const openMenu = async (user: { click: (element: Element) => Promise<void> }) => {
+  await user.click(await screen.findByRole('button', { name: 'Menü öffnen' }));
+};
 
 describe('navigation', () => {
   it('opens a page from the sidebar', async () => {
-    const { user, router } = renderRoute('/', { preloadedState: signedInState({ navigation: { sidebar: { open: true } } }) });
+    const { user, router } = renderRoute('/', { preloadedState: signedInState() });
+    await openMenu(user);
 
     await user.click(within(sidebar()).getByRole('link', { name: 'Netzwerk' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/network/'));
-    expect(await screen.findByRole('heading', { name: 'Übersicht (WIFI)' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'WLAN' })).toBeInTheDocument();
   });
 
   it('reveals the admin pages in advanced mode', async () => {
-    const { user } = renderRoute('/', { preloadedState: signedInState({ navigation: { sidebar: { open: true } } }) });
+    const { user } = renderRoute('/', { preloadedState: signedInState() });
+    await openMenu(user);
 
     expect(within(sidebar()).queryByRole('link', { name: 'Protokolle' })).not.toBeInTheDocument();
 
-    await user.click(within(sidebar()).getByText('Erweitert'));
+    await user.click(within(sidebar()).getByRole('switch', { name: 'Erweiterter Modus' }));
 
     expect(within(sidebar()).getByRole('link', { name: 'Protokolle' })).toBeInTheDocument();
     expect(within(sidebar()).getByText('Verwaltung')).toBeInTheDocument();
@@ -31,17 +37,35 @@ describe('navigation', () => {
   it('toggles the sidebar from the top bar', async () => {
     const { user, store } = renderRoute('/', { preloadedState: signedInState() });
 
-    await user.click(await screen.findByRole('button', { name: 'toggle sidebar' }));
-    expect(store.getState().navigation.sidebar.open).toBe(true);
+    const toggle = await screen.findByRole('button', { name: 'Menü öffnen' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
 
-    await user.click(screen.getByRole('button', { name: 'toggle sidebar' }));
+    await user.click(toggle);
+    expect(store.getState().navigation.sidebar.open).toBe(true);
+    expect(toggle).toHaveAccessibleName('Menü schließen');
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+
+    await user.keyboard('{Escape}');
     expect(store.getState().navigation.sidebar.open).toBe(false);
+  });
+
+  it('closes the menu after picking a page and names the page in the title', async () => {
+    const { user, store } = renderRoute('/', { preloadedState: signedInState() });
+    await openMenu(user);
+
+    await user.click(within(sidebar()).getByRole('link', { name: 'Diashow' }));
+
+    await waitFor(() => expect(store.getState().navigation.sidebar.open).toBe(false));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Diashow' })).toBeInTheDocument();
+    expect(document.title).toBe('Diashow – ShareFrame');
+    // The closed phone menu stays mounted but hidden, so it is out of reach for role queries.
+    expect(document.querySelector('nav[aria-label="Hauptmenü"] [aria-current="page"]')).toHaveTextContent('Diashow');
   });
 
   it('shows a 404 for unknown pages', async () => {
     renderRoute('/nope', { preloadedState: signedInState() });
 
-    expect(await screen.findByText('Page not found')).toBeInTheDocument();
+    expect(await screen.findByText('Seite nicht gefunden')).toBeInTheDocument();
   });
 
   it('switches the color mode and remembers it', async () => {
@@ -57,7 +81,7 @@ describe('navigation', () => {
 describe('notifications', () => {
   const openNotifications = async (badge = '') => {
     const view = renderRoute('/', { preloadedState: signedInState() });
-    const button = await screen.findByRole('button', { name: 'Benachrichtigungen' });
+    const button = await screen.findByRole('button', { name: /^Benachrichtigungen/ });
     if (badge) await waitFor(() => expect(button).toHaveTextContent(badge));
     await view.user.click(button);
     return within(await screen.findByRole('menu'));
@@ -89,16 +113,16 @@ describe('notifications', () => {
 describe('network status banner', () => {
   it('stays hidden while the board is online', async () => {
     renderRoute('/', { preloadedState: signedInState() });
-    await screen.findByText('Bilderwiedergabe');
+    await screen.findByRole('heading', { level: 2, name: 'Diashow' });
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it.each([
-    [{ mode: 'connecting' as const, ssid: 'HomeNet' }, 'Verbinde…', 'Verbindung zu „HomeNet“ wird hergestellt.'],
-    [{ mode: 'connecting' as const, ssid: '' }, 'Verbinde…', 'Suche nach bekannten Netzwerken.'],
+    [{ mode: 'connecting' as const, ssid: 'HomeNet' }, 'Verbindet …', 'Verbindung zu „HomeNet“ wird hergestellt.'],
+    [{ mode: 'connecting' as const, ssid: '' }, 'Verbindet …', 'Suche nach bekannten Netzwerken.'],
     [{ mode: 'connected' as const, internet: false }, 'Kein Internet', 'Mit „HomeNet“ verbunden, aber keine Internetverbindung.'],
-    [{ mode: 'ap' as const, ap_ssid: 'sf-1', ap_password: 'pw123456' }, 'AP-Modus aktiv', /WLAN „sf-1“ · Passwort: pw123456 — unter Netzwerk/],
+    [{ mode: 'ap' as const, ap_ssid: 'sf-1', ap_password: 'pw123456' }, 'Hotspot aktiv', /WLAN „sf-1“ · Passwort: pw123456\. Füge unter „Netzwerk“/],
   ])('explains %o', async (mode, title, detail) => {
     server.use(...withConnectionMode(mode));
     renderRoute('/', { preloadedState: signedInState() });
@@ -130,7 +154,7 @@ describe('network status banner', () => {
   ])('keeps quiet for a short reconnect or an unknown link: %o', async (over) => {
     server.use(...withConnectionMode(over));
     renderRoute('/', { preloadedState: signedInState() });
-    await screen.findByText('Bilderwiedergabe');
+    await screen.findByRole('heading', { level: 2, name: 'Diashow' });
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });

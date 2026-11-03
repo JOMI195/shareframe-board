@@ -61,7 +61,7 @@ const SlideshowImageTile: React.FC<TileProps> = ({ image, index, count, isCurren
         <ImageListItem
             ref={setNodeRef}
             {...(sortable ? { ...attributes, ...listeners } : {})}
-            aria-label={`Bild von ${image.sender}, Position ${index + 1}`}
+            aria-label={`Foto von ${image.sender}, Position ${index + 1}`}
             onClick={sortable ? undefined : () => onOpen(image.id)}
             sx={{
                 cursor: sortable ? 'grab' : 'pointer',
@@ -78,7 +78,7 @@ const SlideshowImageTile: React.FC<TileProps> = ({ image, index, count, isCurren
         >
             <AuthenticatedImage
                 url={getImageFileUrl(image.id)}
-                alt={`Bild von ${image.sender}`}
+                alt={`Foto von ${image.sender}`}
                 style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }}
             />
             <Stack direction="row" spacing={1} sx={{ position: 'absolute', top: 8, left: 8, right: 8, justifyContent: 'space-between' }}>
@@ -101,7 +101,7 @@ const SlideshowImageTile: React.FC<TileProps> = ({ image, index, count, isCurren
                         <IconButton
                             size="small"
                             sx={{ color: 'common.white' }}
-                            aria-label={`Bild von ${image.sender} nach vorne verschieben`}
+                            aria-label={`Foto von ${image.sender} nach vorne verschieben`}
                             disabled={index === 0}
                             onPointerDown={(e) => e.stopPropagation()}
                             onKeyDown={(e) => e.stopPropagation()}
@@ -112,7 +112,7 @@ const SlideshowImageTile: React.FC<TileProps> = ({ image, index, count, isCurren
                         <IconButton
                             size="small"
                             sx={{ color: 'common.white' }}
-                            aria-label={`Bild von ${image.sender} nach hinten verschieben`}
+                            aria-label={`Foto von ${image.sender} nach hinten verschieben`}
                             disabled={index === count - 1}
                             onPointerDown={(e) => e.stopPropagation()}
                             onKeyDown={(e) => e.stopPropagation()}

@@ -65,7 +65,7 @@ const Network = () => {
             }}>
                 {mode === 'ap' && <HotspotCard />}
                 <ShareframeInfoCard
-                    title="Übersicht (WIFI)"
+                    title="WLAN"
                     sections={[
                         {
                             label: "Aktuelles Netzwerk",
@@ -94,7 +94,7 @@ const Network = () => {
                                         ) : (
                                             savedNetworks.length === 0 ? (
                                                 <Typography variant="body2" sx={{ textAlign: 'left' }}>
-                                                    Keine gespeicherten Netzwerke gefunden (Voreingestellte Netzwerke können nicht verändert werden).
+                                                    Noch keine WLANs gespeichert. Voreingestellte Netzwerke lassen sich hier nicht ändern.
                                                 </Typography>
                                             ) : (
                                                 <List sx={{ width: '100%' }}>
@@ -102,7 +102,7 @@ const Network = () => {
                                                         <ListItem
                                                             key={network}
                                                             sx={{
-                                                                pr: 16,
+                                                                pr: 7,
                                                                 '& .MuiListItemText-root': {
                                                                     overflow: 'hidden',
                                                                     textOverflow: 'ellipsis'
@@ -111,7 +111,8 @@ const Network = () => {
                                                             secondaryAction={
                                                                 <IconButton
                                                                     edge="end"
-                                                                    aria-label="delete"
+                                                                    aria-label={`„${network}“ entfernen`}
+                                                                    sx={{ width: 44, height: 44 }}
                                                                     onClick={() => initiateForgetNetwork(network)}
                                                                     disabled={isButtonsDisabled}
                                                                 >
@@ -148,14 +149,14 @@ const Network = () => {
                                 onClick={handleAddNetworkDialogOpen}
                                 disabled={isButtonsDisabled}
                             >
-                                Netzwerk hinzufügen
+                                WLAN hinzufügen
                             </Button>
                         </>
                     }
                 />
 
                 <ShareframeInfoCard
-                    title="Access Point"
+                    title="Hotspot"
                     minHeight="0px"
                     sections={[
                         {
@@ -182,7 +183,7 @@ const Network = () => {
                                             {ap_password && (
                                                 <IconButton
                                                     size="small"
-                                                    aria-label="AP-Passwort anzeigen"
+                                                    aria-label="Hotspot-Passwort anzeigen"
                                                     onClick={() => setShowApPassword((s) => !s)}
                                                     sx={{ ml: 0.5 }}
                                                 >
@@ -205,7 +206,7 @@ const Network = () => {
                             onClick={() => dispatch(openNetworkChangeApPasswordDialog())}
                             disabled={isButtonsDisabled}
                         >
-                            AP-Passwort ändern
+                            Hotspot-Passwort ändern
                         </Button>
                     }
                 />

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { IconButton, InputAdornment, TextField, Typography } from '@mui/material';
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
-import ShareframeDialog from '@/common/components/shareframeDialog';
+import FormDialog from '@/common/components/formDialog';
 import { usePiConnection } from '@/context/piConnection/piConnectionContextValue';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { closeGeneralChangePasswordDialog, getDialogs } from '@/store/dialogs/dialogs.Slice';
@@ -29,7 +29,7 @@ const ChangePasswordDialog: React.FC = () => {
         && newPassword.length >= MIN_PASSWORD_LENGTH
         && newPassword.length <= MAX_PASSWORD_LENGTH
         && newPassword === confirmPassword
-        && !submitting && isConnected;
+        && isConnected;
 
     const resetFields = () => {
         setCurrentPassword('');
@@ -39,6 +39,7 @@ const ChangePasswordDialog: React.FC = () => {
     };
 
     const handleClose = (): void => {
+        if (submitting) return;
         dispatch(closeGeneralChangePasswordDialog());
         resetFields();
     };
@@ -50,7 +51,7 @@ const ChangePasswordDialog: React.FC = () => {
             dispatch(closeGeneralChangePasswordDialog());
             resetFields();
         } catch {
-            // Error handling is done in the thunk
+            // The thunk reports the failure; the input stays for another try.
         } finally {
             setSubmitting(false);
         }
@@ -59,7 +60,7 @@ const ChangePasswordDialog: React.FC = () => {
     const visibilityAdornment = (
         <InputAdornment position="end">
             <IconButton
-                aria-label="Passwörter anzeigen"
+                aria-label={showPasswords ? "Passwörter verbergen" : "Passwörter anzeigen"}
                 onClick={() => setShowPasswords((s) => !s)}
                 onMouseDown={(e) => e.preventDefault()}
                 edge="end"
@@ -70,41 +71,35 @@ const ChangePasswordDialog: React.FC = () => {
     );
 
     return (
-        <ShareframeDialog
+        <FormDialog
             open={open}
             title="Geräte-Passwort ändern"
+            submitLabel="Passwort ändern"
+            onSubmit={handleSubmit}
             onClose={handleClose}
-            onConfirm={handleSubmit}
-            confirmDisabled={!canSubmit}
-            confirmText="Ändern"
-            cancelText="Abbrechen"
-            fullWidth={true}
-            showActions={true}
+            submitDisabled={!canSubmit}
+            loading={submitting}
         >
-            <Typography variant="body2" gutterBottom sx={{
-                color: "text.secondary"
-            }}>
-                Mit diesem Passwort kannst du dich auch ohne Internetverbindung am Dashboard anmelden.
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                Mit diesem Passwort meldest du dich auch ohne Internet in den Einstellungen an.
             </Typography>
             <TextField
                 autoFocus
                 margin="dense"
                 label="Aktuelles Passwort"
                 type={showPasswords ? "text" : "password"}
+                autoComplete="current-password"
                 fullWidth
-                variant="outlined"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                slotProps={{
-                    input: { endAdornment: visibilityAdornment }
-                }}
+                slotProps={{ input: { endAdornment: visibilityAdornment } }}
             />
             <TextField
                 margin="dense"
                 label="Neues Passwort"
                 type={showPasswords ? "text" : "password"}
+                autoComplete="new-password"
                 fullWidth
-                variant="outlined"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 error={newPasswordTooShort || newPasswordTooLong}
@@ -114,14 +109,14 @@ const ChangePasswordDialog: React.FC = () => {
                 margin="dense"
                 label="Neues Passwort bestätigen"
                 type={showPasswords ? "text" : "password"}
+                autoComplete="new-password"
                 fullWidth
-                variant="outlined"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 error={passwordsMismatch}
                 helperText={passwordsMismatch ? "Passwörter stimmen nicht überein" : " "}
             />
-        </ShareframeDialog>
+        </FormDialog>
     );
 };
 

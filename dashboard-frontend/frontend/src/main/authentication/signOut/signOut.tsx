@@ -4,20 +4,27 @@ import Typography from "@mui/material/Typography";
 import Grid from "@mui/material/Grid";
 import { getAuthenticationUrl, getSignInUrl } from "@/assets/endpoints/app/authEndpoints";
 import { logoutThunk } from "@/store/auth/auth.Slice";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
+import { useState } from "react";
+import { getHomeUrl } from "@/assets/endpoints/app/appEndpoints";
 import { useAppDispatch } from "@/store";
 
 const SignOut = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [busy, setBusy] = useState(false);
 
   const handleSignOut = async () => {
+    setBusy(true);
     await dispatch(logoutThunk());
     navigate(getAuthenticationUrl() + getSignInUrl(), { replace: true, state: { signedOut: true } });
   };
 
+  // Opened directly there is no page to go back to.
   const handleCancel = () => {
-    navigate(-1);
+    if (location.key === 'default') navigate(getHomeUrl(), { replace: true });
+    else navigate(-1);
   };
 
   return (
@@ -40,7 +47,7 @@ const SignOut = () => {
             <Typography variant="body1" sx={{
               textAlign: "center"
             }}>
-              {"Bist du dir wirklich sicher, dass du dich abmelden willst?"}
+              {"Möchtest du dich abmelden?"}
             </Typography>
           </Grid>
           <Grid size={12}>
@@ -51,6 +58,7 @@ const SignOut = () => {
               variant="contained"
               color="primary"
               onClick={handleSignOut}
+              loading={busy}
             >
               {"Abmelden"}
             </Button>
@@ -62,6 +70,7 @@ const SignOut = () => {
               variant="outlined"
               color="secondary"
               onClick={handleCancel}
+              disabled={busy}
             >
               {"Abbrechen"}
             </Button>

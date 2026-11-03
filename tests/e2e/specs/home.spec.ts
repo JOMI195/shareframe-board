@@ -13,7 +13,7 @@ test('the status card shows what the board reports', async ({ page, server }) =>
   await server.sendPicture('top-black.jpg');
   await signIn(page);
   await expect(page.getByText('Wird ausgeführt')).toBeVisible();
-  await expect(page.getByText('2 Bilder')).toBeVisible();
+  await expect(page.getByText('2 Fotos')).toBeVisible();
   await expect(page.getByText(/^1[45]:\d\d$/)).toBeVisible();
 });
 
@@ -24,8 +24,8 @@ test('the now-showing card shows the picture on the panel', async ({ page, serve
   const file = page.waitForResponse((res) => res.url().includes(`/api/frame/images/file?id=${id}`) && res.ok());
   await signIn(page);
   const preview = card(page, 'Aktuell angezeigt');
-  await expect(preview.getByText('Bild von marta')).toBeVisible();
-  await expect(preview.getByRole('img', { name: 'Aktuell angezeigtes Bild' })).toBeVisible();
+  await expect(preview.getByText('Foto von marta')).toBeVisible();
+  await expect(preview.getByRole('img', { name: 'Aktuell angezeigtes Foto' })).toBeVisible();
   expect((await file).headers()['content-type']).toBe('image/jpeg');
 });
 
@@ -35,10 +35,10 @@ test('skipping changes the panel', async ({ page, server }, testInfo) => {
   const b = await server.sendPicture('top-black.jpg');
 
   await signIn(page);
-  await expect(page.getByText('2 Bilder')).toBeVisible();
-  await page.getByRole('button', { name: 'Bild überspringen' }).click();
+  await expect(page.getByText('2 Fotos')).toBeVisible();
+  await page.getByRole('button', { name: 'Foto überspringen' }).click();
 
-  await expect(page.getByText('Aktuelles Bild erfolgreich übersprungen')).toBeVisible();
+  await expect(page.getByText('Foto übersprungen')).toBeVisible();
   await waitForPanel(showsImage(b), `skip to ${b}`);
   await attachPanel(testInfo, 'after-skip');
 });
@@ -47,14 +47,14 @@ test('stopping clears the panel and starting shows pictures again', async ({ pag
   await signIn(page);
   await page.getByRole('button', { name: 'Stoppen' }).click();
 
-  await expect(page.getByText('Bilderwiedergabe erfolgreich gestoppt')).toBeVisible();
+  await expect(page.getByText('Diashow gestoppt')).toBeVisible();
   await waitForPanel(isCleared, 'panel cleared');
   expect((await board.slideshowStatus()).active).toBe(false);
   await expect(page.getByText('Gestoppt', { exact: true })).toBeVisible();
 
   await skipActionLock(page);
   await page.getByRole('button', { name: 'Starten' }).click();
-  await expect(page.getByText('Bilderwiedergabe erfolgreich gestartet')).toBeVisible();
+  await expect(page.getByText('Diashow gestartet')).toBeVisible();
   await waitForPanel(showsDefault, 'default image after start');
 });
 
@@ -63,7 +63,7 @@ test('clearing the screen of a stopped slideshow blanks the panel', async ({ pag
   await signIn(page);
   await page.getByRole('button', { name: 'Bildschirm leeren' }).click();
 
-  await expect(page.getByText('Bildschirm erfolgreich geleert')).toBeVisible();
+  await expect(page.getByText('Bildschirm geleert')).toBeVisible();
   await waitForPanel(isCleared, 'panel cleared');
 });
 
@@ -81,7 +81,7 @@ test('the interval reaches the display and survives a restart', async ({ page, b
   await signIn(page);
   await page.getByLabel('Intervall', { exact: true }).fill('30');
   await page.getByRole('button', { name: 'Intervall speichern' }).click();
-  await expect(page.getByText('Intervall der Bilderwiedergabe erfolgreich auf 30 Minuten aktualisiert')).toBeVisible();
+  await expect(page.getByText('Intervall auf 30 Minuten gesetzt')).toBeVisible();
 
   await expect.poll(async () => (await board.slideshowStatus()).interval_seconds).toBe(1800);
   await board.restartService('display');
@@ -92,9 +92,9 @@ test('night mode reaches the display and survives a restart', async ({ page, boa
   await signIn(page);
   await page.getByLabel('Nachtmodus aktivieren').check();
   await page.getByRole('combobox', { name: 'Verhalten in der Nacht' }).click();
-  await page.getByRole('option', { name: 'Aktuelles Bild behalten' }).click();
+  await page.getByRole('option', { name: 'Aktuelles Foto behalten' }).click();
   await page.getByRole('button', { name: 'Nachtmodus speichern' }).click();
-  await expect(page.getByText(/Nachtmodus aktiv von/)).toBeVisible();
+  await expect(page.getByText(/^Nachtmodus von .* gespeichert$/)).toBeVisible();
 
   await expect.poll(async () => (await board.slideshowStatus()).night_mode.enabled).toBe(true);
   await board.restartService('display');

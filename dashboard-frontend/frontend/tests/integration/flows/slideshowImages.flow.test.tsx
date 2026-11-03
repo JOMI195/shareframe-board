@@ -3,18 +3,20 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import * as api from '@/assets/endpoints/api/frame';
 import { renderRoute } from '@tests/helpers/renderRoute';
 import { signedInState } from '@tests/helpers/preloadedState';
+import { desktopViewport, floatingButton } from '@tests/helpers/viewport';
 import { makeSlideshowImages } from '@tests/fixtures';
 import { failsWith, server, setBoard, spyOnRequests } from '@tests/mocks';
 
 const openSlideshowImages = async () => {
   const view = renderRoute('/slideshow/', { preloadedState: signedInState() });
-  await screen.findByRole('listitem', { name: /Bild von alice/ });
+  // The page is a lazy route chunk, which takes a moment to load on the first test.
+  await screen.findByRole('listitem', { name: /Foto von alice/ }, { timeout: 5000 });
   return view;
 };
 
 // While sorting, dnd-kit turns the tiles into buttons, so they are found by label.
-const senders = () => screen.getAllByLabelText(/^Bild von \w+, Position/)
-  .map((tile) => tile.getAttribute('aria-label')!.match(/Bild von (\w+)/)![1]);
+const senders = () => screen.getAllByLabelText(/^Foto von \w+, Position/)
+  .map((tile) => tile.getAttribute('aria-label')!.match(/Foto von (\w+)/)![1]);
 
 describe('slideshow images', () => {
   it('lists the pictures in play order and marks the one on the panel', async () => {
@@ -22,10 +24,10 @@ describe('slideshow images', () => {
     await openSlideshowImages();
 
     expect(senders()).toEqual(['alice', 'bob', 'carol']);
-    const shown = screen.getByRole('listitem', { name: /Bild von bob/ });
+    const shown = screen.getByRole('listitem', { name: /Foto von bob/ });
     expect(within(shown).getByText('Wird angezeigt')).toBeInTheDocument();
-    expect(within(screen.getByRole('listitem', { name: /Bild von alice/ })).queryByText('Wird angezeigt')).not.toBeInTheDocument();
-    expect(screen.getByText('3 Bilder auf dem Bilderrahmen')).toBeInTheDocument();
+    expect(within(screen.getByRole('listitem', { name: /Foto von alice/ })).queryByText('Wird angezeigt')).not.toBeInTheDocument();
+    expect(screen.getByText('3 Fotos auf dem Bilderrahmen')).toBeInTheDocument();
   });
 
   it('switching to newest first applies the order the board reports back', async () => {
@@ -33,7 +35,7 @@ describe('slideshow images', () => {
 
     await user.click(screen.getByRole('button', { name: 'Neueste zuerst' }));
 
-    expect(await screen.findByText('Neueste zuerst ab dem nächsten Bild')).toBeInTheDocument();
+    expect(await screen.findByText('Neueste zuerst ab dem nächsten Foto')).toBeInTheDocument();
     await waitFor(() => expect(senders()).toEqual(['carol', 'bob', 'alice']));
     expect(screen.getByRole('button', { name: 'Neueste zuerst' })).toHaveAttribute('aria-pressed', 'true');
   });
@@ -44,8 +46,8 @@ describe('slideshow images', () => {
     const { user } = await openSlideshowImages();
 
     await user.click(screen.getByRole('button', { name: 'Eigene Reihenfolge' }));
-    await user.click(screen.getByRole('button', { name: 'Bild von carol nach vorne verschieben' }));
-    await user.click(screen.getByRole('button', { name: 'Bild von carol nach vorne verschieben' }));
+    await user.click(screen.getByRole('button', { name: 'Foto von carol nach vorne verschieben' }));
+    await user.click(screen.getByRole('button', { name: 'Foto von carol nach vorne verschieben' }));
     expect(senders()).toEqual(['carol', 'alice', 'bob']);
     await user.click(screen.getByRole('button', { name: 'Reihenfolge speichern' }));
 
@@ -54,13 +56,26 @@ describe('slideshow images', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Reihenfolge speichern' })).not.toBeInTheDocument());
   });
 
+  it('saves from the actions row on desktop', async () => {
+    desktopViewport();
+    const order = spyOnRequests('post', api.getSlideshowOrderUrl());
+    server.use(order.handler);
+    const { user } = await openSlideshowImages();
+
+    await user.click(screen.getByRole('button', { name: 'Eigene Reihenfolge' }));
+    expect(floatingButton()).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Reihenfolge speichern' }));
+
+    await waitFor(() => expect(order.calls).toHaveLength(1));
+  });
+
   it('discarding a draft restores the order and sends nothing', async () => {
     const order = spyOnRequests('post', api.getSlideshowOrderUrl());
     server.use(order.handler);
     const { user } = await openSlideshowImages();
 
     await user.click(screen.getByRole('button', { name: 'Eigene Reihenfolge' }));
-    await user.click(screen.getByRole('button', { name: 'Bild von alice nach hinten verschieben' }));
+    await user.click(screen.getByRole('button', { name: 'Foto von alice nach hinten verschieben' }));
     expect(senders()).toEqual(['bob', 'alice', 'carol']);
     await user.click(screen.getByRole('button', { name: 'Verwerfen' }));
 
@@ -74,10 +89,10 @@ describe('slideshow images', () => {
     const { user } = await openSlideshowImages();
 
     await user.click(screen.getByRole('button', { name: 'Eigene Reihenfolge' }));
-    await user.click(screen.getByRole('button', { name: 'Bild von alice nach hinten verschieben' }));
+    await user.click(screen.getByRole('button', { name: 'Foto von alice nach hinten verschieben' }));
     await user.click(screen.getByRole('button', { name: 'Reihenfolge speichern' }));
 
-    expect(await screen.findByText('custom_order must be a list of picture ids')).toBeInTheDocument();
+    expect(await screen.findByText('Reihenfolge konnte nicht gespeichert werden')).toBeInTheDocument();
     expect(senders()).toEqual(['bob', 'alice', 'carol']);
     expect(screen.getByRole('button', { name: 'Reihenfolge speichern' })).toBeInTheDocument();
   });
@@ -85,14 +100,29 @@ describe('slideshow images', () => {
   it('opens a picture with its details', async () => {
     const { user } = await openSlideshowImages();
 
-    await user.click(screen.getByRole('listitem', { name: /Bild von bob/ }));
+    await user.click(screen.getByRole('listitem', { name: /Foto von bob/ }));
 
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText('800 × 480 px')).toBeInTheDocument();
     expect(within(dialog).getByText('345.68 KB')).toBeInTheDocument();
     expect(within(dialog).getByText('Position 2 von 3')).toBeInTheDocument();
     expect(within(dialog).getByText('09.10.2025, 09:03:20')).toBeInTheDocument();
-    expect(await within(dialog).findByRole('img', { name: 'Bild von bob' })).toHaveAttribute('src', expect.stringMatching(/^blob:/));
+    expect(await within(dialog).findByRole('img', { name: 'Foto von bob' })).toHaveAttribute('src', expect.stringMatching(/^blob:/));
+  });
+
+  it('shows the preview actions inline on desktop', async () => {
+    desktopViewport();
+    const show = spyOnRequests('post', api.getShowSlideshowImageUrl());
+    server.use(show.handler);
+    const { user } = await openSlideshowImages();
+
+    await user.click(screen.getByRole('listitem', { name: /Foto von carol/ }));
+    const button = within(await screen.findByRole('dialog')).getByRole('button', { name: 'Jetzt anzeigen' });
+    expect(floatingButton()).toBeNull();
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
+
+    await waitFor(() => expect(show.calls).toHaveLength(1));
   });
 
   it('puts a picture on the panel from its preview', async () => {
@@ -100,21 +130,21 @@ describe('slideshow images', () => {
     server.use(show.handler);
     const { user } = await openSlideshowImages();
 
-    await user.click(screen.getByRole('listitem', { name: /Bild von carol/ }));
+    await user.click(screen.getByRole('listitem', { name: /Foto von carol/ }));
     const button = await within(await screen.findByRole('dialog')).findByRole('button', { name: 'Jetzt anzeigen' });
     await waitFor(() => expect(button).toBeEnabled());
     await user.click(button);
 
     await waitFor(() => expect(show.calls).toHaveLength(1));
     expect(await show.calls[0].json()).toEqual({ id: 13 });
-    expect(await screen.findByText('Bild wird auf dem Bilderrahmen angezeigt')).toBeInTheDocument();
+    expect(await screen.findByText('Foto wird auf dem Bilderrahmen angezeigt')).toBeInTheDocument();
   });
 
   it('cannot show the picture that is already on the panel', async () => {
     setBoard({ slideshowImages: makeSlideshowImages({ current_image_id: 12 }) });
     const { user } = await openSlideshowImages();
 
-    await user.click(screen.getByRole('listitem', { name: /Bild von bob/ }));
+    await user.click(screen.getByRole('listitem', { name: /Foto von bob/ }));
 
     expect(await within(await screen.findByRole('dialog')).findByRole('button', { name: 'Jetzt anzeigen' })).toBeDisabled();
   });
@@ -123,7 +153,7 @@ describe('slideshow images', () => {
     setBoard({ slideshowActive: false });
     const { user } = await openSlideshowImages();
 
-    await user.click(screen.getByRole('listitem', { name: /Bild von carol/ }));
+    await user.click(screen.getByRole('listitem', { name: /Foto von carol/ }));
 
     expect(await within(await screen.findByRole('dialog')).findByRole('button', { name: 'Jetzt anzeigen' })).toBeDisabled();
   });
@@ -132,19 +162,19 @@ describe('slideshow images', () => {
     server.use(...failsWith('post', api.getShowSlideshowImageUrl(), 409, 'Display is refreshing'));
     const { user } = await openSlideshowImages();
 
-    await user.click(screen.getByRole('listitem', { name: /Bild von carol/ }));
+    await user.click(screen.getByRole('listitem', { name: /Foto von carol/ }));
     const button = await within(await screen.findByRole('dialog')).findByRole('button', { name: 'Jetzt anzeigen' });
     await waitFor(() => expect(button).toBeEnabled());
     await user.click(button);
 
-    expect(await screen.findByText('Display wird gerade aktualisiert, bitte gleich erneut versuchen')).toBeInTheDocument();
+    expect(await screen.findByText('Das Display wird gerade aktualisiert. Versuche es gleich noch einmal.')).toBeInTheDocument();
   });
 
   it('downloads a picture from its preview', async () => {
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
     const { user } = await openSlideshowImages();
 
-    await user.click(screen.getByRole('listitem', { name: /Bild von carol/ }));
+    await user.click(screen.getByRole('listitem', { name: /Foto von carol/ }));
     await within(await screen.findByRole('dialog')).findByRole('button', { name: 'Jetzt anzeigen' });
     await user.hover(screen.getByRole('button', { name: 'Aktionen' }));
     const label = await screen.findByText('Foto herunterladen');
@@ -164,7 +194,7 @@ describe('slideshow images', () => {
     const { user } = await openSlideshowImages();
 
     await user.click(screen.getByRole('button', { name: 'Reihenfolge bearbeiten' }));
-    await user.click(screen.getByRole('button', { name: 'Bild von bob nach vorne verschieben' }));
+    await user.click(screen.getByRole('button', { name: 'Foto von bob nach vorne verschieben' }));
     await user.click(screen.getByRole('button', { name: 'Reihenfolge speichern' }));
 
     await waitFor(() => expect(order.calls).toHaveLength(1));
@@ -173,16 +203,21 @@ describe('slideshow images', () => {
 
   it('explains a failed load instead of claiming the frame is empty', async () => {
     server.use(...failsWith('get', api.getSlideshowImagesUrl(), 500, 'Service unavailable'));
-    renderRoute('/slideshow/', { preloadedState: signedInState() });
+    const { user } = renderRoute('/slideshow/', { preloadedState: signedInState() });
 
-    expect(await screen.findByText('Die Bilder konnten nicht geladen werden.')).toBeInTheDocument();
-    expect(screen.queryByText(/Keine Bilder auf dem Bilderrahmen/)).not.toBeInTheDocument();
+    expect(await screen.findByText('Fotos konnten nicht geladen werden')).toBeInTheDocument();
+    expect(screen.queryByText(/Noch keine Fotos/)).not.toBeInTheDocument();
+
+    server.resetHandlers();
+    await user.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+    expect(await screen.findByText(/Noch keine Fotos|auf dem Bilderrahmen$/)).toBeInTheDocument();
+    expect(screen.queryByText('Fotos konnten nicht geladen werden')).not.toBeInTheDocument();
   });
 
   it('says so when the frame holds no pictures', async () => {
     setBoard({ slideshowImages: makeSlideshowImages({ images: [] }) });
     renderRoute('/slideshow/', { preloadedState: signedInState() });
 
-    expect(await screen.findByText('Keine Bilder auf dem Bilderrahmen. Es werden die Standardbilder angezeigt.')).toBeInTheDocument();
+    expect(await screen.findByText('Noch keine Fotos auf dem Bilderrahmen. Bis dahin zeigt er Beispielbilder.')).toBeInTheDocument();
   });
 });

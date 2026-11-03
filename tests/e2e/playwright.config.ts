@@ -1,4 +1,9 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
+
+const shared = {
+  locale: 'de-DE',
+  timezoneId: 'Europe/Berlin',
+};
 
 export default defineConfig({
   testDir: './specs',
@@ -11,10 +16,21 @@ export default defineConfig({
   outputDir: 'test-results',
   use: {
     baseURL: process.env.E2E_BASE_URL ?? 'http://frontend',
-    viewport: { width: 1600, height: 900 },
-    locale: 'de-DE',
-    timezoneId: 'Europe/Berlin',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
+  projects: [
+    {
+      name: 'desktop',
+      use: { ...shared, viewport: { width: 1600, height: 900 } },
+      testIgnore: '**/*.mobile.spec.ts',
+    },
+    // Owners mostly set the frame up from a phone, often on its hotspot.
+    {
+      name: 'mobile',
+      use: { ...devices['Pixel 7'], ...shared },
+      testMatch: '**/*.mobile.spec.ts',
+      dependencies: ['desktop'],
+    },
+  ],
 });

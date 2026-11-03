@@ -1,6 +1,5 @@
 import { useEffect, useEffectEvent } from "react";
-import { Paper, Typography, Box, IconButton } from "@mui/material";
-import CloseIcon from '@mui/icons-material/Close';
+import { Alert, Slide } from "@mui/material";
 import { AlertSnackbarItem } from "@/store/snackbars/snackbars.Slice";
 
 interface IAlertSnackbarProps {
@@ -9,71 +8,29 @@ interface IAlertSnackbarProps {
 }
 
 const AlertSnackbar = ({ snackbar, closeSnackbar }: IAlertSnackbarProps) => {
-    const getBackgroundColor = (severity: string) => {
-        switch (severity) {
-            case "error":
-                return "red";
-            case "warning":
-                return "orange";
-            case "info":
-                return "blue";
-            case "success":
-                return "green";
-            default:
-                return "grey";
-        }
-    };
-
-    const autoHideDuration = snackbar.autoHideDuration || 10000;
+    // Errors stay until dismissed, so there is time to read them.
+    const autoHideDuration = snackbar.autoHideDuration ?? (snackbar.severity === 'error' ? null : 10000);
     const onAutoHide = useEffectEvent(closeSnackbar);
 
     useEffect(() => {
+        if (autoHideDuration === null) return;
         const timer = setTimeout(() => onAutoHide(), autoHideDuration);
-
-        return () => {
-            clearTimeout(timer);
-        };
+        return () => clearTimeout(timer);
     }, [autoHideDuration]);
 
-
     return (
-        <Box
-            sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                width: '100%',
-                position: 'relative', // Allow stacking based on parent position
-            }}
-        >
-            <Paper
-                elevation={5}
-                sx={{
-                    py: 1.5,
-                    px: 3,
-                    display: 'flex',
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    flexDirection: "row",
-                    backgroundColor: getBackgroundColor(snackbar.severity), // Color based on severity
-                    color: 'white',
-                    minWidth: '300px', // Ensuring a minimum width
-                    maxWidth: '500px', // Optional: limit the max width
-                }}
+        <Slide direction="up" in appear>
+            <Alert
+                elevation={6}
+                variant="standard"
+                severity={snackbar.severity}
+                onClose={closeSnackbar}
+                slotProps={{ closeButton: { 'aria-label': 'Schließen', title: 'Schließen' } }}
+                sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 300 }, maxWidth: { sm: 560 } }}
             >
-                <Typography variant="subtitle2" sx={{ ml: 2 }}>
-                    {snackbar.message}
-                </Typography>
-                <IconButton
-                    size="small"
-                    color="inherit"
-                    onClick={closeSnackbar}
-                    aria-label="close"
-                    sx={{ ml: 2 }}
-                >
-                    <CloseIcon />
-                </IconButton>
-            </Paper>
-        </Box>
+                {snackbar.message}
+            </Alert>
+        </Slide>
     );
 };
 

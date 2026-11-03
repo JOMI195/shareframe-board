@@ -30,7 +30,7 @@ const Customization: React.FC = () => {
                                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                             <PersonOutlined sx={{ mr: 1 }} />
                                             <Typography variant="body2">
-                                                Zeigt oben rechts auf dem Bild an, wer es geschickt hat. Wird beim nächsten Bildwechsel übernommen.
+                                                Zeigt oben rechts auf dem Foto, wer es geschickt hat. Gilt ab dem nächsten Fotowechsel.
                                             </Typography>
                                         </Box>
                                         <FormControlLabel

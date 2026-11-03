@@ -26,11 +26,11 @@ const NetworkStatusBanner = () => {
     if (mode === 'ap') {
         bgcolor = 'error.main';
         Icon = WifiTetheringIcon;
-        title = 'AP-Modus aktiv';
-        detail = `WLAN „${ap_ssid || 'shareframe-board'}“${ap_password ? ` · Passwort: ${ap_password}` : ''} — unter Netzwerk ein WLAN hinzufügen und „Jetzt verbinden“ wählen.`;
+        title = 'Hotspot aktiv';
+        detail = `WLAN „${ap_ssid || 'shareframe-board'}“${ap_password ? ` · Passwort: ${ap_password}` : ''}. Füge unter „Netzwerk“ ein WLAN hinzu und wähle „Jetzt verbinden“.`;
     } else if (mode === 'connecting') {
         bgcolor = 'warning.main';
-        title = 'Verbinde…';
+        title = 'Verbindet …';
         detail = ssid ? `Verbindung zu „${ssid}“ wird hergestellt.` : 'Suche nach bekannten Netzwerken.';
     } else if (internet) {
         bgcolor = 'warning.main';

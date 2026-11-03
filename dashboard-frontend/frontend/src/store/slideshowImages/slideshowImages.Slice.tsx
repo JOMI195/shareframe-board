@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { boardErrorMessage } from '@/common/utils/errors/boardErrors';
 import uuid from 'react-uuid';
 import { RootState } from '@/store';
 import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '@/store/snackbars/snackbars.Slice';
@@ -58,7 +59,7 @@ export const fetchSlideshowImages = createAsyncThunk(
             const response = await fetchWithTimeout(getSlideshowImagesUrl());
             const payload: IServerResponse & { data: SlideshowImagesPayload } = await response.json();
             if (!payload.success || !payload.data) {
-                return rejectWithValue(payload.message || 'Abrufen der Bilder fehlgeschlagen');
+                return rejectWithValue(payload.message || 'Fotos konnten nicht geladen werden');
             }
             return {
                 mode: payload.data.mode,
@@ -85,7 +86,7 @@ export const updatePlaybackOrder = createAsyncThunk(
     async ({ mode, customOrder }: { mode: PlaybackMode; customOrder?: number[] }, { dispatch, rejectWithValue }) => {
         const loadingId = uuid();
         try {
-            dispatch(addLoadingSnackbar(loadingId, 'Reihenfolge wird geändert'));
+            dispatch(addLoadingSnackbar(loadingId, 'Reihenfolge wird gespeichert'));
             const response = await fetchWithTimeout(getSlideshowOrderUrl(), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -93,14 +94,14 @@ export const updatePlaybackOrder = createAsyncThunk(
             });
             const payload: IServerResponse = await response.json();
             if (payload.success) {
-                dispatch(addAlertSnackbar(uuid(), `${MODE_LABELS[mode]} ab dem nächsten Bild`, 'success'));
+                dispatch(addAlertSnackbar(uuid(), `${MODE_LABELS[mode]} ab dem nächsten Foto`, 'success'));
                 dispatch(fetchSlideshowImages());
                 return mode;
             }
-            dispatch(addAlertSnackbar(uuid(), payload.message || 'Ändern der Reihenfolge fehlgeschlagen', 'error'));
+            dispatch(addAlertSnackbar(uuid(), boardErrorMessage('Reihenfolge konnte nicht gespeichert werden', response, payload.message), 'error'));
             return rejectWithValue(payload.message || 'update failed');
         } catch (error) {
-            dispatch(addAlertSnackbar(uuid(), 'Ändern der Reihenfolge fehlgeschlagen', 'error'));
+            dispatch(addAlertSnackbar(uuid(), 'Reihenfolge konnte nicht gespeichert werden', 'error'));
             return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
         } finally {
             dispatch(removeLoadingSnackbar(loadingId));

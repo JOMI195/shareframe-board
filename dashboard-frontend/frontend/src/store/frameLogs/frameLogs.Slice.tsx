@@ -32,7 +32,7 @@ export const fetchFrameLogs = createAsyncThunk(
         try {
             dispatch(addLoadingSnackbar(
                 loadingBarId,
-                'Lade Protokolle'
+                'Protokolle werden geladen'
             ));
 
             const state = getState() as RootState;
@@ -87,7 +87,7 @@ export const fetchFrameLogs = createAsyncThunk(
             } else {
                 dispatch(addAlertSnackbar(
                     uuid(),
-                    `Abrufen der Logs fehlgeschlagen`,
+                    'Protokolle konnten nicht geladen werden',
                     "error"
                 ));
                 return rejectWithValue(payload.message || 'Failed to fetch logs');
@@ -96,7 +96,7 @@ export const fetchFrameLogs = createAsyncThunk(
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             dispatch(addAlertSnackbar(
                 uuid(),
-                `Abrufen der Logs fehlgeschlagen`,
+                'Protokolle konnten nicht geladen werden',
                 "error"
             ));
             return rejectWithValue(errorMessage);

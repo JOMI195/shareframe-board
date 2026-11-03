@@ -102,9 +102,9 @@ const Updates = () => {
                                                 {update_status!.target_version ? ` (${update_status!.target_version})` : ''}
                                             </Typography>
                                             {update_status!.phase === 'downloading' && update_status!.progress >= 0 ? (
-                                                <LinearProgress variant="determinate" value={update_status!.progress} />
+                                                <LinearProgress aria-label="Update-Fortschritt" variant="determinate" value={update_status!.progress} />
                                             ) : (
-                                                <LinearProgress />
+                                                <LinearProgress aria-label="Update-Fortschritt" />
                                             )}
                                         </Box>
                                     )
@@ -135,7 +135,7 @@ const Updates = () => {
                                 }
                             },
                             {
-                                content: "Die neue Version läuft und wird nach erfolgreicher Prüfung automatisch übernommen."
+                                content: "Die neue Version läuft und wird nach der Prüfung automatisch übernommen."
                             }
                         ]}
                     />
@@ -286,7 +286,7 @@ const Updates = () => {
                                         }
                                     },
                                     {
-                                        content: "Bilderrahmen ist auf dem neusten Stand!"
+                                        content: "Der Bilderrahmen ist auf dem neuesten Stand."
                                     },
                                 ]}
                                 actions={

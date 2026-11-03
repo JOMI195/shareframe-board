@@ -1,5 +1,6 @@
 import { ServiceType, SERVICE_LABELS } from "@/types";
-import { Box, Card, CardContent, CircularProgress, Divider, Typography } from "@mui/material";
+import { Box, Button, Card, CardContent, CircularProgress, Divider, Stack, Typography } from "@mui/material";
+import RefreshIcon from "@mui/icons-material/Refresh";
 
 export interface LogsContentProps {
     serviceType: ServiceType;
@@ -12,9 +13,10 @@ export interface LogsContentProps {
         log_count: number;
         logs: string[];
     } | null;
+    onRetry: () => void;
 }
 
-const LogsContent: React.FC<LogsContentProps> = ({ loading, error, logs }) => {
+const LogsContent: React.FC<LogsContentProps> = ({ loading, error, logs, onRetry }) => {
     if (loading) {
         return (
             <Box
@@ -28,7 +30,16 @@ const LogsContent: React.FC<LogsContentProps> = ({ loading, error, logs }) => {
         );
     }
 
-    if (!logs || error) {
+    if (error) {
+        return (
+            <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
+                <Typography sx={{ color: "text.secondary" }}>Protokolle konnten nicht geladen werden</Typography>
+                <Button variant="outlined" startIcon={<RefreshIcon />} onClick={onRetry}>Erneut versuchen</Button>
+            </Stack>
+        );
+    }
+
+    if (!logs) {
         return (
             <Typography sx={{
                 color: "text.secondary"
@@ -59,7 +70,7 @@ const LogsContent: React.FC<LogsContentProps> = ({ loading, error, logs }) => {
             </Box>
             <Divider sx={{ mb: 2 }} />
             <Card variant="outlined" sx={{ bgcolor: 'background.paper' }}>
-                <CardContent sx={{
+                <CardContent role="region" aria-label="Protokolleinträge" tabIndex={0} sx={{
                     p: 2,
                     maxHeight: '400px',
                     overflow: 'auto',

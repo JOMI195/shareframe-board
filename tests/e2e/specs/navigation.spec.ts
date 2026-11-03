@@ -3,7 +3,7 @@ import { expect, signIn, test, trackApiErrors } from '../support/fixtures';
 // Every page against the real board: it renders and none of its API calls fail,
 // which catches a renamed route or field on either side.
 const pages: [string, string | RegExp][] = [
-  ['/', 'Bilderwiedergabe'],
+  ['/', 'Diashow'],
   ['/slideshow/', 'Wiedergabereihenfolge'],
   ['/customization/', 'Name des Absenders anzeigen'],
   ['/network/', 'Aktuelles Netzwerk'],
@@ -37,5 +37,5 @@ test('every page loads without a failing API call', async ({ page }) => {
 test('unknown pages show a 404', async ({ page }) => {
   await signIn(page);
   await page.goto('/does-not-exist');
-  await expect(page.getByText('Page not found')).toBeVisible();
+  await expect(page.getByText('Seite nicht gefunden')).toBeVisible();
 });

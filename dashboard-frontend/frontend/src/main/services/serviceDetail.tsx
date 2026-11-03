@@ -64,6 +64,7 @@ const ServiceDetail: React.FC<{ serviceId: ServiceType }> = ({ serviceId }) => {
                     <LogFilter onChange={setParams} onRefresh={loadLogs} loading={loading} defaultLines={500} />
                 </Box>
                 <LogsContent
+                    onRetry={loadLogs}
                     serviceType={serviceId}
                     loading={loading}
                     error={error}

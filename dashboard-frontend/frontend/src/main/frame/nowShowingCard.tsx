@@ -11,7 +11,7 @@ import { INowShowing } from '@/types';
 const describe = (shown: INowShowing | null): string => {
     if (!shown || shown.state === 'empty') return 'Noch nichts angezeigt';
     if (shown.state === 'cleared') return 'Display geleert';
-    if (shown.imageId !== null) return shown.sender ? `Bild von ${shown.sender}` : 'Bild aus der Diashow';
+    if (shown.imageId !== null) return shown.sender ? `Foto von ${shown.sender}` : 'Foto aus der Diashow';
     return 'Standardbild oder Systemanzeige';
 };
 
@@ -32,7 +32,7 @@ const NowShowingCard: React.FC<{ nowShowing: INowShowing | null }> = ({ nowShowi
                                     <Box sx={{ display: 'flex', justifyContent: 'center', lineHeight: 0 }}>
                                         <AuthenticatedImage
                                             url={getImageFileUrl(imageId)}
-                                            alt="Aktuell angezeigtes Bild"
+                                            alt="Aktuell angezeigtes Foto"
                                             style={{ maxWidth: '100%', maxHeight: 360, borderRadius: 8, display: 'block' }}
                                         />
                                     </Box>

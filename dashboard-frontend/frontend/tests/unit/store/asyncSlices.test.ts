@@ -116,7 +116,14 @@ describe('updates slice', () => {
     state = updates(state, fetchUpdateStatus.fulfilled(status, 'req'));
     state = updates(state, fetchUpdateHistory.fulfilled(history, 'req'));
 
-    expect(state).toEqual({ latest_release: release, update_status: status, history, loading: false });
+    expect(state).toEqual({ latest_release: release, update_status: status, history, historyFailed: false, loading: false });
+  });
+
+  it('flags a failed history load until the next try', () => {
+    const failed = updates(undefined, fetchUpdateHistory.rejected(null, 'req'));
+    expect(failed.historyFailed).toBe(true);
+
+    expect(updates(failed, fetchUpdateHistory.pending('req')).historyFailed).toBe(false);
   });
 
   it('stops loading when the release lookup fails', () => {

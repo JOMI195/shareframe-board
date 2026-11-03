@@ -48,9 +48,9 @@ export async function signIn(page: Page, password = DASHBOARD_PASSWORD) {
   await page.clock.install();
   await page.goto('/auth/sign-in');
   await page.getByRole('button', { name: 'Mit Passwort anmelden' }).click();
-  await page.getByLabel(/Passwort/).fill(password);
+  await page.getByRole('textbox', { name: 'Passwort', exact: true }).fill(password);
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
-  await expect(page.getByText('Bilderwiedergabe').first()).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Diashow' })).toBeVisible();
   await page.clock.fastForward('00:21');
 }
 

@@ -80,7 +80,8 @@ tests/e2e/
 ├─ board/         image with all five services, mock display, supervisor, command shims
 ├─ fake-server/   stand-in for the Shareframe server, driven through /__test/*
 ├─ frontend/      production dashboard build behind nginx, /api proxied to the board
-├─ specs/         *.spec.ts — one per dashboard page, plus server-traffic.spec.ts
+├─ specs/         *.spec.ts — one per dashboard page, plus server-traffic.spec.ts;
+│                 *.mobile.spec.ts — the same flows on a phone
 └─ support/       NO TESTS LIVE HERE — fixtures, board API, fake server, panel helpers
 ```
 
@@ -95,6 +96,11 @@ Prefer a step in an existing spec over a new one; the stack takes about a minute
   page and fails on any API call that errors. `server-traffic.spec.ts` covers everything
   the server sends over the frames socket: pictures, removals, expiry, clear-display,
   duplicates, garbage, dropped connections and rejected tokens.
+- **Phones first.** Owners mostly set the frame up from a phone on its hotspot. The
+  `mobile` project (Pixel 7) runs only `*.mobile.spec.ts`, after the `desktop` project:
+  side menu, dialogs, snackbars and floating buttons on a small screen, no sideways
+  scrolling, and axe WCAG 2.1 AA on every page in both colour schemes. A UI change gets a
+  phone check there. `./test.sh e2e --project=mobile --no-deps` runs only those.
 - **Virtual panel.** With `display.mock_display` and `display.mock_output_dir` set, the
   display writes every frame to `panel.pbm` (the exact 800×480 1-bit buffer the e-paper
   would get) and `panel.json` (`state`, `source`, `seq`), and counts refreshes like the

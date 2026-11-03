@@ -38,7 +38,7 @@ describe('snackbars', () => {
     const { user } = renderSnackbars(store);
 
     const alert = (await screen.findByText('Gespeichert')).parentElement as HTMLElement;
-    await user.click(within(alert).getByRole('button', { name: 'close' }));
+    await user.click(within(alert).getByRole('button', { name: 'Schließen' }));
 
     expect(screen.queryByText('Gespeichert')).not.toBeInTheDocument();
     expect(store.getState().snackbars.snackbars.alerts).toEqual([]);
@@ -54,6 +54,31 @@ describe('snackbars', () => {
     await advance(2_000);
 
     expect(screen.queryByText('Gleich weg')).not.toBeInTheDocument();
+  });
+
+  it('keeps an error until it is closed', async () => {
+    useBoardClock();
+    const store = setupStore();
+    renderSnackbars(store);
+    store.dispatch(addAlertSnackbar('a', 'Konnte nicht gespeichert werden', 'error'));
+    await screen.findByText('Konnte nicht gespeichert werden');
+
+    await advance(60_000);
+
+    expect(screen.getByText('Konnte nicht gespeichert werden')).toBeInTheDocument();
+  });
+
+  it('shows a loading snackbar only once the action takes a moment', async () => {
+    useBoardClock();
+    const store = setupStore();
+    renderSnackbars(store);
+    store.dispatch(addLoadingSnackbar('l', 'Wird gespeichert'));
+
+    await advance(300);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+    await advance(400);
+    expect(screen.getByRole('status')).toHaveTextContent('Wird gespeichert');
   });
 
   // A loading snackbar left over from before a reload would spin forever.

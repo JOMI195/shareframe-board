@@ -20,7 +20,7 @@ const HotspotCard = () => {
 
     return (
         <ShareframeInfoCard
-            title="Hotspot aktiv"
+            title="WLAN einrichten"
             minHeight="0px"
             sections={[
                 {
@@ -42,8 +42,8 @@ const HotspotCard = () => {
                                     </Alert>
                                 ) : last_failed_secs_ago !== null && (
                                     <Alert severity="warning">
-                                        Letzter Verbindungsversuch vor {formatDuration(last_failed_secs_ago * 1000)} fehlgeschlagen:
-                                        keines der gespeicherten WLANs war erreichbar. Prüfe Name und Passwort.
+                                        Vor {formatDuration(last_failed_secs_ago * 1000)} war keines der gespeicherten
+                                        WLANs erreichbar. Prüfe Name und Passwort.
                                     </Alert>
                                 )}
                             </Stack>

@@ -40,7 +40,7 @@ describe('updates', () => {
     server.use(...failsWith('get', api.getLatestReleaseUrl()));
     openUpdates();
 
-    expect(await screen.findByText('Suche nach neuster Version fehlgeschlagen')).toBeInTheDocument();
+    expect(await screen.findByText('Updates konnten nicht gesucht werden')).toBeInTheDocument();
   });
 
   it('lists the bullet points of the release notes', async () => {
@@ -129,7 +129,7 @@ describe('update history', () => {
   it('says so when nothing was installed yet', async () => {
     openHistory();
 
-    expect(await screen.findByText('Noch keine Updates durchgeführt.')).toBeInTheDocument();
+    expect(await screen.findByText('Noch keine Updates installiert.')).toBeInTheDocument();
   });
 
   it('lists each update with its outcome', async () => {

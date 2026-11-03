@@ -33,7 +33,7 @@ export const fetchDisplayCustomization = createAsyncThunk(
             }
             throw new Error(payload.message || 'Failed to fetch customization');
         } catch (error) {
-            dispatch(addAlertSnackbar(uuid(), 'Abrufen der Anpassungen fehlgeschlagen', 'error'));
+            dispatch(addAlertSnackbar(uuid(), 'Anpassungen konnten nicht geladen werden', 'error'));
             return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
         }
     }
@@ -57,13 +57,13 @@ export const updateShowSender = createAsyncThunk(
             dispatch(addAlertSnackbar(
                 uuid(),
                 showSender
-                    ? 'Der Name des Absenders wird ab dem nächsten Bildwechsel angezeigt'
-                    : 'Der Name des Absenders wird ab dem nächsten Bildwechsel ausgeblendet',
+                    ? 'Der Name des Absenders wird ab dem nächsten Fotowechsel angezeigt'
+                    : 'Der Name des Absenders wird ab dem nächsten Fotowechsel ausgeblendet',
                 'success'
             ));
             return showSender;
         } catch (error) {
-            dispatch(addAlertSnackbar(uuid(), 'Speichern der Anpassung fehlgeschlagen', 'error'));
+            dispatch(addAlertSnackbar(uuid(), 'Anpassung konnte nicht gespeichert werden', 'error'));
             return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
         } finally {
             dispatch(removeLoadingSnackbar(actionId));

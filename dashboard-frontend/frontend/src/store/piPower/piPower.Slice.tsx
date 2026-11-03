@@ -62,17 +62,16 @@ export const restartPi = createAsyncThunk<void, (path: string) => void, { state:
     async (navigate, { dispatch, rejectWithValue }) => {
         const snackbarId = uuid();
         try {
-            dispatch(addLoadingSnackbar(snackbarId, "Starte Neustartprozess"));
+            dispatch(addLoadingSnackbar(snackbarId, "Bilderrahmen wird neu gestartet"));
 
             const result = await sendPowerCommand(getRestartPiUrl());
             if (result === 'rejected') {
-                dispatch(addAlertSnackbar(uuid(), "Neustartprozess fehlgeschlagen", "error"));
+                dispatch(addAlertSnackbar(uuid(), "Bilderrahmen konnte nicht neu gestartet werden", "error"));
                 return rejectWithValue('Neustartprozess fehlgeschlagen');
             }
 
-            dispatch(addAlertSnackbar(uuid(), "Neustartprozess gestartet", "success"));
-            navigate(getHomeUrl());
-            dispatch(showLoadingWall("Der Bilderrahmen wird neu gestartet. Bitte warte einen Moment – die Seite lädt automatisch neu, sobald er wieder verfügbar ist."));
+                        navigate(getHomeUrl());
+            dispatch(showLoadingWall("Der Bilderrahmen wird neu gestartet. Die Seite lädt von selbst neu, sobald er wieder erreichbar ist."));
 
             // Wait for the board to drop (reboot started), then for it to come
             // back, then reload onto a working dashboard automatically.
@@ -84,7 +83,7 @@ export const restartPi = createAsyncThunk<void, (path: string) => void, { state:
             // If it never came back in time the wall stays up; the user can reload manually.
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            dispatch(addAlertSnackbar(uuid(), "Neustartprozess fehlgeschlagen", "error"));
+            dispatch(addAlertSnackbar(uuid(), "Bilderrahmen konnte nicht neu gestartet werden", "error"));
             return rejectWithValue(errorMessage);
         } finally {
             dispatch(removeLoadingSnackbar(snackbarId));
@@ -97,7 +96,7 @@ export const shutdownPi = createAsyncThunk<void, (path: string) => void, { state
     async (navigate, { dispatch, rejectWithValue }) => {
         const snackbarId = uuid();
         try {
-            dispatch(addLoadingSnackbar(snackbarId, "Fahre Bilderrahmen herunter. Dies kann einige Minuten in Anspruch nehmen."));
+            dispatch(addLoadingSnackbar(snackbarId, "Bilderrahmen wird heruntergefahren"));
 
             // Best-effort: clear the panel so it isn't left mid-cycle. Never block
             // the shutdown on it - the slideshow stops on its own when the process
@@ -108,7 +107,7 @@ export const shutdownPi = createAsyncThunk<void, (path: string) => void, { state
 
             const result = await sendPowerCommand(getShutdownPiUrl());
             if (result === 'rejected') {
-                dispatch(addAlertSnackbar(uuid(), "Herunterfahrprozess fehlgeschlagen", "error"));
+                dispatch(addAlertSnackbar(uuid(), "Bilderrahmen konnte nicht heruntergefahren werden", "error"));
                 return rejectWithValue('Herunterfahrprozess fehlgeschlagen');
             }
 
@@ -118,10 +117,10 @@ export const shutdownPi = createAsyncThunk<void, (path: string) => void, { state
             // Show the terminal "how to power back on" message only once the board
             // has actually stopped answering, not after a blind fixed delay.
             await pollHealth('down', { maxWaitMs: 120000, consecutive: 2 });
-            dispatch(showLoadingWall("Der Bilderrahmen wurde heruntergefahren und ist ausgeschaltet. Zum Einschalten die Stromzufuhr kurz trennen und wieder herstellen – er startet dann automatisch."));
+            dispatch(showLoadingWall("Der Bilderrahmen ist ausgeschaltet. Zum Einschalten trenne den Strom kurz und stecke ihn wieder ein, er startet dann von selbst."));
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            dispatch(addAlertSnackbar(uuid(), "Herunterfahrprozess fehlgeschlagen", "error"));
+            dispatch(addAlertSnackbar(uuid(), "Bilderrahmen konnte nicht heruntergefahren werden", "error"));
             return rejectWithValue(errorMessage);
         } finally {
             dispatch(removeLoadingSnackbar(snackbarId));
@@ -134,11 +133,11 @@ export const factoryResetPi = createAsyncThunk<void, (path: string) => void, { s
     async (navigate, { dispatch, rejectWithValue }) => {
         const snackbarId = uuid();
         try {
-            dispatch(addLoadingSnackbar(snackbarId, "Setze Bilderrahmen zurück"));
+            dispatch(addLoadingSnackbar(snackbarId, "Bilderrahmen wird zurückgesetzt"));
 
             const result = await sendPowerCommand(getFactoryResetUrl());
             if (result === 'rejected') {
-                dispatch(addAlertSnackbar(uuid(), "Zurücksetzen fehlgeschlagen", "error"));
+                dispatch(addAlertSnackbar(uuid(), "Bilderrahmen konnte nicht zurückgesetzt werden", "error"));
                 return rejectWithValue('Zurücksetzen fehlgeschlagen');
             }
 
@@ -148,10 +147,10 @@ export const factoryResetPi = createAsyncThunk<void, (path: string) => void, { s
             // The reset wipes Wi-Fi, password and sessions, so the board never comes
             // back to this dashboard; don't wait for it.
             await pollHealth('down', { maxWaitMs: 120000, consecutive: 2 });
-            dispatch(showLoadingWall("Der Bilderrahmen wurde auf Werkseinstellungen zurückgesetzt und startet im Einrichtungsmodus. Verbinde dich mit seinem WLAN, um ihn neu einzurichten."));
+            dispatch(showLoadingWall("Der Bilderrahmen ist auf Werkseinstellungen zurückgesetzt und startet im Einrichtungsmodus. Verbinde dich mit seinem Hotspot, um ihn neu einzurichten."));
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            dispatch(addAlertSnackbar(uuid(), "Zurücksetzen fehlgeschlagen", "error"));
+            dispatch(addAlertSnackbar(uuid(), "Bilderrahmen konnte nicht zurückgesetzt werden", "error"));
             return rejectWithValue(errorMessage);
         } finally {
             dispatch(removeLoadingSnackbar(snackbarId));

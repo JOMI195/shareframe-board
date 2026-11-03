@@ -26,22 +26,22 @@ describe('protected routes', () => {
   it('lets a signed-in user through', async () => {
     renderRoute('/', { preloadedState: signedInState() });
 
-    expect(await screen.findByText('Bilderwiedergabe')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 2, name: 'Diashow' })).toBeInTheDocument();
   });
 });
 
 describe('sign-in', () => {
-  it('signs in with an OTP and lands on the home page', async () => {
+  it('signs in with a one-time code and lands on the home page', async () => {
     const spy = spyOnRequests('post', api.getLoginUrl());
     server.use(spy.handler);
     const { user, router } = await openSignIn();
 
-    await user.type(screen.getByLabelText(/OTP/), '123456');
+    await user.type(screen.getByLabelText(/^Einmal-Code/, { selector: 'input' }), '123456');
     await user.click(await screen.findByRole('button', { name: 'Anmelden' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
     expect(await spy.calls[0].json()).toEqual({ otp: '123456' });
-    expect(await screen.findByText('Authentifizierung erfolgreich')).toBeInTheDocument();
+    expect(await screen.findByText('Angemeldet')).toBeInTheDocument();
   });
 
   it('signs in with the device password', async () => {
@@ -50,7 +50,7 @@ describe('sign-in', () => {
     const { user, router } = await openSignIn();
 
     await user.click(screen.getByRole('button', { name: 'Mit Passwort anmelden' }));
-    await user.type(screen.getByLabelText(/Passwort/), 'geheim123');
+    await user.type(screen.getByLabelText(/^Passwort/, { selector: 'input' }), 'geheim123');
     await user.click(screen.getByRole('button', { name: 'Anmelden' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
@@ -61,10 +61,10 @@ describe('sign-in', () => {
     server.use(...failsWith('post', api.getLoginUrl(), 401, 'OTP invalid'));
     const { user, router } = await openSignIn();
 
-    await user.type(screen.getByLabelText(/OTP/), '000000');
+    await user.type(screen.getByLabelText(/^Einmal-Code/, { selector: 'input' }), '000000');
     await user.click(await screen.findByRole('button', { name: 'Anmelden' }));
 
-    expect(await screen.findByText('OTP invalid')).toBeInTheDocument();
+    expect(await screen.findByText('Der Einmal-Code stimmt nicht oder ist abgelaufen.')).toBeInTheDocument();
     expect(router.state.location.pathname).toBe(SIGN_IN);
   });
 
@@ -72,7 +72,7 @@ describe('sign-in', () => {
     server.use(...boardUnreachable());
     const { user } = await openSignIn();
 
-    await user.type(screen.getByLabelText(/OTP/), '123456');
+    await user.type(screen.getByLabelText(/^Einmal-Code/, { selector: 'input' }), '123456');
 
     expect(screen.getByRole('button', { name: 'Anmelden' })).toBeDisabled();
   });
@@ -81,9 +81,9 @@ describe('sign-in', () => {
     server.use(...withConnectionMode({ internet: false }));
     await openSignIn();
 
-    expect(await screen.findByText(/die OTP-Anmeldung ist derzeit nicht möglich/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Passwort/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Mit OTP anmelden' })).toBeInTheDocument();
+    expect(await screen.findByText(/Die Anmeldung mit Einmal-Code ist gerade nicht möglich/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Passwort/, { selector: 'input' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mit Einmal-Code anmelden' })).toBeInTheDocument();
   });
 });
 
@@ -98,16 +98,16 @@ describe('sign-out', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe(SIGN_IN));
     expect(spy.calls).toHaveLength(1);
     expect(store.getState().auth.isAuthenticated).toBe(false);
-    expect(await screen.findByText('Erfolgreich ausgeloggt')).toBeInTheDocument();
+    expect(await screen.findByText('Abgemeldet')).toBeInTheDocument();
   });
 
   it('drops stale alerts when the session ran out', async () => {
     const store = setupStore(buildState());
-    store.dispatch(addAlertSnackbar('stale', 'Abrufen der Logs fehlgeschlagen', 'error'));
+    store.dispatch(addAlertSnackbar('stale', 'Protokolle konnten nicht geladen werden', 'error'));
     renderRoute('/logs/', { store });
 
     await screen.findByText('Willkommen bei deinem Bilderrahmen');
 
-    expect(screen.queryByText('Abrufen der Logs fehlgeschlagen')).not.toBeInTheDocument();
+    expect(screen.queryByText('Protokolle konnten nicht geladen werden')).not.toBeInTheDocument();
   });
 });

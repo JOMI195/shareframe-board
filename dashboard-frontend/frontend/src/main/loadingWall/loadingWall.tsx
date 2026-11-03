@@ -23,6 +23,7 @@ const LoadingWall = () => {
                 maxWidth={200}
                 marginRight={0}
                 clickable={false}
+                alt="ShareFrame"
             />
             <Typography variant="h6" sx={{ p: 2 }}>
                 {message}
