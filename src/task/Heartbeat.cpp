@@ -44,7 +44,9 @@ void Heartbeat::execute()
     const bool wsRunning        = health::isRunning(wsIpc_);
     const bool displayRunning   = health::isRunning(displayIpc_);
     const bool dashboardRunning = health::isRunning(dashboardIpc_);
-    const bool updateRunning    = health::isRunning(updateIpc_);
+    const auto updateHealth     = updateIpc_.sendAndReceive({IpcMessageType::GetHealth, {}},
+                                                            std::chrono::milliseconds{500});
+    const bool updateRunning    = updateHealth && updateHealth->value("running", false);
     nlohmann::json payload = {
         // Identity
         {"serial_number", cfg_.frameId},
@@ -88,6 +90,12 @@ void Heartbeat::execute()
     {
         if (key.starts_with("proc_"))
             payload[key] = value;
+    }
+
+    if (updateHealth)
+    {
+        if (const auto phase = updateHealth->find("phase"); phase != updateHealth->end() && phase->is_string())
+            payload["update_phase"] = *phase;
     }
 
     if (displayRunning)

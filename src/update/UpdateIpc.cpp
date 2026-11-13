@@ -44,7 +44,7 @@ nlohmann::json UpdateIpc::handle(const IpcMessage& msg)
         return {{"ok", true}, {"history", updates_.history()}};
 
     case IpcMessageType::GetHealth:
-        return {{"running", true}};
+        return {{"running", true}, {"phase", std::string(toString(updates_.phase()))}};
 
     default:
         spdlog::warn("IPC: unhandled message type");

@@ -45,6 +45,7 @@ public:
     // Periodic server check; auto-installs criticalities from cfg (Critical).
     void startPeriodicCheck();
 
+    [[nodiscard]] UpdatePhase phase() const { return phase_.state(); }
     [[nodiscard]] nlohmann::json status() const;
     [[nodiscard]] nlohmann::json history() const;
 
