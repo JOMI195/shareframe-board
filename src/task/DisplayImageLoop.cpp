@@ -244,7 +244,6 @@ void DisplayImageLoop::_showPicture(const std::stop_token& st, const std::vector
     const auto& image = *std::ranges::find(pictures, nextId, &Image::id);
     const Frame frame{Content::Picture, image.imagePath, image.sender};
 
-    // DisplayManager enforces the min refresh interval.
     phase_.moveTo(Phase::Painting);
     if (_paint(frame, st))
     {

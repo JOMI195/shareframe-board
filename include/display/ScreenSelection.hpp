@@ -79,8 +79,8 @@ struct ScreenDecision
     bool operator==(const ScreenDecision&) const = default;
 };
 
-/// `shownStale` says the content the current screen painted is outdated or was wiped. A
-/// stopped slideshow paints nothing, so the screen it follows is wiped first.
+/// A stale screen painted content that is outdated or was wiped since. A stopped
+/// slideshow paints nothing, so the screen it follows is wiped first.
 constexpr ScreenDecision decide(const Screen current, const ScreenInputs& in, const bool shownStale,
                                 const bool slideshowActive)
 {

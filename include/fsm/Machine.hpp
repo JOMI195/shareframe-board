@@ -12,8 +12,9 @@ struct ForbiddenMove : std::logic_error
     using std::logic_error::logic_error;
 };
 
-/// Holds the state of one machine. The state type brings its rules as free functions
-/// next to the enum: canMove(from, to) and name(state). One thread moves it, any reads it.
+/// Holds the state of one machine. The state type brings its rules as two free functions
+/// next to the enum: which moves are allowed, and a name per state. One thread moves it,
+/// any reads it.
 template <typename S>
 class Machine
 {

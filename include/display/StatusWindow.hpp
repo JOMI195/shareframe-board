@@ -15,7 +15,7 @@ public:
         since_ = nowMs;
     }
 
-    /// Forgets a screen that outlived `timeoutMs` and returns its kind.
+    /// Forgets a screen that outlived its timeout and returns its kind.
     std::optional<StatusScreenKind> expire(const int64_t nowMs, const int64_t timeoutMs)
     {
         if (!event_.kind || nowMs < since_ + timeoutMs)

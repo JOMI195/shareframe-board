@@ -103,7 +103,7 @@ private:
     /// In-memory since boot; atomic so healthSnapshot() reads it without the
     /// hw mutex. Mutated only by the hw threads (already under _hwMutex).
     std::atomic<int> _consecutiveFailures{0};
-    /// Written under _hwMutex; atomic so the tasks read it without that lock.
+    /// Written under the hardware lock; atomic so the tasks read it without.
     /// In-memory (boot always clears).
     std::atomic<PanelContent> _content{PanelContent::Unknown};
     /// Atomic so it reads lock-free during a multi-second refresh; mutated only

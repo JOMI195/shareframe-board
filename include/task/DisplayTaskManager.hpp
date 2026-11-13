@@ -18,7 +18,7 @@
 class RuntimeSettings;
 
 /// Decides what the panel shows: boots it with the loading screen, then runs exactly
-/// one content task. The rules live in ScreenSelection.hpp. Switching stops the running
+/// one content task, picked by the screen selection rules. Switching stops the running
 /// task first, which cancels a paint still waiting for the refresh interval. Runs on
 /// its own thread because stopping a task blocks.
 class DisplayTaskManager : public Task
