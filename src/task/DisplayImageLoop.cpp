@@ -277,7 +277,7 @@ bool DisplayImageLoop::_paint(const Frame& frame, const std::stop_token& st)
 {
     const bool sample = frame.content == Content::Sample;
     auto buffer = PhotoRenderer::render(frame.path);
-    const bool nightHold = settings_.isNightHoldNow();
+    const bool nightHold = settings_.nightState() == NightState::Hold;
     if (!buffer.empty() && nightHold)
     {
         const auto text = panel_badge::nightText(settings_.getNightEndHour());
@@ -337,7 +337,8 @@ void DisplayImageLoop::_hold(const std::stop_token& st, const Frame& frame)
 
 bool DisplayImageLoop::_endsHold(const Content held) const
 {
-    return slideshow::endsHold(held, requests_, settings_.isSlideshowActive(), settings_.isNightNow());
+    return slideshow::endsHold(held, requests_, settings_.isSlideshowActive(),
+                               settings_.nightState() != NightState::Day);
 }
 
 void DisplayImageLoop::_onScheduledClear()

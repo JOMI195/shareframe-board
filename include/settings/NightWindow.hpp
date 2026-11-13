@@ -30,8 +30,31 @@ inline std::optional<NightStyle> nightStyleFromString(const std::string& s)
     return std::nullopt;
 }
 
+/// What the quiet hours ask of the panel right now.
+enum class NightState
+{
+    Day,
+    Slower,
+    Hold,
+    Pause
+};
+
 namespace night
 {
+/// Night only while the quiet hours are switched on and their window is open.
+constexpr NightState state(const bool enabled, const NightStyle style, const int secsUntilEnd)
+{
+    if (!enabled || secsUntilEnd <= 0)
+        return NightState::Day;
+    switch (style)
+    {
+    case NightStyle::Slower: return NightState::Slower;
+    case NightStyle::Hold: return NightState::Hold;
+    case NightStyle::Pause: return NightState::Pause;
+    }
+    return NightState::Day;
+}
+
 /// Seconds left in the half-open [startHour, endHour) window, which may wrap
 /// past midnight; 0 when outside it.
 inline int secsUntilEnd(const std::tm& local, const int startHour, const int endHour)

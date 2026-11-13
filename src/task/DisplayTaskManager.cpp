@@ -148,7 +148,7 @@ ScreenDecision DisplayTaskManager::_decide(const Wishes& wishes) const
         .statusRequested = wishes.status.kind.has_value(),
         .apSetupRequired = wishes.apSetup.required,
         .registrationRequired = wishes.registration,
-        .nightBlank = settings_.isNightBlankNow(),
+        .nightBlank = settings_.nightState() == NightState::Pause,
     };
     // These two paint once, so only a restart brings new or wiped content back.
     bool stale = false;

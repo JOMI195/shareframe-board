@@ -90,7 +90,7 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
             {"end_hour", settings_.getNightEndHour()},
             {"interval_secs", settings_.getNightInterval()},
             {"style", toString(settings_.getNightStyle())},
-            {"active_now", settings_.isNightNow()}
+            {"active_now", settings_.nightState() != NightState::Day}
         };
 
     case IpcMessageType::UpdatePlaybackOrder:

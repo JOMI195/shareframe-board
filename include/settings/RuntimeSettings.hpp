@@ -31,16 +31,10 @@ public:
     [[nodiscard]] bool isShowSender() const;
     void setShowSender(bool show);
 
-    /// True while the wall clock sits inside an enabled quiet-hours window.
-    [[nodiscard]] bool isNightNow() const;
+    /// Day unless the wall clock sits inside an enabled quiet-hours window.
+    [[nodiscard]] NightState nightState() const;
 
-    /// True while the panel has to stay paused for the quiet-hours window.
-    [[nodiscard]] bool isNightBlankNow() const;
-
-    /// True while the current picture is held for the quiet-hours window.
-    [[nodiscard]] bool isNightHoldNow() const;
-
-    /// Seconds until isNightBlankNow() flips, -1 when pausing is off.
+    /// Seconds until the panel next pauses for the night or resumes, -1 when pausing is off.
     [[nodiscard]] int secsUntilNightBlankChange() const;
 
     /// Interval to use right now: the night one clamped to the end of the
@@ -48,6 +42,8 @@ public:
     [[nodiscard]] int getEffectiveInterval() const;
 
 private:
+    /// Call under lock.
+    [[nodiscard]] NightState _nightState() const;
     /// Seconds left in the quiet-hours window, 0 when outside it. Call under lock.
     [[nodiscard]] int _secsUntilNightEnd() const;
     /// Seconds until the quiet-hours window opens, 0 when inside it. Call under lock.

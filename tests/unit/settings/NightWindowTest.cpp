@@ -53,3 +53,12 @@ TEST(NightWindow, StartCountsOnlyFromOutsideTheWindow)
     EXPECT_EQ(night::secsUntilStart(at(23), 22, 6), 0);
     EXPECT_EQ(night::secsUntilStart(at(3), 5, 5), 0);
 }
+
+TEST(NightWindow, NightOnlyCountsWhileSwitchedOnAndInsideTheWindow)
+{
+    EXPECT_EQ(night::state(true, NightStyle::Pause, 60), NightState::Pause);
+    EXPECT_EQ(night::state(true, NightStyle::Hold, 60), NightState::Hold);
+    EXPECT_EQ(night::state(true, NightStyle::Slower, 60), NightState::Slower);
+    EXPECT_EQ(night::state(false, NightStyle::Pause, 60), NightState::Day);
+    EXPECT_EQ(night::state(true, NightStyle::Pause, 0), NightState::Day);
+}

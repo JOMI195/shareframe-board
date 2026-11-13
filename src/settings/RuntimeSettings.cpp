@@ -216,22 +216,15 @@ void RuntimeSettings::setShowSender(const bool show)
     logger_->info("Show sender updated to {} (persisted)", show);
 }
 
-bool RuntimeSettings::isNightNow() const
+NightState RuntimeSettings::nightState() const
 {
     std::lock_guard lk(mtx_);
-    return nightModeEnabled_ && _secsUntilNightEnd() > 0;
+    return _nightState();
 }
 
-bool RuntimeSettings::isNightBlankNow() const
+NightState RuntimeSettings::_nightState() const
 {
-    std::lock_guard lk(mtx_);
-    return nightModeEnabled_ && nightStyle_ == NightStyle::Pause && _secsUntilNightEnd() > 0;
-}
-
-bool RuntimeSettings::isNightHoldNow() const
-{
-    std::lock_guard lk(mtx_);
-    return nightModeEnabled_ && nightStyle_ == NightStyle::Hold && _secsUntilNightEnd() > 0;
+    return night::state(nightModeEnabled_, nightStyle_, _secsUntilNightEnd());
 }
 
 int RuntimeSettings::secsUntilNightBlankChange() const
@@ -247,15 +240,14 @@ int RuntimeSettings::secsUntilNightBlankChange() const
 int RuntimeSettings::getEffectiveInterval() const
 {
     std::lock_guard lk(mtx_);
-    if (!nightModeEnabled_)
-        return displayIntervalSecs_;
-
     const int untilEnd = _secsUntilNightEnd();
-    if (untilEnd <= 0)
-        return displayIntervalSecs_;
-    if (nightStyle_ == NightStyle::Hold)
-        return untilEnd;
-
+    switch (night::state(nightModeEnabled_, nightStyle_, untilEnd))
+    {
+    case NightState::Day: return displayIntervalSecs_;
+    case NightState::Hold: return untilEnd;
+    case NightState::Slower:
+    case NightState::Pause: break;
+    }
     // Clamping to the window end makes the loop resume on time instead of
     // drifting past it, without costing an extra refresh.
     return std::min(nightIntervalSecs_, untilEnd);

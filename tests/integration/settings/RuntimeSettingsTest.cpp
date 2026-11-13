@@ -98,7 +98,7 @@ TEST(RuntimeSettings, InsideNightWindowEffectiveIntervalClampsToWindowEnd)
     const int end = (local.tm_hour + 1) % 24;
     s.setNightMode(true, start, end, 86400, NightStyle::Slower);
 
-    EXPECT_TRUE(s.isNightNow());
+    EXPECT_EQ(s.nightState(), NightState::Slower);
     EXPECT_GT(s.getEffectiveInterval(), 0);
     EXPECT_LE(s.getEffectiveInterval(), 3600);
 }
@@ -115,9 +115,7 @@ TEST(RuntimeSettings, HoldingNightKeepsThePictureUntilTheWindowEnds)
     const int hour = local.tm_hour;
     s.setNightMode(true, hour, (hour + 3) % 24, 600, NightStyle::Hold);
 
-    EXPECT_TRUE(s.isNightNow());
-    EXPECT_FALSE(s.isNightBlankNow());
-    EXPECT_TRUE(s.isNightHoldNow());
+    EXPECT_EQ(s.nightState(), NightState::Hold);
     EXPECT_EQ(s.secsUntilNightBlankChange(), -1);
     EXPECT_GT(s.getEffectiveInterval(), 2 * 3600);
     EXPECT_LE(s.getEffectiveInterval(), 3 * 3600);
@@ -131,7 +129,7 @@ TEST(RuntimeSettings, RestoredHoursThatCollapseTheWindowNeverMeanNightAllDay)
     repo.set("night_start_hour", "5");
     repo.set("night_end_hour", "5");
     RuntimeSettings s(repo, config());
-    EXPECT_FALSE(s.isNightNow());
+    EXPECT_EQ(s.nightState(), NightState::Day);
     EXPECT_EQ(s.getEffectiveInterval(), 900);
 }
 
@@ -147,16 +145,15 @@ TEST(RuntimeSettings, BlankNightReportsWhenItNextStartsOrEnds)
     const int hour = local.tm_hour;
 
     s.setNightMode(true, hour, (hour + 2) % 24, 600, NightStyle::Pause);
-    EXPECT_TRUE(s.isNightBlankNow());
-    EXPECT_FALSE(s.isNightHoldNow());
+    EXPECT_EQ(s.nightState(), NightState::Pause);
     EXPECT_GT(s.secsUntilNightBlankChange(), 3600);
 
     s.setNightMode(true, (hour + 2) % 24, (hour + 3) % 24, 600, NightStyle::Pause);
-    EXPECT_FALSE(s.isNightBlankNow());
+    EXPECT_EQ(s.nightState(), NightState::Day);
     EXPECT_GT(s.secsUntilNightBlankChange(), 3600);
     EXPECT_LE(s.secsUntilNightBlankChange(), 2 * 3600);
 
     s.setNightMode(true, hour, (hour + 2) % 24, 600, NightStyle::Slower);
-    EXPECT_FALSE(s.isNightBlankNow());
+    EXPECT_EQ(s.nightState(), NightState::Slower);
     EXPECT_EQ(s.secsUntilNightBlankChange(), -1);
 }
