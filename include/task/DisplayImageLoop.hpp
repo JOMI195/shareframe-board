@@ -90,6 +90,8 @@ private:
     [[nodiscard]] int64_t _pickNext(const std::vector<Image>& images);
     void _onSetSlideshowActive(const SetSlideshowActiveEvent& evt);
     [[nodiscard]] std::vector<std::filesystem::path> _loadDefaultImages() const;
+    /// Stored pictures whose file is still there.
+    [[nodiscard]] std::vector<Image> _showablePictures() const;
 
     const AppConfig& cfg_;
     ImageRepository& repo_;

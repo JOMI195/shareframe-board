@@ -121,6 +121,19 @@ std::vector<std::filesystem::path> DisplayImageLoop::_loadDefaultImages() const
     return paths;
 }
 
+std::vector<Image> DisplayImageLoop::_showablePictures() const
+{
+    auto pictures = repo_.getAll();
+    std::erase_if(pictures, [this](const Image& image)
+    {
+        if (std::filesystem::exists(image.imagePath))
+            return false;
+        logger_->warn("Image file missing: {}, skipping", image.imagePath.string());
+        return true;
+    });
+    return pictures;
+}
+
 void DisplayImageLoop::_run(const std::stop_token st)
 {
     while (!st.stop_requested())
@@ -147,7 +160,7 @@ void DisplayImageLoop::_run(const std::stop_token st)
 void DisplayImageLoop::_step(const std::stop_token& st)
 {
     const bool active = settings_.isSlideshowActive();
-    const auto pictures = active ? repo_.getAll() : std::vector<Image>{};
+    const auto pictures = active ? _showablePictures() : std::vector<Image>{};
     const auto samples = active && pictures.empty() ? _loadDefaultImages() : std::vector<std::filesystem::path>{};
 
     switch (slideshow::plan(active, !pictures.empty(), !samples.empty()))
@@ -229,12 +242,6 @@ void DisplayImageLoop::_showPicture(const std::stop_token& st, const std::vector
 
     const int64_t nextId = _takeNext(pictures);
     const auto& image = *std::ranges::find(pictures, nextId, &Image::id);
-    if (!std::filesystem::exists(image.imagePath))
-    {
-        logger_->warn("Image file missing: {}, skipping", image.imagePath.string());
-        currentImageId_ = nextId;
-        return;
-    }
     const Frame frame{Content::Picture, image.imagePath, image.sender};
 
     // DisplayManager enforces the min refresh interval.

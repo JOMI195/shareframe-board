@@ -141,6 +141,16 @@ TEST_F(DisplayImageLoopTest, EmptyFrameWaitsQuietlyAndShowsTheFirstPictureAtOnce
     EXPECT_TRUE(waitFor([&] { return source() == picture.string(); }));
 }
 
+// Stored pictures whose files are all gone used to spin the loop and leave the boot logo up.
+TEST_F(DisplayImageLoopTest, PicturesWithoutAFileGiveWayToTheSamples)
+{
+    repo.save({42, "alice", db.dir() / "gone.jpg", std::time(nullptr) + 3600});
+    start();
+
+    EXPECT_TRUE(waitFor([&] { return source().find("/image/default/") != std::string::npos; }));
+    EXPECT_TRUE(waitFor([&] { return !loop.isRefreshing() && loop.secondsUntilNext() > 0; }));
+}
+
 TEST_F(DisplayImageLoopTest, RemovingTheShownPictureMovesOn)
 {
     for (const int64_t id : {1, 2})
