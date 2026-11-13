@@ -177,6 +177,9 @@ void DisplayImageLoop::_waitForContent(const std::stop_token& st)
     std::unique_lock lk(mtx_);
     cv_.wait_for(lk, std::chrono::seconds(settings_.getEffectiveInterval()),
                  [&st, this] { return st.stop_requested() || _endsHold(Content::None); });
+    // Taken only now, so a request that came in before the wait still cuts it short.
+    requests_.skip = false;
+    requests_.newPicture = false;
 }
 
 void DisplayImageLoop::_showSample(const std::stop_token& st, const std::vector<std::filesystem::path>& samples)

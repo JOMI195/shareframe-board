@@ -44,12 +44,15 @@ TEST(Slideshow, OnlyTheListedMovesBetweenWorkingPhasesAreAllowed)
     }
 }
 
-TEST(Slideshow, ASampleYieldsToANewPictureExceptAtNight)
+TEST(Slideshow, OnlyAPictureKeepsItsTurnWhenANewOneArrivesByDay)
 {
     const Requests arrived{.newPicture = true};
-    EXPECT_TRUE(endsHold(Content::Sample, arrived, true, false));
-    EXPECT_FALSE(endsHold(Content::Sample, arrived, true, true));
-    EXPECT_FALSE(endsHold(Content::Picture, arrived, true, false)) << "a picture on hold keeps its turn";
+    for (const auto held : {Content::None, Content::Sample})
+    {
+        EXPECT_TRUE(endsHold(held, arrived, true, false));
+        EXPECT_FALSE(endsHold(held, arrived, true, true)) << "the night costs no extra refresh";
+    }
+    EXPECT_FALSE(endsHold(Content::Picture, arrived, true, false));
 }
 
 TEST(Slideshow, AShowNowRequestEndsAPictureEarly)

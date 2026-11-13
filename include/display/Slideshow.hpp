@@ -90,19 +90,15 @@ constexpr Plan plan(const bool active, const bool hasPictures, const bool hasSam
     return hasSamples ? Plan::ShowSample : Plan::WaitForContent;
 }
 
-/// Whether what the panel holds gives way before its interval ends. A sample yields to
-/// the first picture, except at night, when new pictures wait for the morning.
+/// Whether what the panel holds gives way before its interval ends. A sample or an empty
+/// panel yields to the first picture, except at night, when new pictures wait their turn.
 constexpr bool endsHold(const Content held, const Requests& requests, const bool active, const bool night)
 {
     if (!active || requests.skip)
         return true;
-    switch (held)
-    {
-    case Content::Picture: return requests.showId != 0;
-    case Content::Sample: return requests.newPicture && !night;
-    case Content::None: break;
-    }
-    return false;
+    if (held == Content::Picture)
+        return requests.showId != 0;
+    return requests.newPicture && !night;
 }
 
 enum class WipeResponse
