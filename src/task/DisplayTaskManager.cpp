@@ -13,11 +13,6 @@ int64_t steadyMs()
 {
     return std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now().time_since_epoch()).count();
 }
-
-int64_t steadySecs()
-{
-    return steadyMs() / 1000;
-}
 } // namespace
 
 DisplayTaskManager::DisplayTaskManager(EventBus& bus, const AppConfig& cfg, DisplayManager& display,
@@ -56,7 +51,8 @@ void DisplayTaskManager::subscribe()
             registration_.setClaimCode(evt.claimCode);
         {
             std::lock_guard lk(mtx_);
-            registrationWindow_.report(evt.registered, steadySecs(), cfg_.display.registrationScreenWindowSecs);
+            registrationWindow_.report(evt.registered, steadyMs(),
+                                       int64_t{cfg_.display.registrationScreenWindowSecs} * 1000);
             changed_ = true;
         }
         cv_.notify_one();
@@ -126,7 +122,7 @@ std::optional<DisplayTaskManager::Wishes> DisplayTaskManager::_awaitChange(const
     if (const auto forgotten = statusWindow_.expire(steadyMs(), int64_t{timeoutSecs} * 1000))
         logger_->warn("Status screen {} still up after {}s, hiding it", toString(*forgotten), timeoutSecs);
     changed_ = false;
-    return Wishes{latest_, statusWindow_.requested(), registrationWindow_.required(steadySecs()),
+    return Wishes{latest_, statusWindow_.requested(), registrationWindow_.required(steadyMs()),
                   std::exchange(restore_, false)};
 }
 
@@ -141,8 +137,8 @@ std::optional<Clock::time_point> DisplayTaskManager::_nextDeadline() const
         consider(Clock::now() + std::chrono::seconds(untilNightChange));
     if (const auto ends = statusWindow_.endsAt(int64_t{cfg_.display.statusScreenTimeoutSecs} * 1000))
         consider(Clock::time_point(std::chrono::milliseconds(*ends)));
-    if (const auto ends = registrationWindow_.endsAt(steadySecs()))
-        consider(Clock::time_point(std::chrono::seconds(*ends)));
+    if (const auto ends = registrationWindow_.endsAt(steadyMs()))
+        consider(Clock::time_point(std::chrono::milliseconds(*ends)));
     return earliest;
 }
 
