@@ -102,7 +102,7 @@ int main(int argc, char* argv[])
 
     // Tasks stopped; e-paper is bistable, so leave the status screen of a reboot up,
     // otherwise a blank white screen (no-op if already cleared).
-    if (displayTaskManager.state() == DisplayState::Status)
+    if (displayTaskManager.state() == Screen::Status)
         statusScreen.finishForShutdown();
     else
         displayManager.clearForShutdown();
