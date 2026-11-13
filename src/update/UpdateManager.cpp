@@ -274,7 +274,16 @@ void UpdateManager::_worker(nlohmann::json release)
     }
     logger_->info("Update {} installed; rebooting into staged slot (tryboot)", version);
     std::ofstream(paths_.trybootFlag).put('\n');
-    Subprocess::run({"s6-linux-init-shutdown", "-r", "now"}, 10);
+    const auto reboot = Subprocess::run({"s6-linux-init-shutdown", "-r", "now"}, 10);
+    if (reboot.exitCode == 0)
+        return;
+
+    // The slot stays staged, so the next reboot still boots into it.
+    auto reason = reboot.stdErr;
+    while (!reason.empty() && (reason.back() == '\n' || reason.back() == '\r'))
+        reason.pop_back();
+    displayIpc_.send({IpcMessageType::HideStatusScreen, {}});
+    _fail("Installed, but the reboot failed: " + reason, version);
 }
 
 void UpdateManager::startPeriodicCheck()
