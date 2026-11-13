@@ -40,20 +40,6 @@ dashboard for setup and management, and handles Wi-Fi configuration and over-the
 - **shareframe-heartbeat**: Periodically reports the frame's liveness and status to the server and health-probes the
   other services.
 
-**State machines**: every machine keeps its states and rules in one header of pure functions
-(`canMove`, `name`, plus the decisions), tested without a thread or a panel. The owning class collects
-the inputs, asks the rules and carries out the answer; `fsm::Machine` (`include/fsm/Machine.hpp`)
-holds the state and refuses a move the rules forbid.
-
-| Machine | Rules | Owner |
-|---|---|---|
-| Which screen the panel shows | `include/display/ScreenSelection.hpp` | `DisplayTaskManager` |
-| What the slideshow loop is busy with | `include/display/Slideshow.hpp` | `DisplayImageLoop` |
-| Panel power, content and health | `include/display/PanelState.hpp` | `DisplayManager` |
-
-A new machine follows the same shape; a new screen is one value in `Screen`, one line in `select`
-and one in `DisplayTaskManager::_task`.
-
 ## Local board dashboard
 
 <img width="1060" height="870" alt="local embedded board dashboard" src="https://github.com/user-attachments/assets/7c65148e-716f-4842-9afa-c260b3ab664c" />
