@@ -26,8 +26,9 @@ protected:
         cfg.baseUrl = backend.baseUrl();
         cfg.version = "1.2.0";
         storeValidToken(db.get());
-        for (const auto* command : {"rauc", "shareframe-led", "tryboot-backend"})
+        for (const auto* command : {"rauc", "tryboot-backend"})
             shims.add(command, "exit 0");
+        shims.add("shareframe-led", "echo \"$*\" >> " + ledCalls.string());
         shims.add("shareframe-update-history", "echo \"$*\" >> " + historyCalls.string());
         display.start();
 
@@ -58,16 +59,20 @@ protected:
         return screens;
     }
 
-    std::string historyLog() const
+    static std::string read(const std::filesystem::path& path)
     {
-        std::ifstream f(historyCalls);
+        std::ifstream f(path);
         return {std::istreambuf_iterator<char>(f), {}};
     }
+
+    std::string historyLog() const { return read(historyCalls); }
+    std::string ledLog() const { return read(ledCalls); }
 
     FakeHttpServer backend;
     TestDb db;
     PathShim shims;
     std::filesystem::path historyCalls = db.dir() / "history-calls.log";
+    std::filesystem::path ledCalls = db.dir() / "led-calls.log";
     AppConfig cfg;
     TokenRepository tokens{db.get()};
     HTTPClient http{5, 5};
@@ -98,7 +103,22 @@ TEST_F(UpdateManagerTest, InstalledBundleWaitsForTheRebootIntoTheNewSlot)
 
     EXPECT_TRUE(std::filesystem::exists(paths().trybootFlag));
     EXPECT_EQ(statusScreens(), std::vector<std::string>{"update"}) << "the screen has to stay up through the reboot";
+    EXPECT_EQ(ledLog(), "updating\nupdate-done\n");
     EXPECT_EQ(historyLog(), "");
+}
+
+// An LED left on "updating" tells the owner not to unplug a frame that has long given up.
+TEST_F(UpdateManagerTest, FailedInstallEndsTheUpdatingLed)
+{
+    shims.add("rauc", "echo 'bad signature' >&2; exit 1");
+
+    std::string error;
+    ASSERT_TRUE(updates.startUpdate(error)) << error;
+    ASSERT_TRUE(waitFor([&] { return phase() == "failed"; }, 10000ms)) << "stuck in " << phase();
+
+    EXPECT_EQ(ledLog(), "updating\nupdate-failed\n");
+    EXPECT_EQ(statusScreens(), (std::vector<std::string>{"update", "hide"}));
+    EXPECT_FALSE(std::filesystem::exists(paths().trybootFlag));
 }
 
 // A phase that never ended made the frame refuse every remote reboot and update.
@@ -112,5 +132,6 @@ TEST_F(UpdateManagerTest, RebootThatFailsEndsTheUpdateInsteadOfWaitingForever)
 
     EXPECT_NE(updates.status().value("error", "").find("shutdown refused"), std::string::npos);
     EXPECT_EQ(statusScreens(), (std::vector<std::string>{"update", "hide"}));
+    EXPECT_EQ(ledLog(), "updating\nupdate-done\nerror\n");
     EXPECT_NE(historyLog().find("install-failed"), std::string::npos);
 }

@@ -261,12 +261,12 @@ void UpdateManager::_worker(nlohmann::json release)
     fs::remove(bundle, ec);
     if (inst.exitCode != 0)
     {
-        Subprocess::run({"shareframe-led", "error"}, 5);
+        Subprocess::run({"shareframe-led", "update-failed"}, 5);
         displayIpc_.send({IpcMessageType::HideStatusScreen, {}});
         _fail("rauc install failed: " + inst.stdErr, version);
         return;
     }
-    Subprocess::run({"shareframe-led", "off"}, 5);
+    Subprocess::run({"shareframe-led", "update-done"}, 5);
 
     {
         std::lock_guard lock(mutex_);
@@ -282,6 +282,7 @@ void UpdateManager::_worker(nlohmann::json release)
     auto reason = reboot.stdErr;
     while (!reason.empty() && (reason.back() == '\n' || reason.back() == '\r'))
         reason.pop_back();
+    Subprocess::run({"shareframe-led", "error"}, 5);
     displayIpc_.send({IpcMessageType::HideStatusScreen, {}});
     _fail("Installed, but the reboot failed: " + reason, version);
 }
