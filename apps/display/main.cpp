@@ -76,7 +76,8 @@ int main(int argc, char* argv[])
 
     eventBus.start();
 
-    DisplayIpc displayIpc(eventBus, runtimeSettings, displayImageLoop, imageRepo, displayManager);
+    DisplayIpc displayIpc(eventBus, runtimeSettings, displayImageLoop, imageRepo, displayManager,
+                          [&displayTaskManager] { return displayTaskManager.state(); });
 
     // REP: commands and queries from the dashboard.
     NngRepServer repServer(cfg.ipc.displayRep, [&](const IpcMessage& msg) { return displayIpc.handle(msg); });

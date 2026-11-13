@@ -3,10 +3,11 @@
 #include "ipc/EventTopics.hpp"
 #include <algorithm>
 #include <spdlog/spdlog.h>
+#include <utility>
 
 DisplayIpc::DisplayIpc(EventBus& bus, RuntimeSettings& settings, DisplayImageLoop& loop,
-                       ImageRepository& images, DisplayManager& display)
-    : bus_(bus), settings_(settings), loop_(loop), images_(images), display_(display)
+                       ImageRepository& images, DisplayManager& display, std::function<Screen()> screen)
+    : bus_(bus), settings_(settings), loop_(loop), images_(images), display_(display), screen_(std::move(screen))
 {
 }
 
@@ -186,7 +187,12 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
         return {{"running", true}};
 
     case IpcMessageType::GetDisplayStats:
-        return display_.healthSnapshot();
+    {
+        auto stats = display_.healthSnapshot();
+        if (screen_)
+            stats["screen"] = std::string(toString(screen_()));
+        return stats;
+    }
 
     case IpcMessageType::ShowStatusScreen:
     {

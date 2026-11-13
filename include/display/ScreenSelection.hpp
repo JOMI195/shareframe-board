@@ -28,6 +28,22 @@ constexpr std::string_view name(const Screen screen)
     return "?";
 }
 
+/// The names the heartbeat reports.
+constexpr std::string_view toString(const Screen screen)
+{
+    switch (screen)
+    {
+    case Screen::Boot: return "boot";
+    case Screen::Switching: return "switching";
+    case Screen::Slideshow: return "slideshow";
+    case Screen::NightBlank: return "night_blank";
+    case Screen::Registration: return "registration";
+    case Screen::ApSetup: return "ap_setup";
+    case Screen::Status: return "status";
+    }
+    return "unknown";
+}
+
 constexpr bool isContent(const Screen screen)
 {
     return screen != Screen::Boot && screen != Screen::Switching;
