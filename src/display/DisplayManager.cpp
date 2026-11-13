@@ -33,7 +33,8 @@ void pmsg(const std::string& what, const std::string& source)
 } // namespace
 
 DisplayManager::DisplayManager(const AppConfig& cfg, DisplayMetricsRepository& metrics)
-    : _cfg(cfg), _metrics(metrics), _logger(spdlog::default_logger()->clone("Display"))
+    : _cfg(cfg), _metrics(metrics), _logger(spdlog::default_logger()->clone("Display")),
+      _power(PanelPower::Off, _logger, spdlog::level::debug)
 {
     _lastDisplayTime.store(std::chrono::steady_clock::now()
         - std::chrono::seconds(_cfg.display.minRefreshSecs));
@@ -43,10 +44,11 @@ DisplayManager::DisplayManager(const AppConfig& cfg, DisplayMetricsRepository& m
 DisplayManager::~DisplayManager()
 {
 #ifdef EPD_HARDWARE_ENABLED
-    if (_initialized && !_cfg.display.mockDisplay)
+    if (_power.state() == PanelPower::Awake)
+        _hwSleep();
+    if (_power.state() == PanelPower::Asleep)
     {
-        if (_panelAwake)
-            _hwSleep();
+        _power.moveTo(PanelPower::Off);
         DEV_Module_Exit();
         _logger->info("Display hardware cleaned up");
     }
@@ -92,7 +94,7 @@ void DisplayManager::clear(const std::stop_token st)
 void DisplayManager::clearForShutdown()
 {
     std::lock_guard lock(_hwMutex);
-    if (_isCleared.load())
+    if (isCleared())
     {
         _logger->info("Display already cleared, skipping shutdown clear");
         return;
@@ -118,10 +120,9 @@ void DisplayManager::_clearHw()
     {
         _logger->info("[mock] Display clear");
         if (!_cfg.display.mockOutputDir.empty())
-            _writeMockPanel(std::vector<uint8_t>(BUFFER_SIZE, 0xFF), "cleared", {});
-        _recordScreen("cleared", {});
+            _writeMockPanel(std::vector<uint8_t>(BUFFER_SIZE, 0xFF), PanelContent::Blank, {});
+        _recordScreen(PanelContent::Blank, {});
         _lastDisplayTime.store(std::chrono::steady_clock::now());
-        _isCleared = true;
         return;
     }
 
@@ -152,8 +153,7 @@ void DisplayManager::_clearHw()
         _metrics.set("epd_last_refresh_at", nowUnix());
         _metrics.setIfUnset("epd_first_use_at", nowUnix());
         _consecutiveFailures = 0;
-        _isCleared = true;
-        _recordScreen("cleared", {});
+        _recordScreen(PanelContent::Blank, {});
         _logger->info("Display cleared (panel refresh {} ms)", ms);
     }
 #else
@@ -208,10 +208,9 @@ bool DisplayManager::_sendBufferHw(const std::vector<uint8_t>& buffer, const std
     {
         _logger->info("[mock] Display: {}", source);
         if (!_cfg.display.mockOutputDir.empty())
-            _writeMockPanel(buffer, "image", source);
-        _recordScreen("image", source);
+            _writeMockPanel(buffer, PanelContent::Image, source);
+        _recordScreen(PanelContent::Image, source);
         _lastDisplayTime.store(std::chrono::steady_clock::now());
-        _isCleared = false;
         return true;
     }
 
@@ -242,8 +241,7 @@ bool DisplayManager::_sendBufferHw(const std::vector<uint8_t>& buffer, const std
     _metrics.set("epd_last_refresh_at", nowUnix());
     _metrics.setIfUnset("epd_first_use_at", nowUnix());
     _consecutiveFailures = 0;
-    _isCleared = false;
-    _recordScreen("image", source);
+    _recordScreen(PanelContent::Image, source);
     _logger->info("Displayed {} (panel refresh {} ms)", source, refreshMs);
     return true;
 #else
@@ -267,9 +265,10 @@ void DisplayManager::sleep()
 void DisplayManager::_hwSleep()
 {
 #ifdef EPD_HARDWARE_ENABLED
+    if (_power.state() != PanelPower::Awake)
+        return;
     EPD_7IN5_V2_Sleep();
-    _panelAwake = false;
-    _logger->debug("Panel deep sleep");
+    _power.moveTo(PanelPower::Asleep);
 #endif
 }
 
@@ -291,27 +290,21 @@ nlohmann::json DisplayManager::healthSnapshot() const
     j["consecutive_failures"] = failures;
     j["rated_refreshes"] = RATED_REFRESHES;
     j["wear_percent"] = static_cast<double>(refreshes) / RATED_REFRESHES * 100.0;
-    j["health"] = (failures == 0)  ? "ok"
-                  : (failures < 3) ? "degraded"
-                                   : "failed";
+    j["health"] = std::string(toString(panelHealth(failures)));
     return j;
 }
 
 bool DisplayManager::_hwInit()
 {
 #ifdef EPD_HARDWARE_ENABLED
-    if (!_initialized)
+    if (_power.state() == PanelPower::Off && DEV_Module_Init() != 0)
     {
-        if (DEV_Module_Init() != 0)
-        {
-            _metrics.increment("epd_poweron_fail_total");
-            ++_consecutiveFailures;
-            _logger->error("DEV_Module_Init failed");
-            return false;
-        }
-        _initialized = true;
+        _metrics.increment("epd_poweron_fail_total");
+        ++_consecutiveFailures;
+        _logger->error("DEV_Module_Init failed");
+        return false;
     }
-    _panelAwake = true;
+    _power.moveTo(PanelPower::Awake);
     const auto t0 = std::chrono::steady_clock::now();
     if (EPD_7IN5_V2_Init() != 0)
     {
@@ -370,13 +363,14 @@ ScreenSnapshot DisplayManager::screenSnapshot() const
     return _screen;
 }
 
-void DisplayManager::_recordScreen(const std::string& state, const std::string& source)
+void DisplayManager::_recordScreen(const PanelContent content, const std::string& source)
 {
+    _content.store(content);
     std::lock_guard lk(_screenMtx);
-    _screen = {state, source, _screen.seq + 1, nowUnix()};
+    _screen = {content, source, _screen.seq + 1, nowUnix()};
 }
 
-void DisplayManager::_writeMockPanel(const std::vector<uint8_t>& buffer, const std::string& state,
+void DisplayManager::_writeMockPanel(const std::vector<uint8_t>& buffer, const PanelContent content,
                                      const std::string& source)
 {
     const std::filesystem::path dir(_cfg.display.mockOutputDir);
@@ -393,12 +387,13 @@ void DisplayManager::_writeMockPanel(const std::vector<uint8_t>& buffer, const s
 
     {
         std::ofstream meta(dir / "panel.json.tmp");
-        meta << nlohmann::json{{"state", state}, {"source", source}, {"seq", ++_mockSeq}}.dump();
+        meta << nlohmann::json{{"state", std::string(toString(content))}, {"source", source}, {"seq", ++_mockSeq}}
+            .dump();
     }
     std::filesystem::rename(dir / "panel.json.tmp", dir / "panel.json");
 
     _metrics.increment("epd_refresh_total");
-    _metrics.increment(state == "image" ? "epd_image_refresh_total" : "epd_clear_total");
+    _metrics.increment(content == PanelContent::Image ? "epd_image_refresh_total" : "epd_clear_total");
     _metrics.set("epd_last_refresh_at", nowUnix());
     _metrics.setIfUnset("epd_first_use_at", nowUnix());
 }

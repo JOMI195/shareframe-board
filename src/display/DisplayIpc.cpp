@@ -138,7 +138,7 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
         const auto screen = display_.screenSnapshot();
         int64_t imageId = 0;
         std::string sender;
-        if (screen.state == "image")
+        if (screen.state == PanelContent::Image)
         {
             const auto all = images_.getAll();
             if (const auto it = std::ranges::find(all, std::filesystem::path(screen.source), &Image::imagePath);
@@ -150,7 +150,7 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
         }
         return {
             {"seq", screen.seq},
-            {"state", screen.state},
+            {"state", std::string(toString(screen.state))},
             {"source", screen.source},
             {"updated_at", screen.updatedAt},
             {"image_id", imageId},
