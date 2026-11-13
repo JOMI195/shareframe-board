@@ -176,7 +176,7 @@ void WebsocketClient::_reportIfUnregistered()
         return;
     if (!reportedUnregistered_.exchange(true))
         ws_.setMaxWaitBetweenReconnectionRetries(kUnregisteredMaxReconnectWaitMs);
-    bus_.publish<Topic::FRAME_REGISTRATION>({false});
+    bus_.publish<Topic::FRAME_REGISTRATION>({false, authMgr_.claimCode()});
 }
 
 // ------- SEND QUEUE

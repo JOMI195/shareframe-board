@@ -60,6 +60,8 @@ void DisplayTaskManager::subscribe()
     });
     bus_.subscribe<Topic::FRAME_REGISTRATION>([this](const FrameRegistrationEvent& evt)
     {
+        if (!evt.claimCode.empty())
+            registration_.setClaimCode(evt.claimCode);
         {
             std::lock_guard lk(mtx_);
             registrationWindow_.report(evt.registered, steadySecs(), cfg_.display.registrationScreenWindowSecs);

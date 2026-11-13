@@ -229,6 +229,7 @@ void DisplayIpc::onEvent(const std::string& topic, const nlohmann::json& payload
     }
     else if (topic == event_topics::FrameRegistration)
     {
-        bus_.publish<Topic::FRAME_REGISTRATION>(FrameRegistrationEvent{payload.value("registered", true)});
+        bus_.publish<Topic::FRAME_REGISTRATION>(
+            FrameRegistrationEvent{payload.value("registered", true), payload.value("claim_code", std::string{})});
     }
 }

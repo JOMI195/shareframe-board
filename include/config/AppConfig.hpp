@@ -69,8 +69,8 @@ struct DisplayConfig
     // The setup QR only shows this long after boot, before the first connection.
     int apSetupBootWindowSecs = 600;
     std::string setupUrl = "http://192.168.4.1";
-    // Appended to the server URL, followed by the serial, for the registration QR.
-    std::string registerPath = "/bilderrahmen?register=";
+    // Appended to the server URL, followed by the claim code, for the registration QR.
+    std::string registerPath = "/bilderrahmen?code=";
     // How long the registration QR shows after the server first refuses the frame.
     int registrationScreenWindowSecs = 600;
     std::string setupFontPath = "assets/font/DejaVuSans.ttf";

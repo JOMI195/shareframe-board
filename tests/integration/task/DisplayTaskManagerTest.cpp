@@ -46,7 +46,10 @@ protected:
         bus.publish<Topic::AP_SETUP_STATE>({required, required ? "shareframe-board" : "", required ? password : ""});
     }
 
-    void registered(const bool value) { bus.publish<Topic::FRAME_REGISTRATION>({value}); }
+    void registered(const bool value, const std::string& claimCode = "")
+    {
+        bus.publish<Topic::FRAME_REGISTRATION>({value, claimCode});
+    }
 
     void status(const std::optional<StatusScreenKind> kind, const std::string& version = "")
     {
@@ -349,6 +352,22 @@ TEST_F(DisplayTaskManagerTest, RefusedFrameShowsTheRegistrationScreenUntilRegist
     registered(false);
     std::this_thread::sleep_for(300ms);
     EXPECT_EQ(manager.state(), DisplayState::Slideshow) << "a later refusal brought the screen back before a reboot";
+}
+
+TEST_F(DisplayTaskManagerTest, NewClaimCodeRepaintsTheRegistrationScreen)
+{
+    start();
+    registered(false, "K7M2QX9P");
+    ASSERT_TRUE(waitFor([&] { return source() == "registration"; }));
+    const auto first = seq();
+
+    registered(false, "K7M2QX9P");
+    std::this_thread::sleep_for(300ms);
+    EXPECT_EQ(seq(), first) << "the same code painted the panel again";
+
+    registered(false, "ABCD2345");
+    EXPECT_TRUE(waitFor([&] { return seq() > first; }));
+    EXPECT_EQ(source(), "registration");
 }
 
 TEST_F(DisplayTaskManagerTest, RegistrationScreenTimesOutForGood)
