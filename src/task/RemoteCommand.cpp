@@ -2,6 +2,7 @@
 #include "ipc/IpcClient.hpp"
 #include "ipc/StatusScreenKind.hpp"
 #include "net/WsProtocol.hpp"
+#include "update/UpdatePhase.hpp"
 #include "util/Subprocess.hpp"
 #include <algorithm>
 #include <array>
@@ -194,7 +195,7 @@ RemoteCommand::Gate RemoteCommand::_updateIdle()
     if (!res)
         return {};
     const auto phase = (*res)["status"].value("phase", std::string{"idle"});
-    if (phase != "idle" && phase != "failed")
+    if (const auto known = updatePhaseFromString(phase); !known || isBusy(*known))
         return {false, "update " + phase};
     return {};
 }
