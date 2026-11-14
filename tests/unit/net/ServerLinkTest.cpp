@@ -56,10 +56,12 @@ TEST(ServerLink, OnlyAnUnregisteredFrameRetriesOften)
     EXPECT_EQ(ws::maxReconnectWaitMs(Link::Connecting), ws::maxReconnectWaitMs(Link::Offline));
 }
 
-TEST(ServerLink, ARejectedTokenIsReplacedAtOnceAStaleOneAfterAStreak)
+TEST(ServerLink, ARejectedTokenIsReplacedAtOnceAStreakOnlyReloadsIt)
 {
-    EXPECT_TRUE(ws::refreshesToken(ws::CLOSE_AUTH_REJECTED, 1));
-    EXPECT_TRUE(ws::refreshesToken(ws::CLOSE_TOKEN_REVOKED, 1));
-    EXPECT_FALSE(ws::refreshesToken(1006, 4));
-    EXPECT_TRUE(ws::refreshesToken(1006, 5));
+    using ws::TokenAction;
+    EXPECT_EQ(ws::tokenAction(ws::CLOSE_AUTH_REJECTED, 1), TokenAction::Replace);
+    EXPECT_EQ(ws::tokenAction(ws::CLOSE_TOKEN_REVOKED, 1), TokenAction::Replace);
+    EXPECT_EQ(ws::tokenAction(1006, 4), TokenAction::Keep);
+    EXPECT_EQ(ws::tokenAction(1006, 5), TokenAction::Reload) << "an unreachable server must not wipe the token";
+    EXPECT_EQ(ws::tokenAction(0, 5), TokenAction::Reload);
 }

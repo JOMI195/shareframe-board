@@ -18,6 +18,7 @@
 #include "task/ImageUpdate.hpp"
 #include "task/MissingImageCheck.hpp"
 #include "task/RemoteCommand.hpp"
+#include "task/WifiReturnWatcher.hpp"
 #include "Version.hpp"
 #include <spdlog/spdlog.h>
 
@@ -55,6 +56,8 @@ int main(int argc, char* argv[])
     // Tasks subscribe to the bus in start() — also before eventBus.start().
     WebsocketClient wsClient(eventBus, cfg, authTokenManager, serverContact);
     wsClient.start();
+    WifiReturnWatcher wifiReturn(eventBus, cfg, [&wsClient] { wsClient.reconnectNow(); });
+    wifiReturn.start();
     ImageUpdate imageUpdate(eventBus, imageManager, imageRepo);
     imageUpdate.start();
     MissingImageCheck missingImageCheck(eventBus, imageRepo);
@@ -82,6 +85,7 @@ int main(int argc, char* argv[])
     displayIpc.disconnect();
     updateIpc.disconnect();
     expiredImageCleanup.stop();
+    wifiReturn.stop();
     wsClient.stop();
     imageUpdate.stop();
 

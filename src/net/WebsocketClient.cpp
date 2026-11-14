@@ -42,6 +42,7 @@ void WebsocketClient::_setupWebsocket()
             logger_->info("WebSocket connected");
             contact_.onOpen();
             reconnectCount_.store(0);
+            downSinceOpen_.store(false);
             _onOpened();
             _flushSendQueue();
             bus_.publish<Topic::WS_CONNECTED>({});
@@ -49,6 +50,7 @@ void WebsocketClient::_setupWebsocket()
         else if (msg->type == ix::WebSocketMessageType::Close)
         {
             logger_->info("WebSocket disconnected: code={} reason={}", msg->closeInfo.code, msg->closeInfo.reason);
+            downSinceOpen_.store(true);
             contact_.onClose();
             link_.moveTo(ws::onClosed(link_.state()));
             _handleReconnect(msg->closeInfo.code);
@@ -57,6 +59,7 @@ void WebsocketClient::_setupWebsocket()
         {
             logger_->error("WebSocket error: http_status={} reason={}",
                            msg->errorInfo.http_status, msg->errorInfo.reason);
+            downSinceOpen_.store(true);
             contact_.onClose();
             link_.moveTo(ws::onClosed(link_.state()));
             // The server refuses a handshake it never accepted with 403 instead of a close code.
@@ -127,28 +130,31 @@ void WebsocketClient::_processMessage(const std::string& text) const
 
 void WebsocketClient::_handleReconnect(int closeCode)
 {
-    if (!ws::refreshesToken(closeCode, reconnectCount_.fetch_add(1) + 1))
+    const auto action = ws::tokenAction(closeCode, reconnectCount_.fetch_add(1) + 1);
+    if (action == ws::TokenAction::Keep)
         return;
 
-    if (ws::isAuthRejection(closeCode))
+    if (action == ws::TokenAction::Replace)
+    {
         logger_->info("Server rejected auth (code={}), refreshing token immediately", closeCode);
+        authMgr_.invalidate();
+    }
     else
-        logger_->info("WebSocket reconnect threshold reached, refreshing token");
+        logger_->info("WebSocket reconnect threshold reached, reloading token");
     reconnectCount_.store(0);
-    _refreshToken();
+    _applyToken();
 }
 
-void WebsocketClient::_refreshToken()
+void WebsocketClient::_applyToken()
 {
-    authMgr_.invalidate();
     if (auto authHeaders = TokenAuth::buildTokenAuthHeaders(authMgr_); !authHeaders.empty())
     {
         ws_.setExtraHeaders(ix::WebSocketHttpHeaders(authHeaders.begin(), authHeaders.end()));
-        logger_->info("Token refreshed, auto-reconnect will use new token");
+        logger_->info("Token loaded, auto-reconnect will use it");
     }
     else
     {
-        logger_->error("Failed to obtain fresh token");
+        logger_->error("Failed to obtain a token");
         _reportIfUnregistered();
     }
 }
@@ -214,6 +220,17 @@ void WebsocketClient::start()
     Task::start();
 }
 
+void WebsocketClient::reconnectNow()
+{
+    std::lock_guard lk(restartMtx_);
+    if (stopping_ || !downSinceOpen_.load() || ws_.getReadyState() == ix::ReadyState::Open)
+        return;
+    // The socket keeps its retry count until it connects; only a restart begins at the shortest wait.
+    logger_->info("Reconnecting WebSocket now");
+    ws_.stop();
+    ws_.start();
+}
+
 void WebsocketClient::_run(const std::stop_token st)
 {
     _setupWebsocket();
@@ -225,6 +242,10 @@ void WebsocketClient::_run(const std::stop_token st)
         cv_.wait(lk, st, [] { return false; });
     }
 
+    {
+        std::lock_guard lk(restartMtx_);
+        stopping_ = true;
+    }
     ws_.stop();
     logger_->info("WebSocket client stopped");
 }

@@ -3,12 +3,71 @@
 #include "support/ImageFixture.hpp"
 #include "support/TokenStore.hpp"
 #include "support/Wait.hpp"
+#include <arpa/inet.h>
+#include <atomic>
 #include <gtest/gtest.h>
+#include <netinet/in.h>
+#include <optional>
+#include <poll.h>
+#include <stdexcept>
+#include <sys/socket.h>
+#include <thread>
+#include <unistd.h>
 
 using namespace std::chrono_literals;
 
 namespace
 {
+/// Accepts every connection and hangs up at once, so each reconnect attempt fails and is counted.
+class HangUpListener
+{
+public:
+    explicit HangUpListener(const int port)
+    {
+        fd_ = ::socket(AF_INET, SOCK_STREAM, 0);
+        constexpr int on = 1;
+        ::setsockopt(fd_, SOL_SOCKET, SO_REUSEADDR, &on, sizeof on);
+        sockaddr_in addr{};
+        addr.sin_family = AF_INET;
+        addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        addr.sin_port = htons(static_cast<uint16_t>(port));
+        if (::bind(fd_, reinterpret_cast<sockaddr*>(&addr), sizeof addr) != 0 || ::listen(fd_, 8) != 0)
+            throw std::runtime_error("HangUpListener: cannot listen");
+        thread_ = std::thread([this]
+        {
+            while (!stop_)
+            {
+                pollfd p{fd_, POLLIN, 0};
+                if (::poll(&p, 1, 20) <= 0)
+                    continue;
+                if (const int conn = ::accept(fd_, nullptr, nullptr); conn >= 0)
+                {
+                    ::close(conn);
+                    ++accepted_;
+                }
+            }
+        });
+    }
+
+    ~HangUpListener()
+    {
+        stop_ = true;
+        thread_.join();
+        ::close(fd_);
+    }
+
+    HangUpListener(const HangUpListener&) = delete;
+    HangUpListener& operator=(const HangUpListener&) = delete;
+
+    [[nodiscard]] int accepted() const { return accepted_.load(); }
+
+private:
+    int fd_ = -1;
+    std::atomic<bool> stop_{false};
+    std::atomic<int> accepted_{0};
+    std::thread thread_;
+};
+
 class WebsocketClientTest : public ::testing::Test, protected ImageFixture
 {
 protected:
@@ -88,4 +147,31 @@ TEST_F(WebsocketClientTest, MessagesSentWhileOfflineAreDeliveredOnConnect)
     ASSERT_TRUE(server.start());
     ASSERT_TRUE(waitFor([&] { return !server.received().empty(); }, 10000ms));
     EXPECT_EQ(nlohmann::json::parse(server.received()[0])["sent_image_ids"], nlohmann::json::array({7}));
+}
+
+TEST_F(WebsocketClientTest, AnOutageKeepsTheTokenAndReconnectNowSkipsThePendingWait)
+{
+    std::optional<HangUpListener> down(std::in_place, server.port());
+    client.start();
+    bus.start();
+    // After six failures the next attempt is 3.2s away.
+    ASSERT_TRUE(waitFor([&] { return down->accepted() >= 6; }, 15000ms));
+    ASSERT_TRUE(tokens.get().has_value()) << "an unreachable server must not wipe the token";
+    EXPECT_EQ(tokens.get()->value, "test-token");
+
+    down.reset();
+    ASSERT_TRUE(server.start());
+    client.reconnectNow();
+    EXPECT_TRUE(waitFor([&] { return server.clientCount() == 1; }, 1500ms));
+    EXPECT_EQ(server.openHeaders().at(0).at("Authorization"), "Frame-Access-Token test-token");
+}
+
+TEST_F(WebsocketClientTest, ReconnectNowLeavesAnOpenSocketAlone)
+{
+    ASSERT_TRUE(server.start());
+    connect();
+
+    client.reconnectNow();
+    std::this_thread::sleep_for(300ms);
+    EXPECT_EQ(server.openHeaders().size(), 1u);
 }

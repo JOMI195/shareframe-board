@@ -66,11 +66,20 @@ constexpr bool isAuthRejection(const int closeCode)
     return closeCode == CLOSE_AUTH_REJECTED || closeCode == CLOSE_TOKEN_REVOKED;
 }
 
-/// A rejected token is replaced at once; otherwise a streak of failed reconnects is
-/// taken as a sign that it went stale.
-constexpr bool refreshesToken(const int closeCode, const int failedReconnects)
+enum class TokenAction
+{
+    Keep,
+    Reload, ///< read the stored token again, fetch only when it is missing or expired
+    Replace ///< drop the stored token and fetch a new one
+};
+
+/// A rejected token is replaced at once. A streak of failed reconnects only reloads it:
+/// an unreachable server says nothing about the token, and others share it.
+constexpr TokenAction tokenAction(const int closeCode, const int failedReconnects)
 {
     constexpr int kStreak = 5;
-    return isAuthRejection(closeCode) || failedReconnects >= kStreak;
+    if (isAuthRejection(closeCode))
+        return TokenAction::Replace;
+    return failedReconnects >= kStreak ? TokenAction::Reload : TokenAction::Keep;
 }
 } // namespace ws
