@@ -10,6 +10,9 @@
 
 namespace
 {
+using slideshow::Content;
+using slideshow::Phase;
+
 int64_t steadyNowMs()
 {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -20,7 +23,8 @@ int64_t steadyNowMs()
 DisplayImageLoop::DisplayImageLoop(EventBus& bus, const AppConfig& cfg,
                                    ImageRepository& repo, DisplayManager& display,
                                    RuntimeSettings& settings)
-    : Task(bus, "DisplayImageLoop"), cfg_(cfg), repo_(repo), display_(display), settings_(settings)
+    : Task(bus, "DisplayImageLoop"), cfg_(cfg), repo_(repo), display_(display), settings_(settings),
+      phase_(Phase::Stopped, logger_, spdlog::level::debug)
 {
 }
 
@@ -90,7 +94,7 @@ void DisplayImageLoop::_onImageRemoved(const std::vector<int64_t>& removedIds)
     if (const int64_t current = currentImageId_.load(); std::ranges::find(removedIds, current) != removedIds.end())
     {
         logger_->info("Current image {} was removed, skipping", current);
-        skipCurrent_ = true;
+        requests_.skip = true;
         cv_.notify_one();
     }
 }
@@ -113,151 +117,167 @@ std::vector<std::filesystem::path> DisplayImageLoop::_loadDefaultImages() const
     }
 
     std::ranges::sort(paths);
-    logger_->info("Loaded {} default images from {}", paths.size(), dir);
+    logger_->debug("Loaded {} default images from {}", paths.size(), dir);
     return paths;
+}
+
+std::vector<Image> DisplayImageLoop::_showablePictures() const
+{
+    auto pictures = repo_.getAll();
+    std::erase_if(pictures, [this](const Image& image)
+    {
+        if (std::filesystem::exists(image.imagePath))
+            return false;
+        logger_->warn("Image file missing: {}, skipping", image.imagePath.string());
+        return true;
+    });
+    return pictures;
 }
 
 void DisplayImageLoop::_run(const std::stop_token st)
 {
     while (!st.stop_requested())
     {
-        if (!settings_.isSlideshowActive())
-        {
-            logger_->debug("Slideshow inactive, waiting");
-            nextChangeAtMs_.store(0);
-            std::unique_lock lk(mtx_);
-            cv_.wait_for(lk, std::chrono::seconds(settings_.getEffectiveInterval()),
-                         [&st, this] { return st.stop_requested() || settings_.isSlideshowActive(); });
-            continue;
-        }
-
         try
         {
-            const auto all = repo_.getAll();
-
-            if (all.empty())
-            {
-                // Show default images when no user images exist
-                auto defaultImages = _loadDefaultImages();
-                if (defaultImages.empty())
-                {
-                    logger_->debug("No images available, waiting");
-                    _armNextChange();
-                    std::unique_lock lk(mtx_);
-                    cv_.wait_for(lk, std::chrono::seconds(settings_.getEffectiveInterval()),
-                                 [&st, this] { return st.stop_requested() || skipCurrent_ || !settings_.isSlideshowActive(); });
-                    continue;
-                }
-
-                while (!st.stop_requested() && settings_.isSlideshowActive())
-                {
-                    // Check if user images appeared
-                    if (!repo_.getAllIds().empty())
-                    {
-                        logger_->info("User images available, switching from defaults");
-                        defaultImageIdx_ = 0;
-                        break;
-                    }
-
-                    // Wait out a pending panel refresh delay before painting so
-                    // an image arriving meanwhile pre-empts the default.
-                    if (const int wait = display_.secondsUntilRefreshReady(); wait > 0)
-                    {
-                        std::unique_lock lk(mtx_);
-                        skipCurrent_ = false;
-                        newImage_ = false;
-                        cv_.wait_for(lk, std::chrono::seconds(wait),
-                                     [&st, this] { return st.stop_requested() || (newImage_ && !settings_.isNightNow()) || skipCurrent_ || !settings_.isSlideshowActive(); });
-                        continue;
-                    }
-
-                    if (defaultImageIdx_ >= defaultImages.size())
-                        defaultImageIdx_ = 0;
-
-                    refreshing_ = true;
-                    const auto path = defaultImages[defaultImageIdx_];
-                    if (_paint(path, "", true, st))
-                    {
-                        ready_.store(true);
-                        logger_->info("Displaying default image ({})", path.string());
-                    }
-                    else if (st.stop_requested())
-                        break;
-                    else
-                        logger_->error("Failed to display default image: {}", path.string());
-
-                    ++defaultImageIdx_;
-
-                    _armNextChange();
-                    {
-                        std::lock_guard lk(mtx_);
-                        skipCurrent_ = false;
-                        newImage_ = false;
-                        refreshing_ = false;
-                    }
-                    _waitForNext(st, path, "", true, [this] { return (newImage_ && !settings_.isNightNow()) || skipCurrent_ || !settings_.isSlideshowActive(); });
-                }
-                continue;
-            }
-
-            const int64_t nextId = _takeNext(all);
-            const auto& image = *std::ranges::find(all, nextId, &Image::id);
-            if (!std::filesystem::exists(image.imagePath))
-            {
-                logger_->warn("Image file missing: {}, skipping", image.imagePath.string());
-                currentImageId_ = nextId;
-                continue;
-            }
-
-            // Display the image (DisplayManager enforces min refresh)
-            refreshing_ = true;
-            if (_paint(image.imagePath, image.sender, false, st))
-            {
-                ready_.store(true);
-                logger_->info("Displaying image {} ({})", nextId, image.imagePath.string());
-            }
-            else if (st.stop_requested())
-                break;
-            else
-                logger_->error("Failed to display image {}", nextId);
-
-            currentImageId_ = nextId;
-
-            // Wait for interval or skip signal
-            _armNextChange();
-            {
-                std::lock_guard lk(mtx_);
-                skipCurrent_ = false;
-                refreshing_ = false;
-            }
-            _waitForNext(st, image.imagePath, image.sender, false, [this] { return skipCurrent_ || pendingShowId_ != 0 || !settings_.isSlideshowActive(); });
+            _step(st);
         }
         catch (const std::exception& e)
         {
             logger_->error("DisplayImageLoop iteration failed: {}", e.what());
-            refreshing_ = false;
-            std::unique_lock lk(mtx_);
-            cv_.wait_for(lk, std::chrono::seconds(5),
-                         [&st] { return st.stop_requested(); });
+            _recover(st);
         }
         catch (...)
         {
             logger_->error("DisplayImageLoop iteration failed with unknown exception");
-            refreshing_ = false;
-            std::unique_lock lk(mtx_);
-            cv_.wait_for(lk, std::chrono::seconds(5),
-                         [&st] { return st.stop_requested(); });
+            _recover(st);
         }
     }
-    refreshing_ = false;
+    phase_.moveTo(Phase::Stopped);
     nextChangeAtMs_.store(0);
 }
 
-bool DisplayImageLoop::_paint(const std::filesystem::path& path, const std::string& sender, const bool sample,
-                              const std::stop_token& st)
+void DisplayImageLoop::_step(const std::stop_token& st)
 {
-    auto buffer = PhotoRenderer::render(path);
-    const bool nightHold = settings_.isNightHoldNow();
+    const bool active = settings_.isSlideshowActive();
+    const auto pictures = active ? _showablePictures() : std::vector<Image>{};
+    const auto samples = active && pictures.empty() ? _loadDefaultImages() : std::vector<std::filesystem::path>{};
+
+    switch (slideshow::plan(active, !pictures.empty(), !samples.empty()))
+    {
+    case slideshow::Plan::Pause: return _pause(st);
+    case slideshow::Plan::WaitForContent: return _waitForContent(st);
+    case slideshow::Plan::ShowSample: return _showSample(st, samples);
+    case slideshow::Plan::ShowPicture: return _showPicture(st, pictures);
+    }
+}
+
+void DisplayImageLoop::_pause(const std::stop_token& st)
+{
+    phase_.moveTo(Phase::Paused);
+    logger_->debug("Slideshow inactive, waiting");
+    nextChangeAtMs_.store(0);
+    std::unique_lock lk(mtx_);
+    cv_.wait_for(lk, std::chrono::seconds(settings_.getEffectiveInterval()),
+                 [&st, this] { return st.stop_requested() || settings_.isSlideshowActive(); });
+}
+
+void DisplayImageLoop::_waitForContent(const std::stop_token& st)
+{
+    phase_.moveTo(Phase::Empty);
+    logger_->debug("No images available, waiting");
+    _armNextChange();
+    std::unique_lock lk(mtx_);
+    cv_.wait_for(lk, std::chrono::seconds(settings_.getEffectiveInterval()),
+                 [&st, this] { return st.stop_requested() || _endsHold(Content::None); });
+    // Taken only now, so a request that came in before the wait still cuts it short.
+    requests_.skip = false;
+    requests_.newPicture = false;
+}
+
+void DisplayImageLoop::_showSample(const std::stop_token& st, const std::vector<std::filesystem::path>& samples)
+{
+    if (const int wait = display_.secondsUntilRefreshReady(); wait > 0)
+    {
+        phase_.moveTo(Phase::Yielding);
+        std::unique_lock lk(mtx_);
+        requests_.skip = false;
+        requests_.newPicture = false;
+        cv_.wait_for(lk, std::chrono::seconds(wait),
+                     [&st, this] { return st.stop_requested() || _endsHold(Content::Sample); });
+        return;
+    }
+
+    if (defaultImageIdx_ >= samples.size())
+        defaultImageIdx_ = 0;
+    const Frame frame{Content::Sample, samples[defaultImageIdx_], ""};
+
+    phase_.moveTo(Phase::Painting);
+    if (_paint(frame, st))
+    {
+        ready_.store(true);
+        logger_->info("Displaying default image ({})", frame.path.string());
+    }
+    else if (st.stop_requested())
+        return;
+    else
+        logger_->error("Failed to display default image: {}", frame.path.string());
+
+    ++defaultImageIdx_;
+
+    _armNextChange();
+    {
+        std::lock_guard lk(mtx_);
+        requests_.skip = false;
+        requests_.newPicture = false;
+        phase_.moveTo(Phase::Holding);
+    }
+    _hold(st, frame);
+}
+
+void DisplayImageLoop::_showPicture(const std::stop_token& st, const std::vector<Image>& pictures)
+{
+    if (std::exchange(defaultImageIdx_, 0) != 0)
+        logger_->info("User images available, switching from defaults");
+
+    const int64_t nextId = _takeNext(pictures);
+    const auto& image = *std::ranges::find(pictures, nextId, &Image::id);
+    const Frame frame{Content::Picture, image.imagePath, image.sender};
+
+    phase_.moveTo(Phase::Painting);
+    if (_paint(frame, st))
+    {
+        ready_.store(true);
+        logger_->info("Displaying image {} ({})", nextId, frame.path.string());
+    }
+    else if (st.stop_requested())
+        return;
+    else
+        logger_->error("Failed to display image {}", nextId);
+
+    currentImageId_ = nextId;
+
+    _armNextChange();
+    {
+        std::lock_guard lk(mtx_);
+        requests_.skip = false;
+        phase_.moveTo(Phase::Holding);
+    }
+    _hold(st, frame);
+}
+
+void DisplayImageLoop::_recover(const std::stop_token& st)
+{
+    phase_.moveTo(Phase::Recovering);
+    std::unique_lock lk(mtx_);
+    cv_.wait_for(lk, std::chrono::seconds(5), [&st] { return st.stop_requested(); });
+}
+
+bool DisplayImageLoop::_paint(const Frame& frame, const std::stop_token& st)
+{
+    const bool sample = frame.content == Content::Sample;
+    auto buffer = PhotoRenderer::render(frame.path);
+    const bool nightHold = settings_.nightState() == NightState::Hold;
     if (!buffer.empty() && nightHold)
     {
         const auto text = panel_badge::nightText(settings_.getNightEndHour());
@@ -275,56 +295,63 @@ bool DisplayImageLoop::_paint(const std::filesystem::path& path, const std::stri
                                                         std::string(panel_badge::NO_IMAGES_TEXT), noteRng_, avoid))
             lastNote_ = note;
     }
-    if (!buffer.empty() && !sender.empty() && settings_.isShowSender())
-        panel_badge::draw(buffer, cfg_.display.boldFontPath, sender, panel_badge::Corner::TopRight);
-    return display_.displayBuffer(buffer, path.string(), st);
+    if (!buffer.empty() && !frame.sender.empty() && settings_.isShowSender())
+        panel_badge::draw(buffer, cfg_.display.boldFontPath, frame.sender, panel_badge::Corner::TopRight);
+    return display_.displayBuffer(buffer, frame.path.string(), st);
 }
 
-void DisplayImageLoop::_waitForNext(const std::stop_token& st, const std::filesystem::path& current,
-                                    const std::string& sender, const bool sample, const std::function<bool()>& wake)
+void DisplayImageLoop::_hold(const std::stop_token& st, const Frame& frame)
 {
     using Clock = std::chrono::steady_clock;
-    const Clock::time_point due{std::chrono::milliseconds(nextChangeAtMs_.load())};
+    using std::chrono::milliseconds;
+    const Clock::time_point due{milliseconds(nextChangeAtMs_.load())};
+    const auto endsHold = [this, &frame] { return _endsHold(frame.content); };
     std::unique_lock lk(mtx_);
     while (true)
     {
-        cv_.wait_until(lk, st, due, [&] { return wake() || restoreCurrent_; });
-        if (!std::exchange(restoreCurrent_, false) || st.stop_requested() || wake())
+        cv_.wait_until(lk, st, due, [&] { return endsHold() || requests_.panelWiped; });
+        if (!std::exchange(requests_.panelWiped, false) || st.stop_requested() || endsHold())
             return;
-        if (!display_.isCleared())
-            continue;
 
-        const auto readyAt = Clock::now() + std::chrono::seconds(display_.secondsUntilRefreshReady());
-        if (readyAt >= due)
-        {
+        const auto refreshAllowedIn = std::chrono::seconds(display_.secondsUntilRefreshReady());
+        const auto nextDueIn = std::chrono::duration_cast<milliseconds>(due - Clock::now());
+        const auto response = slideshow::onPanelWiped(display_.isCleared(), milliseconds(refreshAllowedIn).count(),
+                                                      nextDueIn.count());
+        if (response == slideshow::WipeResponse::LeaveToNext)
             logger_->info("Panel cleared, next image due before a repaint is allowed");
+        if (response != slideshow::WipeResponse::Repaint)
             continue;
-        }
-        if (cv_.wait_until(lk, st, readyAt, wake) || st.stop_requested())
+        if (cv_.wait_until(lk, st, Clock::now() + refreshAllowedIn, endsHold) || st.stop_requested())
             return;
 
-        refreshing_ = true;
+        phase_.moveTo(Phase::Painting);
         lk.unlock();
-        if (_paint(current, sender, sample, st))
-            logger_->info("Repainted {} after the daily clear", current.string());
+        if (_paint(frame, st))
+            logger_->info("Repainted {} after the daily clear", frame.path.string());
         else if (!st.stop_requested())
-            logger_->error("Failed to repaint {} after the daily clear", current.string());
+            logger_->error("Failed to repaint {} after the daily clear", frame.path.string());
         lk.lock();
-        refreshing_ = false;
+        phase_.moveTo(Phase::Holding);
     }
+}
+
+bool DisplayImageLoop::_endsHold(const Content held) const
+{
+    return slideshow::endsHold(held, requests_, settings_.isSlideshowActive(),
+                               settings_.nightState() != NightState::Day);
 }
 
 void DisplayImageLoop::_onScheduledClear()
 {
     std::lock_guard lk(mtx_);
-    restoreCurrent_ = true;
+    requests_.panelWiped = true;
     cv_.notify_one();
 }
 
 void DisplayImageLoop::_onImageNew()
 {
     std::lock_guard lk(mtx_);
-    newImage_ = true;
+    requests_.newPicture = true;
     cv_.notify_one();
 }
 
@@ -353,7 +380,7 @@ void DisplayImageLoop::_onSkipImage()
 {
     std::lock_guard lk(mtx_);
     logger_->info("Skip image requested via IPC");
-    skipCurrent_ = true;
+    requests_.skip = true;
     cv_.notify_one();
 }
 
@@ -361,8 +388,8 @@ void DisplayImageLoop::_onShowImage(const ShowImageEvent& evt)
 {
     std::lock_guard lk(mtx_);
     logger_->info("Show image {} requested via IPC", evt.id);
-    pendingShowId_ = evt.id;
-    skipCurrent_ = true;
+    requests_.showId = evt.id;
+    requests_.skip = true;
     cv_.notify_one();
 }
 
@@ -371,7 +398,7 @@ int64_t DisplayImageLoop::_takeNext(const std::vector<Image>& images)
     int64_t requested;
     {
         std::lock_guard lk(mtx_);
-        requested = std::exchange(pendingShowId_, 0);
+        requested = std::exchange(requests_.showId, 0);
     }
     if (requested != 0 && std::ranges::find(images, requested, &Image::id) != images.end())
         return requested;

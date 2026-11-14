@@ -76,7 +76,8 @@ int main(int argc, char* argv[])
 
     eventBus.start();
 
-    DisplayIpc displayIpc(eventBus, runtimeSettings, displayImageLoop, imageRepo, displayManager);
+    DisplayIpc displayIpc(eventBus, runtimeSettings, displayImageLoop, imageRepo, displayManager,
+                          [&displayTaskManager] { return displayTaskManager.state(); });
 
     // REP: commands and queries from the dashboard.
     NngRepServer repServer(cfg.ipc.displayRep, [&](const IpcMessage& msg) { return displayIpc.handle(msg); });
@@ -102,7 +103,7 @@ int main(int argc, char* argv[])
 
     // Tasks stopped; e-paper is bistable, so leave the status screen of a reboot up,
     // otherwise a blank white screen (no-op if already cleared).
-    if (displayTaskManager.state() == DisplayState::Status)
+    if (displayTaskManager.state() == Screen::Status)
         statusScreen.finishForShutdown();
     else
         displayManager.clearForShutdown();

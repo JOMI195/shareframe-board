@@ -121,6 +121,36 @@ TEST_F(DisplayImageLoopTest, UserPictureReplacesDefaultImage)
     EXPECT_TRUE(waitFor([&] { return panel().value("source", "") == picture.string(); }));
 }
 
+// Without samples the loop used to sleep through a first picture, and a skip made it spin.
+TEST_F(DisplayImageLoopTest, EmptyFrameWaitsQuietlyAndShowsTheFirstPictureAtOnce)
+{
+    cfg.display.defaultImagesPath = (db.dir() / "no-samples").string();
+    settings.setDisplayInterval(10);
+    start();
+    ASSERT_TRUE(waitFor([&] { return loop.secondsUntilNext() >= 0; }));
+
+    bus.publish<Topic::SKIP_IMAGE>({});
+    std::this_thread::sleep_for(1500ms);
+    EXPECT_LE(loop.secondsUntilNext(), 8) << "the loop keeps starting its wait over";
+
+    const auto picture = db.dir() / "user.jpg";
+    std::filesystem::copy_file(std::string(SHAREFRAME_ASSETS_DIR) + "/image/loading/logo-frame-generic-shareframe.jpg", picture);
+    repo.save({42, "alice", picture, std::time(nullptr) + 3600});
+    bus.publish<Topic::IMAGE_NEW>(42);
+
+    EXPECT_TRUE(waitFor([&] { return source() == picture.string(); }));
+}
+
+// Stored pictures whose files are all gone used to spin the loop and leave the boot logo up.
+TEST_F(DisplayImageLoopTest, PicturesWithoutAFileGiveWayToTheSamples)
+{
+    repo.save({42, "alice", db.dir() / "gone.jpg", std::time(nullptr) + 3600});
+    start();
+
+    EXPECT_TRUE(waitFor([&] { return source().find("/image/default/") != std::string::npos; }));
+    EXPECT_TRUE(waitFor([&] { return !loop.isRefreshing() && loop.secondsUntilNext() > 0; }));
+}
+
 TEST_F(DisplayImageLoopTest, RemovingTheShownPictureMovesOn)
 {
     for (const int64_t id : {1, 2})

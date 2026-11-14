@@ -46,7 +46,10 @@ protected:
         bus.publish<Topic::AP_SETUP_STATE>({required, required ? "shareframe-board" : "", required ? password : ""});
     }
 
-    void registered(const bool value) { bus.publish<Topic::FRAME_REGISTRATION>({value}); }
+    void registered(const bool value, const std::string& claimCode = "")
+    {
+        bus.publish<Topic::FRAME_REGISTRATION>({value, claimCode});
+    }
 
     void status(const std::optional<StatusScreenKind> kind, const std::string& version = "")
     {
@@ -101,7 +104,7 @@ TEST_F(DisplayTaskManagerTest, BootsIntoTheSlideshow)
 {
     start();
     EXPECT_TRUE(waitFor([&] { return showsDefault(); }));
-    EXPECT_EQ(manager.state(), DisplayState::Slideshow);
+    EXPECT_EQ(manager.state(), Screen::Slideshow);
 }
 
 // The pending photo must never reach the panel: it would cost a refresh and hide the QR.
@@ -112,7 +115,7 @@ TEST_F(DisplayTaskManagerTest, SetupScreenReplacesPendingPhotoAtOnce)
     repo.save({1, "alice", picture, std::time(nullptr) + 3600});
     cfg.display.minRefreshSecs = 1;
     start();
-    ASSERT_TRUE(waitFor([&] { return manager.state() == DisplayState::Slideshow; }));
+    ASSERT_TRUE(waitFor([&] { return manager.state() == Screen::Slideshow; }));
     ASSERT_TRUE(showsBoot());
 
     apSetup(true);
@@ -143,7 +146,7 @@ TEST_F(DisplayTaskManagerTest, ConnectingReturnsToTheSlideshow)
 
     apSetup(false);
     EXPECT_TRUE(waitFor([&] { return showsDefault(); }));
-    EXPECT_EQ(manager.state(), DisplayState::Slideshow);
+    EXPECT_EQ(manager.state(), Screen::Slideshow);
 }
 
 TEST_F(DisplayTaskManagerTest, StoppedSlideshowGetsABlankPanelInsteadOfAStaleQr)
@@ -165,7 +168,7 @@ TEST_F(DisplayTaskManagerTest, BlankNightPausesTheSlideshowAndYieldsOnlyToTheSet
     const auto [from, to] = nightNow();
     bus.publish<Topic::UPDATE_NIGHT_MODE>({true, from, to, 3600, NightStyle::Pause});
     ASSERT_TRUE(waitFor([&] { return showsNight(); }));
-    EXPECT_EQ(manager.state(), DisplayState::NightBlank);
+    EXPECT_EQ(manager.state(), Screen::NightBlank);
     const auto blankedAt = seq();
 
     bus.publish<Topic::SKIP_IMAGE>({});
@@ -176,11 +179,11 @@ TEST_F(DisplayTaskManagerTest, BlankNightPausesTheSlideshowAndYieldsOnlyToTheSet
     ASSERT_TRUE(waitFor([&] { return source() == "ap-setup"; }));
     apSetup(false);
     ASSERT_TRUE(waitFor([&] { return showsNight(); }));
-    EXPECT_EQ(manager.state(), DisplayState::NightBlank);
+    EXPECT_EQ(manager.state(), Screen::NightBlank);
 
     bus.publish<Topic::UPDATE_NIGHT_MODE>({false, from, to, 3600, NightStyle::Pause});
     EXPECT_TRUE(waitFor([&] { return showsDefault(); }));
-    EXPECT_EQ(manager.state(), DisplayState::Slideshow);
+    EXPECT_EQ(manager.state(), Screen::Slideshow);
 }
 
 TEST_F(DisplayTaskManagerTest, NewNightEndRepaintsTheNightScreen)
@@ -241,7 +244,7 @@ TEST_F(DisplayTaskManagerTest, StatusScreenOutranksTheSetupScreen)
 
     status(StatusScreenKind::Update, "1.3.0");
     ASSERT_TRUE(waitFor([&] { return source() == "status:update"; }));
-    EXPECT_EQ(manager.state(), DisplayState::Status);
+    EXPECT_EQ(manager.state(), Screen::Status);
 
     apSetup(true);
     std::this_thread::sleep_for(300ms);
@@ -259,7 +262,7 @@ TEST_F(DisplayTaskManagerTest, HiddenStatusScreenReturnsToTheSlideshow)
 
     status(std::nullopt);
     EXPECT_TRUE(waitFor([&] { return showsDefault(); }));
-    EXPECT_EQ(manager.state(), DisplayState::Slideshow);
+    EXPECT_EQ(manager.state(), Screen::Slideshow);
 }
 
 TEST_F(DisplayTaskManagerTest, AnotherStatusScreenReplacesTheShownOne)
@@ -314,7 +317,7 @@ TEST_F(DisplayTaskManagerTest, ShutdownPaintsAStatusScreenStillWaitingForTheInte
     start();
     ASSERT_TRUE(waitFor([&] { return showsBoot(); }));
     status(StatusScreenKind::Reboot);
-    ASSERT_TRUE(waitFor([&] { return manager.state() == DisplayState::Status; }));
+    ASSERT_TRUE(waitFor([&] { return manager.state() == Screen::Status; }));
 
     display.requestShutdown();
     manager.stop();
@@ -342,13 +345,29 @@ TEST_F(DisplayTaskManagerTest, RefusedFrameShowsTheRegistrationScreenUntilRegist
 
     registered(false);
     ASSERT_TRUE(waitFor([&] { return source() == "registration"; }));
-    EXPECT_EQ(manager.state(), DisplayState::Registration);
+    EXPECT_EQ(manager.state(), Screen::Registration);
 
     registered(true);
     EXPECT_TRUE(waitFor([&] { return showsDefault(); }));
     registered(false);
     std::this_thread::sleep_for(300ms);
-    EXPECT_EQ(manager.state(), DisplayState::Slideshow) << "a later refusal brought the screen back before a reboot";
+    EXPECT_EQ(manager.state(), Screen::Slideshow) << "a later refusal brought the screen back before a reboot";
+}
+
+TEST_F(DisplayTaskManagerTest, NewClaimCodeRepaintsTheRegistrationScreen)
+{
+    start();
+    registered(false, "K7M2QX9P");
+    ASSERT_TRUE(waitFor([&] { return source() == "registration"; }));
+    const auto first = seq();
+
+    registered(false, "K7M2QX9P");
+    std::this_thread::sleep_for(300ms);
+    EXPECT_EQ(seq(), first) << "the same code painted the panel again";
+
+    registered(false, "ABCD2345");
+    EXPECT_TRUE(waitFor([&] { return seq() > first; }));
+    EXPECT_EQ(source(), "registration");
 }
 
 TEST_F(DisplayTaskManagerTest, RegistrationScreenTimesOutForGood)
@@ -361,7 +380,7 @@ TEST_F(DisplayTaskManagerTest, RegistrationScreenTimesOutForGood)
 
     registered(false);
     std::this_thread::sleep_for(300ms);
-    EXPECT_EQ(manager.state(), DisplayState::Slideshow);
+    EXPECT_EQ(manager.state(), Screen::Slideshow);
 }
 
 TEST_F(DisplayTaskManagerTest, SetupScreenOutranksTheRegistrationScreen)

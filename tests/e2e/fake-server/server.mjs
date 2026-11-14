@@ -58,7 +58,12 @@ const routes = {
     if (!(req.headers.authorization ?? '').startsWith('Ed25519-Sig ') || !req.headers['x-frame-id'])
       return json(res, 401, { detail: 'missing signature' });
     if (unregistered)
-      return json(res, 403, { detail: 'Frame is not registered to a user.', code: 'frame_unregistered' });
+      return json(res, 403, {
+        detail: 'Frame is not registered to a user.',
+        code: 'frame_unregistered',
+        claim_code: 'K7M2QX9P',
+        claim_expires_at: '2099-01-01T00:00:00Z',
+      });
     const token = randomUUID();
     tokens.add(token);
     tokenRequests++;

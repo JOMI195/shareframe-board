@@ -1,7 +1,9 @@
 #pragma once
 #include "auth/AuthTokenManager.hpp"
 #include "config/AppConfig.hpp"
+#include "fsm/Machine.hpp"
 #include "net/ServerContact.hpp"
+#include "net/ServerLink.hpp"
 #include "task/Task.hpp"
 #include <atomic>
 #include <ixwebsocket/IXWebSocket.h>
@@ -30,9 +32,9 @@ private:
     // ------- RECONNECT
     void _handleReconnect(int closeCode);
     void _refreshToken();
-    /// Tells the display while the server refuses the frame because nobody owns it, until
-    /// the first connection; later refusals don't bring the setup screen back.
+    /// Tells the display while the server refuses the frame because nobody owns it.
     void _reportIfUnregistered();
+    void _onOpened();
 
     // ------- SEND QUEUE
     void _flushSendQueue();
@@ -42,8 +44,7 @@ private:
     ServerContact& contact_;
     ix::WebSocket ws_;
     std::atomic<int> reconnectCount_{0};
-    std::atomic<bool> everOpened_{false};
-    std::atomic<bool> reportedUnregistered_{false};
+    fsm::Machine<ws::Link> link_;
     std::mutex sendMtx_;
     std::vector<nlohmann::json> sendQueue_;
 };

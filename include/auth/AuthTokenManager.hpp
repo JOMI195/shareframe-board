@@ -3,6 +3,7 @@
 #include "repository/TokenRepository.hpp"
 #include "net/HTTPClient.hpp"
 #include <atomic>
+#include <mutex>
 #include <optional>
 #include <string>
 
@@ -23,9 +24,14 @@ public:
     /// Whether the last fetch was refused because nobody owns the frame yet.
     [[nodiscard]] bool isUnregistered() const { return _unregistered.load(); }
 
+    /// The code the server handed out with the last refusal; empty when it sent none.
+    [[nodiscard]] std::string claimCode() const;
+
 private:
     AppConfig& _cfg;
     TokenRepository& _repo;
     HTTPClient& _http;
     mutable std::atomic<bool> _unregistered{false};
+    mutable std::mutex _claimMtx;
+    mutable std::string _claimCode;
 };

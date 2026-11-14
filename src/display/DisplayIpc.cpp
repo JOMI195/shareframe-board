@@ -3,10 +3,11 @@
 #include "ipc/EventTopics.hpp"
 #include <algorithm>
 #include <spdlog/spdlog.h>
+#include <utility>
 
 DisplayIpc::DisplayIpc(EventBus& bus, RuntimeSettings& settings, DisplayImageLoop& loop,
-                       ImageRepository& images, DisplayManager& display)
-    : bus_(bus), settings_(settings), loop_(loop), images_(images), display_(display)
+                       ImageRepository& images, DisplayManager& display, std::function<Screen()> screen)
+    : bus_(bus), settings_(settings), loop_(loop), images_(images), display_(display), screen_(std::move(screen))
 {
 }
 
@@ -90,7 +91,7 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
             {"end_hour", settings_.getNightEndHour()},
             {"interval_secs", settings_.getNightInterval()},
             {"style", toString(settings_.getNightStyle())},
-            {"active_now", settings_.isNightNow()}
+            {"active_now", settings_.nightState() != NightState::Day}
         };
 
     case IpcMessageType::UpdatePlaybackOrder:
@@ -138,7 +139,7 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
         const auto screen = display_.screenSnapshot();
         int64_t imageId = 0;
         std::string sender;
-        if (screen.state == "image")
+        if (screen.state == PanelContent::Image)
         {
             const auto all = images_.getAll();
             if (const auto it = std::ranges::find(all, std::filesystem::path(screen.source), &Image::imagePath);
@@ -150,7 +151,7 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
         }
         return {
             {"seq", screen.seq},
-            {"state", screen.state},
+            {"state", std::string(toString(screen.state))},
             {"source", screen.source},
             {"updated_at", screen.updatedAt},
             {"image_id", imageId},
@@ -186,7 +187,12 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
         return {{"running", true}};
 
     case IpcMessageType::GetDisplayStats:
-        return display_.healthSnapshot();
+    {
+        auto stats = display_.healthSnapshot();
+        if (screen_)
+            stats["screen"] = std::string(toString(screen_()));
+        return stats;
+    }
 
     case IpcMessageType::ShowStatusScreen:
     {
@@ -229,6 +235,7 @@ void DisplayIpc::onEvent(const std::string& topic, const nlohmann::json& payload
     }
     else if (topic == event_topics::FrameRegistration)
     {
-        bus_.publish<Topic::FRAME_REGISTRATION>(FrameRegistrationEvent{payload.value("registered", true)});
+        bus_.publish<Topic::FRAME_REGISTRATION>(
+            FrameRegistrationEvent{payload.value("registered", true), payload.value("claim_code", std::string{})});
     }
 }

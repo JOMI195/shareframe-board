@@ -31,6 +31,7 @@ void EventBridge::wire()
 
     bus_.subscribe<Topic::FRAME_REGISTRATION>([this](const FrameRegistrationEvent& evt)
     {
-        pub_.publish(std::string(event_topics::FrameRegistration), {{"registered", evt.registered}});
+        pub_.publish(std::string(event_topics::FrameRegistration),
+                     {{"registered", evt.registered}, {"claim_code", evt.claimCode}});
     });
 }

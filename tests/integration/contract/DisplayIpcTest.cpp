@@ -56,6 +56,16 @@ TEST_F(DisplayIpcTest, MalformedSettingsAreAckedButIgnored)
     EXPECT_EQ(nightModes.size() + customizations.size(), 0u);
 }
 
+TEST_F(DisplayIpcTest, StatsNameTheScreenOnlyWhenTheServiceKnowsIt)
+{
+    EXPECT_FALSE(ipc.handle({IpcMessageType::GetDisplayStats, {}}).contains("screen"));
+
+    DisplayIpc wired{bus, settings, loop, repo, display, [] { return Screen::NightBlank; }};
+    const auto stats = wired.handle({IpcMessageType::GetDisplayStats, {}});
+    EXPECT_EQ(stats.value("screen", ""), "night_blank");
+    EXPECT_TRUE(stats.contains("health")) << "the panel stats went missing";
+}
+
 TEST_F(DisplayIpcTest, AnswersHealthAndAcksForeignMessages)
 {
     EXPECT_EQ(ipc.handle({IpcMessageType::GetHealth, {}}), (nlohmann::json{{"running", true}}));

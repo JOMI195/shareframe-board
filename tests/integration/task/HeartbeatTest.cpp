@@ -57,7 +57,13 @@ protected:
     AuthTokenManager auth{cfg, tokens, http};
     EventBus bus;
     NngRepServer wsHealth{sock("ws.sock"), health::respond};
-    NngRepServer updateHealth{sock("update.sock"), health::respond};
+    std::string updatePhase;
+    NngRepServer updateHealth{sock("update.sock"), [this](const IpcMessage& msg) -> nlohmann::json {
+        auto reply = health::respond(msg);
+        if (msg.type == IpcMessageType::GetHealth && !updatePhase.empty())
+            reply["phase"] = updatePhase;
+        return reply;
+    }};
     IpcClient wsIpc{sock("ws.sock")};
     IpcClient displayIpc{sock("display.sock")};
     IpcClient dashboardIpc{sock("dashboard.sock")};
@@ -133,6 +139,24 @@ TEST_F(HeartbeatTest, IncludesDisplayStatsWhenDisplayIsUp)
     EXPECT_EQ(p["display_running"], true);
     EXPECT_EQ(p["display_epd_refresh_total"], 42);
     EXPECT_EQ(p["display_health"], "ok");
+}
+
+TEST_F(HeartbeatTest, ReportsWhereTheScreenAndTheUpdateStand)
+{
+    shims.add("shareframe-sysinfo", "printf 'wifi_mode=ap\\n'");
+    updatePhase = "failed";
+    NngRepServer display{sock("display.sock"), [](const IpcMessage& msg) -> nlohmann::json {
+        if (msg.type == IpcMessageType::GetDisplayStats)
+            return {{"screen", "registration"}};
+        return health::respond(msg);
+    }};
+    display.start();
+    const auto p = sentPayload();
+
+    EXPECT_EQ(p.value("display_screen", ""), "registration");
+    EXPECT_EQ(p.value("update_phase", ""), "failed");
+    EXPECT_EQ(p.value("wifi_mode", ""), "ap");
+    EXPECT_EQ(p["update_running"], true);
 }
 
 TEST_F(HeartbeatTest, ReportsTheNumberOfStoredImages)

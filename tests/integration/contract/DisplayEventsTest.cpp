@@ -91,9 +91,10 @@ TEST_F(DisplayEventsTest, ConnectEventsAreNotForwardedToTheDisplay)
 
 TEST_F(DisplayEventsTest, RefusedRegistrationReachesTheDisplay)
 {
-    ASSERT_TRUE(deliver([&] { wsBus.publish<Topic::FRAME_REGISTRATION>({false}); },
+    ASSERT_TRUE(deliver([&] { wsBus.publish<Topic::FRAME_REGISTRATION>({false, "K7M2QX9P"}); },
                         [&] { return registration.size() > 0; }));
     EXPECT_FALSE(registration.get()[0].registered);
+    EXPECT_EQ(registration.get()[0].claimCode, "K7M2QX9P");
 
     ASSERT_TRUE(deliver([&] { wsBus.publish<Topic::FRAME_REGISTRATION>({true}); },
                         [&] { return registration.get().back().registered; }));

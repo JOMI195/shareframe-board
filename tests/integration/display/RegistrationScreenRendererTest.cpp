@@ -18,11 +18,11 @@ int blackIn(const std::vector<uint8_t>& buffer, const panel_text::Rect& r)
 }
 }
 
-TEST(RegistrationScreenRenderer, QrAndSerialStayInsideTheVisibleArea)
+TEST(RegistrationScreenRenderer, QrSerialAndCodeStayInsideTheVisibleArea)
 {
     const auto buffer = RegistrationScreenRenderer::render(
-        "https://www.shareframe.de/bilderrahmen?register=EOJ8-WXBV-Y86U-3LL3", "www.shareframe.de",
-        "EOJ8-WXBV-Y86U-3LL3", std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans.ttf");
+        "https://www.shareframe.de/bilderrahmen?code=K7M2QX9P", "www.shareframe.de",
+        "EOJ8-WXBV-Y86U-3LL3", "K7M2QX9P", std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans.ttf");
     ASSERT_EQ(buffer.size(), DisplayManager::BUFFER_SIZE);
 
     constexpr auto safe = panel_text::SAFE_AREA;

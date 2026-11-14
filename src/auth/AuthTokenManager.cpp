@@ -52,7 +52,8 @@ enum class FetchResult
     Failed
 };
 
-static FetchResult fetchAndSaveToken(const HTTPClient& http, TokenRepository& repo, const AppConfig& cfg)
+static FetchResult fetchAndSaveToken(const HTTPClient& http, TokenRepository& repo, const AppConfig& cfg,
+                                     std::string& claimCode)
 {
     spdlog::info("Fetching new auth token");
     try
@@ -66,6 +67,8 @@ static FetchResult fetchAndSaveToken(const HTTPClient& http, TokenRepository& re
                 body.is_object() && body.value("code", "") == "frame_unregistered")
             {
                 spdlog::warn("Server refuses frame {}: not registered to a user", cfg.frameId);
+                if (const auto it = body.find("claim_code"); it != body.end() && it->is_string())
+                    claimCode = it->get<std::string>();
                 return FetchResult::Unregistered;
             }
             spdlog::error("Failed to obtain token: HTTP {}", res.statusCode);
@@ -97,12 +100,23 @@ std::optional<std::string> AuthTokenManager::getOrFetchToken() const
     if (!isExpiredLocally(_repo) || !isExpiredServer(_http, _cfg, _repo))
         return _repo.get()->value;
 
-    const auto result = fetchAndSaveToken(_http, _repo, _cfg);
+    std::string claimCode;
+    const auto result = fetchAndSaveToken(_http, _repo, _cfg, claimCode);
+    {
+        std::lock_guard lk(_claimMtx);
+        _claimCode = std::move(claimCode);
+    }
     _unregistered.store(result == FetchResult::Unregistered);
     if (result != FetchResult::Ok)
         return std::nullopt;
 
     return _repo.get()->value;
+}
+
+std::string AuthTokenManager::claimCode() const
+{
+    std::lock_guard lk(_claimMtx);
+    return _claimCode;
 }
 
 void AuthTokenManager::invalidate() const

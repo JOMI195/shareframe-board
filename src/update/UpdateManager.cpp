@@ -13,27 +13,6 @@ namespace fs = std::filesystem;
 
 namespace
 {
-constexpr auto kPendingFile = "/data/rauc/pending";
-constexpr auto kPendingMeta = "/data/rauc/pending-meta.json";
-constexpr auto kHistoryFile = "/data/shareframe/update-history.jsonl";
-constexpr auto kCacheDir = "/data/cache";
-constexpr auto kTrybootFlag = "/run/tryboot";
-constexpr auto kTrybootBackend = "/usr/lib/rauc/tryboot-backend";
-
-std::string phaseName(UpdateManager::Phase p)
-{
-    switch (p)
-    {
-        case UpdateManager::Phase::Idle: return "idle";
-        case UpdateManager::Phase::Checking: return "checking";
-        case UpdateManager::Phase::Downloading: return "downloading";
-        case UpdateManager::Phase::Installing: return "installing";
-        case UpdateManager::Phase::AwaitingReboot: return "awaiting-reboot";
-        case UpdateManager::Phase::Failed: return "failed";
-    }
-    return "unknown";
-}
-
 std::string readFirstLine(const std::string& path)
 {
     std::ifstream f(path);
@@ -44,9 +23,15 @@ std::string readFirstLine(const std::string& path)
 } // namespace
 
 UpdateManager::UpdateManager(const AppConfig& cfg, HTTPClient& http, AuthTokenManager& authTokenManager,
+                             IpcClient& displayIpc, Paths paths)
+    : cfg_(cfg), http_(http), authTokenManager_(authTokenManager), displayIpc_(displayIpc), paths_(std::move(paths)),
+      logger_(spdlog::default_logger()->clone("UpdateManager")), phase_(UpdatePhase::Idle, logger_)
+{
+}
+
+UpdateManager::UpdateManager(const AppConfig& cfg, HTTPClient& http, AuthTokenManager& authTokenManager,
                              IpcClient& displayIpc)
-    : cfg_(cfg), http_(http), authTokenManager_(authTokenManager), displayIpc_(displayIpc),
-      logger_(spdlog::default_logger()->clone("UpdateManager"))
+    : UpdateManager(cfg, http, authTokenManager, displayIpc, Paths{})
 {
 }
 
@@ -129,14 +114,14 @@ std::string UpdateManager::_bootedSlot()
     return pos == std::string::npos ? "" : cmdline.substr(pos + 10, 1);
 }
 
-std::string UpdateManager::_pendingSlot()
+std::string UpdateManager::_pendingSlot() const
 {
-    return fs::exists(kPendingFile) ? readFirstLine(kPendingFile) : "";
+    return fs::exists(paths_.pendingFile) ? readFirstLine(paths_.pendingFile) : "";
 }
 
-std::string UpdateManager::_committedSlot()
+std::string UpdateManager::_committedSlot() const
 {
-    auto r = Subprocess::run({kTrybootBackend, "get-primary"}, 10);
+    auto r = Subprocess::run({paths_.trybootBackend, "get-primary"}, 10);
     if (r.exitCode != 0)
         return "";
     auto s = r.stdOut;
@@ -148,8 +133,7 @@ std::string UpdateManager::_committedSlot()
 bool UpdateManager::startUpdate(std::string& error)
 {
     std::lock_guard lock(mutex_);
-    if (phase_ == Phase::Checking || phase_ == Phase::Downloading || phase_ == Phase::Installing
-        || phase_ == Phase::AwaitingReboot)
+    if (isBusy(phase_.state()))
     {
         error = "Update already in progress";
         return false;
@@ -173,7 +157,7 @@ bool UpdateManager::startUpdate(std::string& error)
         return false;
     }
 
-    phase_ = Phase::Checking;
+    phase_.moveTo(UpdatePhase::Checking);
     error_.clear();
     targetVersion_ = version;
     worker_ = std::jthread([this, rel = *release](const std::stop_token&) { _worker(rel); });
@@ -185,7 +169,7 @@ void UpdateManager::_fail(const std::string& error, const std::string& toVersion
     logger_->error("Update to {} failed: {}", toVersion, error);
     {
         std::lock_guard lock(mutex_);
-        phase_ = Phase::Failed;
+        phase_.moveTo(UpdatePhase::Failed);
         error_ = error;
     }
     Subprocess::run({"shareframe-update-history", "install-failed", error}, 10);
@@ -203,24 +187,24 @@ void UpdateManager::_worker(nlohmann::json release)
 
     // staged meta: consumed by shareframe-update-history on commit/rollback
     std::error_code ec;
-    fs::create_directories("/data/rauc", ec);
+    fs::create_directories(fs::path(paths_.pendingMeta).parent_path(), ec);
     {
-        std::ofstream meta(kPendingMeta);
+        std::ofstream meta(paths_.pendingMeta);
         meta << nlohmann::json{{"from_version", cfg_.version}, {"to_version", version}}.dump() << "\n";
     }
 
-    const std::string bundle = std::string(kCacheDir) + "/shareframe-" + version + ".raucb";
+    const std::string bundle = paths_.cacheDir + "/shareframe-" + version + ".raucb";
     const std::string part = bundle + ".part";
-    fs::create_directories(kCacheDir, ec);
+    fs::create_directories(paths_.cacheDir, ec);
     // stale bundles from skipped/aborted updates would pile up on /data; this
     // version's partial download stays so the transfer resumes
-    for (const auto& e : fs::directory_iterator(kCacheDir, ec))
+    for (const auto& e : fs::directory_iterator(paths_.cacheDir, ec))
         if ((e.path().extension() == ".raucb" || e.path().extension() == ".part") && e.path() != part)
             fs::remove(e.path(), ec);
 
     {
         std::lock_guard lock(mutex_);
-        phase_ = Phase::Downloading;
+        phase_.moveTo(UpdatePhase::Downloading);
         downloadedBytes_ = 0;
         totalBytes_ = 0;
     }
@@ -267,7 +251,7 @@ void UpdateManager::_worker(nlohmann::json release)
 
     {
         std::lock_guard lock(mutex_);
-        phase_ = Phase::Installing;
+        phase_.moveTo(UpdatePhase::Installing);
     }
     logger_->info("Installing update {} via rauc", version);
     Subprocess::run({"shareframe-led", "updating"}, 5);
@@ -277,20 +261,30 @@ void UpdateManager::_worker(nlohmann::json release)
     fs::remove(bundle, ec);
     if (inst.exitCode != 0)
     {
-        Subprocess::run({"shareframe-led", "error"}, 5);
+        Subprocess::run({"shareframe-led", "update-failed"}, 5);
         displayIpc_.send({IpcMessageType::HideStatusScreen, {}});
         _fail("rauc install failed: " + inst.stdErr, version);
         return;
     }
-    Subprocess::run({"shareframe-led", "off"}, 5);
+    Subprocess::run({"shareframe-led", "update-done"}, 5);
 
     {
         std::lock_guard lock(mutex_);
-        phase_ = Phase::AwaitingReboot;
+        phase_.moveTo(UpdatePhase::AwaitingReboot);
     }
     logger_->info("Update {} installed; rebooting into staged slot (tryboot)", version);
-    std::ofstream(kTrybootFlag).put('\n');
-    Subprocess::run({"s6-linux-init-shutdown", "-r", "now"}, 10);
+    std::ofstream(paths_.trybootFlag).put('\n');
+    const auto reboot = Subprocess::run({"s6-linux-init-shutdown", "-r", "now"}, 10);
+    if (reboot.exitCode == 0)
+        return;
+
+    // The slot stays staged, so the next reboot still boots into it.
+    auto reason = reboot.stdErr;
+    while (!reason.empty() && (reason.back() == '\n' || reason.back() == '\r'))
+        reason.pop_back();
+    Subprocess::run({"shareframe-led", "error"}, 5);
+    displayIpc_.send({IpcMessageType::HideStatusScreen, {}});
+    _fail("Installed, but the reboot failed: " + reason, version);
 }
 
 void UpdateManager::startPeriodicCheck()
@@ -328,24 +322,33 @@ void UpdateManager::startPeriodicCheck()
 
 nlohmann::json UpdateManager::status() const
 {
-    std::lock_guard lock(mutex_);
+    UpdatePhase phase;
+    std::string error, targetVersion;
+    {
+        std::lock_guard lock(mutex_);
+        phase = phase_.state();
+        error = error_;
+        targetVersion = targetVersion_;
+    }
+
+    const auto pendingSlot = _pendingSlot();
     nlohmann::json st{
-        {"phase", phaseName(phase_)},
-        {"error", error_},
-        {"target_version", targetVersion_},
+        {"phase", std::string(toString(phase))},
+        {"error", error},
+        {"target_version", targetVersion},
         {"current_version", cfg_.version},
         {"booted_slot", _bootedSlot()},
         {"committed_slot", _committedSlot()},
-        {"pending_slot", _pendingSlot()},
+        {"pending_slot", pendingSlot},
+        {"committed", pendingSlot.empty()},
         {"progress", -1},
     };
-    st["committed"] = !st["pending_slot"].get<std::string>().empty() ? false : true;
 
-    if (phase_ == Phase::Downloading && totalBytes_ > 0)
+    if (phase == UpdatePhase::Downloading && totalBytes_ > 0)
         st["progress"] = static_cast<int>((downloadedBytes_ * 100) / totalBytes_);
 
     // last finished attempt (committed / rolled-back / install-failed)
-    std::ifstream hist(kHistoryFile);
+    std::ifstream hist(paths_.historyFile);
     std::string line, last;
     while (std::getline(hist, line))
         if (!line.empty())
@@ -366,7 +369,7 @@ nlohmann::json UpdateManager::status() const
 nlohmann::json UpdateManager::history() const
 {
     auto entries = nlohmann::json::array();
-    std::ifstream f(kHistoryFile);
+    std::ifstream f(paths_.historyFile);
     std::string line;
     while (std::getline(f, line))
     {

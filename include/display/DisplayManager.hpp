@@ -1,5 +1,7 @@
 #pragma once
 #include "config/AppConfig.hpp"
+#include "display/PanelState.hpp"
+#include "fsm/Machine.hpp"
 #include "repository/DisplayMetricsRepository.hpp"
 #include <atomic>
 #include <chrono>
@@ -19,11 +21,10 @@ enum class RefreshPolicy
     Immediate
 };
 
-/// What the panel shows: the source last painted ("image") or a white panel
-/// ("cleared"); seq 0 and state "empty" before the first refresh.
+/// What the panel shows and the source last painted; seq 0 before the first refresh.
 struct ScreenSnapshot
 {
-    std::string state = "empty";
+    PanelContent state = PanelContent::Unknown;
     std::string source;
     int64_t seq = 0;
     int64_t updatedAt = 0;
@@ -62,7 +63,7 @@ public:
                                      std::stop_token st = {},
                                      RefreshPolicy policy = RefreshPolicy::RespectMinInterval);
 
-    [[nodiscard]] bool isCleared() const { return _isCleared.load(); }
+    [[nodiscard]] bool isCleared() const { return _content.load() == PanelContent::Blank; }
 
     /// Seconds until the next refresh is allowed (0 if ready). Lock-free so a
     /// caller can wait it out and re-decide what to paint with fresh state.
@@ -91,21 +92,20 @@ private:
     void _waitMinRefresh(const std::stop_token& st = {}) const;
     void _clearHw();
     [[nodiscard]] bool _sendBufferHw(const std::vector<uint8_t>& buffer, const std::string& source);
-    void _writeMockPanel(const std::vector<uint8_t>& buffer, const std::string& state,
-                         const std::string& source);
-    void _recordScreen(const std::string& state, const std::string& source);
+    void _writeMockPanel(const std::vector<uint8_t>& buffer, PanelContent content, const std::string& source);
+    /// Call after a refresh that succeeded.
+    void _recordScreen(PanelContent content, const std::string& source);
 
     const AppConfig& _cfg;
     DisplayMetricsRepository& _metrics;
     std::shared_ptr<spdlog::logger> _logger;
-    bool _initialized = false;
-    bool _panelAwake = false;
+    fsm::Machine<PanelPower> _power;
     /// In-memory since boot; atomic so healthSnapshot() reads it without the
     /// hw mutex. Mutated only by the hw threads (already under _hwMutex).
     std::atomic<int> _consecutiveFailures{0};
-    /// True when the panel shows white. Written under _hwMutex; read on shutdown
-    /// to decide if a final clear is needed. In-memory (boot always clears).
-    std::atomic<bool> _isCleared{false};
+    /// Written under the hardware lock; atomic so the tasks read it without.
+    /// In-memory (boot always clears).
+    std::atomic<PanelContent> _content{PanelContent::Unknown};
     /// Atomic so it reads lock-free during a multi-second refresh; mutated only
     /// by the hw threads.
     std::atomic<std::chrono::steady_clock::time_point> _lastDisplayTime{};

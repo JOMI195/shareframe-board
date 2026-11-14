@@ -72,9 +72,11 @@ template <> struct TopicMessage<Topic::STATUS_SCREEN> { using type = StatusScree
 struct ScheduledClearEvent {};
 template <> struct TopicMessage<Topic::SCHEDULED_CLEAR> { using type = ScheduledClearEvent; };
 
-// Whether the server takes the frame or refuses it because nobody owns it yet.
+// Whether the server takes the frame or refuses it because nobody owns it yet; a refusal
+// carries the code the panel shows so only someone in front of the frame can claim it.
 struct FrameRegistrationEvent
 {
     bool registered = false;
+    std::string claimCode;
 };
 template <> struct TopicMessage<Topic::FRAME_REGISTRATION> { using type = FrameRegistrationEvent; };
