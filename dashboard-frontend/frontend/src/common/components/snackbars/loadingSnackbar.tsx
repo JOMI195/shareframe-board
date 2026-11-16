@@ -1,4 +1,5 @@
 import { CircularProgress, Paper, Slide, Typography } from "@mui/material";
+import { StackedSnackbar } from "./snackbarStack";
 import { useColorThemeContext } from "@/context/colorTheme/colorThemeContextValue";
 import { SnackbarItem } from "@/store/snackbars/snackbars.Slice";
 import { useDelayedLoading } from "@/hooks/loading/useDelayedLoading";
@@ -13,7 +14,11 @@ const LoadingSnackbar = ({ snackbar }: ILoadingSnackbarProps) => {
     const open = useDelayedLoading(true);
 
     return (
-        <Slide direction="up" in={open} mountOnEnter>
+        <StackedSnackbar
+            open={open}
+            slots={{ transition: Slide }}
+            slotProps={{ clickAwayListener: { onClickAway: () => null } }}
+        >
             <Paper
                 role="status"
                 elevation={5}
@@ -22,9 +27,8 @@ const LoadingSnackbar = ({ snackbar }: ILoadingSnackbarProps) => {
                     px: 3,
                     display: 'flex',
                     alignItems: "center",
-                    width: { xs: '100%', sm: 'auto' },
-                    minWidth: { sm: 300 },
-                    maxWidth: { sm: 560 },
+                    justifyContent: "space-between",
+                    flexDirection: "row",
                     background: (theme) => colorMode === "light" ? theme.palette.common.black : theme.palette.common.white,
                     color: (theme) => colorMode === "light" ? theme.palette.common.white : theme.palette.common.black,
                 }}
@@ -32,7 +36,7 @@ const LoadingSnackbar = ({ snackbar }: ILoadingSnackbarProps) => {
                 <CircularProgress color="inherit" size="1.1rem" />
                 <Typography variant="subtitle2" sx={{ ml: 5 }}>{snackbar.message}</Typography>
             </Paper>
-        </Slide>
+        </StackedSnackbar>
     );
 };
 
