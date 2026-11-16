@@ -1,6 +1,6 @@
 import { DASHBOARD_PASSWORD } from '../support/board';
 import { expect, test } from '../support/fixtures';
-import { expectNoHorizontalScroll } from '../support/layout';
+import { boxOf, expectNoHorizontalScroll } from '../support/layout';
 
 test('signs in with a one-time code on a phone', async ({ page }) => {
   await page.goto('/auth/sign-in');
@@ -20,7 +20,20 @@ test('a wrong password clears the field for another try', async ({ page }) => {
   await page.getByRole('button', { name: 'Mit Passwort anmelden' }).click();
   const password = page.getByRole('textbox', { name: 'Passwort', exact: true });
   await password.fill('wrong-password');
+  // Slow enough for the loading snackbar to show.
+  await page.route('**/api/auth/login', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await route.continue();
+  });
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
+
+  const loading = page.getByRole('status').filter({ hasText: 'Du wirst angemeldet' });
+  await expect(loading).toBeInViewport();
+  const box = await boxOf(loading);
+  const viewport = page.viewportSize()!;
+  expect(Math.abs(box.x - (viewport.width - box.x - box.width)), 'loading snackbar centered').toBeLessThanOrEqual(1.5);
+  expect(box.width).toBeLessThan(viewport.width - 16);
+  await page.unroute('**/api/auth/login');
 
   await expect(page.getByText('Das Passwort stimmt nicht.')).toBeInViewport();
   await expect(password).toHaveValue('');

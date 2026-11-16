@@ -10,6 +10,7 @@ import LoadingWall from './main/loadingWall/loadingWall';
 import { usePiConnection } from './context/piConnection/piConnectionContextValue';
 import { RouterProvider } from 'react-router';
 import Routing from './routes/routing';
+import { SnackbarStackProvider } from './common/components/snackbars/snackbarStack';
 
 const App = () => {
   const dispatch = useAppDispatch();
@@ -114,9 +115,9 @@ const App = () => {
   }
 
   return (
-    <RouterProvider
-      router={Routing}
-    />
+    <SnackbarStackProvider>
+      <RouterProvider router={Routing} />
+    </SnackbarStackProvider>
   );
 }
 

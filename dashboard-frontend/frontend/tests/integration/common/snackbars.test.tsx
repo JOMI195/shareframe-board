@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { Route, Routes } from 'react-router';
 import Snackbars from '@/common/components/snackbars/snackbars';
 import { addAlertSnackbar, addLoadingSnackbar } from '@/store/snackbars/snackbars.Slice';
@@ -40,7 +40,19 @@ describe('snackbars', () => {
     const alert = (await screen.findByText('Gespeichert')).parentElement as HTMLElement;
     await user.click(within(alert).getByRole('button', { name: 'Schließen' }));
 
-    expect(screen.queryByText('Gespeichert')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText('Gespeichert')).not.toBeInTheDocument());
+    expect(store.getState().snackbars.snackbars.alerts).toEqual([]);
+  });
+
+  it('closes an alert on a click outside', async () => {
+    const store = setupStore();
+    store.dispatch(addAlertSnackbar('a', 'Gespeichert', 'success'));
+    const { user } = renderSnackbars(store);
+    await screen.findByText('Gespeichert');
+
+    await user.click(screen.getByText('Seite'));
+
+    await waitFor(() => expect(screen.queryByText('Gespeichert')).not.toBeInTheDocument());
     expect(store.getState().snackbars.snackbars.alerts).toEqual([]);
   });
 
@@ -52,6 +64,8 @@ describe('snackbars', () => {
     await screen.findByText('Gleich weg');
 
     await advance(2_000);
+    // The slide out.
+    await advance(500);
 
     expect(screen.queryByText('Gleich weg')).not.toBeInTheDocument();
   });
@@ -78,6 +92,17 @@ describe('snackbars', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
     await advance(400);
+    expect(screen.getByRole('status')).toHaveTextContent('Wird gespeichert');
+  });
+
+  it('keeps a loading snackbar on a click outside', async () => {
+    const store = setupStore();
+    const { user } = renderSnackbars(store);
+    store.dispatch(addLoadingSnackbar('l', 'Wird gespeichert'));
+    await screen.findByRole('status');
+
+    await user.click(screen.getByText('Seite'));
+
     expect(screen.getByRole('status')).toHaveTextContent('Wird gespeichert');
   });
 
