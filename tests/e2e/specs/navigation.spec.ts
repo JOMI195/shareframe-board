@@ -1,4 +1,5 @@
 import { expect, signIn, test, trackApiErrors } from '../support/fixtures';
+import { expectNoClippedCards } from '../support/layout';
 
 // Every page against the real board: it renders and none of its API calls fail,
 // which catches a renamed route or field on either side.
@@ -20,7 +21,7 @@ const pages: [string, string | RegExp][] = [
   ['/services/update', 'PID'],
 ];
 
-test('every page loads without a failing API call', async ({ page }) => {
+test('every page loads without a failing API call or a cut-off card', async ({ page }) => {
   test.setTimeout(pages.length * 10_000);
   await signIn(page);
   for (const [path, marker] of pages) {
@@ -30,6 +31,7 @@ test('every page loads without a failing API call', async ({ page }) => {
       await expect(page.getByText(marker).first()).toBeVisible();
       await page.waitForTimeout(1500);
       expect(failures, path).toEqual([]);
+      await expectNoClippedCards(page);
     });
   }
 });

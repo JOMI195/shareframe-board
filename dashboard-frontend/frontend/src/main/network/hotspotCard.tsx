@@ -21,7 +21,6 @@ const HotspotCard = () => {
     return (
         <ShareframeInfoCard
             title="WLAN einrichten"
-            minHeight="0px"
             sections={[
                 {
                     content: {

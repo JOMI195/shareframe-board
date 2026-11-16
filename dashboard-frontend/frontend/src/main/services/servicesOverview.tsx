@@ -37,6 +37,7 @@ const ServicesOverview = () => {
                         }}>
                         <ShareframeInfoCard
                             title={SERVICE_LABELS[id] ?? id}
+                            sx={{ height: '100%' }}
                             sections={[
                                 { label: 'Status', content: { type: 'reactNode', value: <HealthChip service={svc} /> } },
                                 {

@@ -82,7 +82,7 @@ const LogsContent: React.FC<LogsContentProps> = ({ loading, error, logs, onRetry
                                 py: 0.5,
                                 borderBottom: index < logs.logs.length - 1 ? '1px dashed #ddd' : 'none',
                                 whiteSpace: 'pre-wrap',
-                                wordBreak: 'break-all'
+                                overflowWrap: 'anywhere'
                             }}>
                                 {log}
                             </Box>

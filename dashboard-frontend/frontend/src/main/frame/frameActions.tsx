@@ -291,7 +291,8 @@ const FrameActions: React.FC = () => {
                     }}>
                     <ShareframeInfoCard
                         title="Diashow"
-                        minHeight={INFO_CARD_HEIGHT}
+                        minHeight={{ xs: '0px', sm: INFO_CARD_HEIGHT }}
+                        sx={{ height: { sm: '100%' } }}
                         sections={[
                             {
                                 content: {
@@ -359,7 +360,8 @@ const FrameActions: React.FC = () => {
                     }}>
                     <ShareframeInfoCard
                         title="Wechselintervall"
-                        minHeight={INFO_CARD_HEIGHT}
+                        minHeight={{ xs: '0px', sm: INFO_CARD_HEIGHT }}
+                        sx={{ height: { sm: '100%' } }}
                         sections={[
                             {
                                 content: {
@@ -440,7 +442,8 @@ const FrameActions: React.FC = () => {
                     }}>
                     <ShareframeInfoCard
                         title="Nachtmodus"
-                        minHeight={INFO_CARD_HEIGHT}
+                        minHeight={{ xs: '0px', sm: INFO_CARD_HEIGHT }}
+                        sx={{ height: { sm: '100%' } }}
                         sections={[
                             {
                                 content: {
@@ -555,7 +558,8 @@ const FrameActions: React.FC = () => {
                     }}>
                     <ShareframeInfoCard
                         title="Foto überspringen"
-                        minHeight={INFO_CARD_HEIGHT}
+                        minHeight={{ xs: '0px', sm: INFO_CARD_HEIGHT }}
+                        sx={{ height: { sm: '100%' } }}
                         sections={[
                             {
                                 content: {
@@ -604,7 +608,8 @@ const FrameActions: React.FC = () => {
                     }}>
                     <ShareframeInfoCard
                         title="Bildschirm leeren"
-                        minHeight={INFO_CARD_HEIGHT}
+                        minHeight={{ xs: '0px', sm: INFO_CARD_HEIGHT }}
+                        sx={{ height: { sm: '100%' } }}
                         sections={[
                             {
                                 content: {
