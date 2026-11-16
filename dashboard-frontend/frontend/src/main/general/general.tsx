@@ -152,7 +152,6 @@ const General = () => {
 
                 <ShareframeInfoCard
                     title="Sicherheit"
-                    minHeight="0px"
                     sections={[
                         {
                             label: "Geräte-Passwort",
@@ -173,7 +172,6 @@ const General = () => {
 
                 <ShareframeInfoCard
                     title="Support"
-                    minHeight="0px"
                     sections={[
                         {
                             label: "Diagnose",
@@ -195,7 +193,6 @@ const General = () => {
 
                 <ShareframeInfoCard
                     title="Werkseinstellungen"
-                    minHeight="0px"
                     sections={[
                         {
                             label: "Zurücksetzen",

@@ -7,6 +7,7 @@ import {
     Divider,
     CardProps,
     CardActions,
+    Breakpoint,
 } from '@mui/material';
 
 interface Section {
@@ -26,7 +27,7 @@ interface ShareframeInfoCardProps extends Omit<CardProps, 'elevation'> {
     title?: string;
     sections?: Section[];
     elevation?: number;
-    minHeight?: string;
+    minHeight?: string | Partial<Record<Breakpoint, string>>;
     actions?: React.ReactNode; // ✅ Add support for actions
 }
 
@@ -34,12 +35,12 @@ const ShareframeInfoCard: React.FC<ShareframeInfoCardProps> = ({
     title,
     sections = [],
     elevation = 1,
-    minHeight = "150px",
+    minHeight,
     actions,
     ...cardProps
 }) => {
     return (
-        <Card elevation={elevation} sx={{ height: '100%', display: 'flex', flexDirection: 'column', ...cardProps.sx }}>
+        <Card elevation={elevation} sx={{ display: 'flex', flexDirection: 'column', ...cardProps.sx }}>
             <CardContent sx={{
                 minHeight,
                 flex: 1,
@@ -58,7 +59,6 @@ const ShareframeInfoCard: React.FC<ShareframeInfoCardProps> = ({
                     sx={{
                         display: "flex",
                         flexDirection: "column",
-                        justifyContent: "space-between",
                         flex: 1
                     }}>
                     {sections.map((section, index) => {
@@ -68,7 +68,7 @@ const ShareframeInfoCard: React.FC<ShareframeInfoCardProps> = ({
 
                         if (typeof content === 'string' || typeof content === 'number') {
                             contentNode = (
-                                <Typography variant="body2" gutterBottom>
+                                <Typography variant="body2" gutterBottom sx={{ overflowWrap: 'anywhere' }}>
                                     {content}
                                 </Typography>
                             );
@@ -96,7 +96,7 @@ const ShareframeInfoCard: React.FC<ShareframeInfoCardProps> = ({
             </CardContent>
 
             {actions && (
-                <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2 }}>
+                <CardActions disableSpacing sx={{ justifyContent: 'flex-end', flexWrap: 'wrap', gap: 1, px: 2, pb: 2 }}>
                     {actions}
                 </CardActions>
             )}

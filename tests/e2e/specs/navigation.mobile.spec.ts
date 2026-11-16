@@ -1,5 +1,5 @@
 import { expect, signIn, test } from '../support/fixtures';
-import { expectNoHorizontalScroll } from '../support/layout';
+import { expectNoClippedCards, expectNoEmptyCardSpace, expectNoHorizontalScroll } from '../support/layout';
 
 const mainPages = [
   { name: 'Diashow', url: /\/slideshow\/$/ },
@@ -28,6 +28,8 @@ test.describe('navigation on a phone', () => {
         await expect(page).toHaveTitle(`${name} – ShareFrame`);
         await expect(link).not.toBeInViewport();
         await expectNoHorizontalScroll(page);
+        await expectNoClippedCards(page);
+        await expectNoEmptyCardSpace(page);
       });
     }
   });
@@ -63,6 +65,8 @@ test.describe('navigation on a phone', () => {
         await page.goto(path);
         await expect(page.locator('h1')).toBeAttached();
         await expectNoHorizontalScroll(page);
+        await expectNoClippedCards(page);
+        await expectNoEmptyCardSpace(page);
       });
     }
   });

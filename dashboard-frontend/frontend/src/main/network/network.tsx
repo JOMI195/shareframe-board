@@ -157,7 +157,6 @@ const Network = () => {
 
                 <ShareframeInfoCard
                     title="Hotspot"
-                    minHeight="0px"
                     sections={[
                         {
                             label: "WLAN-Hotspot (Fallback)",
