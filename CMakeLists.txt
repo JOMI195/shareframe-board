@@ -198,6 +198,7 @@ set(WEBSOCKET_SOURCES
         src/task/MissingImageCheck.cpp
         src/task/ExpiredImageCleanup.cpp
         src/task/RemoteCommand.cpp
+        src/task/WifiReturnWatcher.cpp
         src/ipc/EventBridge.cpp
 )
 add_library(shareframe-websocket-lib STATIC ${WEBSOCKET_SOURCES})

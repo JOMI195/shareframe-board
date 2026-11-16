@@ -49,6 +49,7 @@ public:
         return received_;
     }
 
+    [[nodiscard]] int port() const { return port_; }
     [[nodiscard]] std::string baseUrl() const { return "127.0.0.1:" + std::to_string(port_); }
 
 private:

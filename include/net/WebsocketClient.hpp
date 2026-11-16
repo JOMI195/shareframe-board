@@ -18,6 +18,10 @@ public:
 
     void start() override;
 
+    /// Skips the pending reconnect wait when the socket is down. Blocks while a connect
+    /// attempt is in flight, so never call it from the socket's own callback.
+    void reconnectNow();
+
 protected:
     void _run(std::stop_token st) override;
 
@@ -31,7 +35,7 @@ private:
 
     // ------- RECONNECT
     void _handleReconnect(int closeCode);
-    void _refreshToken();
+    void _applyToken();
     /// Tells the display while the server refuses the frame because nobody owns it.
     void _reportIfUnregistered();
     void _onOpened();
@@ -44,6 +48,9 @@ private:
     ServerContact& contact_;
     ix::WebSocket ws_;
     std::atomic<int> reconnectCount_{0};
+    std::atomic<bool> downSinceOpen_{false};
+    std::mutex restartMtx_;
+    bool stopping_ = false;
     fsm::Machine<ws::Link> link_;
     std::mutex sendMtx_;
     std::vector<nlohmann::json> sendQueue_;
