@@ -7,6 +7,9 @@ services:
     user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     environment:
       SHAREFRAME_BUILD_ROOT: /src/build-docker
+      # The contract tests parse shareframe-hardware's goldens.
+      SHAREFRAME_HARDWARE_DIR: /hardware
     volumes:
       - ../..:/src
+      - ${SHAREFRAME_HARDWARE_DIR:-../../../shareframe-hardware}:/hardware:ro
     entrypoint: ["/src/test.sh"]

@@ -1,0 +1,3 @@
+wifi_mode=/run/shareframe/wifi-mode.json
+wifi_retry_requested=/run/shareframe/wifi-retry-requested
+backend_ok=/run/shareframe/backend-ok
