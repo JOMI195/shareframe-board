@@ -32,7 +32,7 @@ export default defineConfig({
       include: ['src/**'],
       exclude: ['src/types/**', 'src/assets/**', 'src/**/*.d.ts'],
       // The measured baseline, rounded down. Raise it, never lower it.
-      thresholds: { statements: 89, branches: 78, functions: 88, lines: 90 },
+      thresholds: { statements: 90, branches: 79, functions: 89, lines: 90 },
     },
   },
 });
