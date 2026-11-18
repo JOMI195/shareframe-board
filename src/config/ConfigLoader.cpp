@@ -13,7 +13,8 @@ Profile ConfigLoader::parseProfile(std::string_view s)
     if (s == "dev")        return Profile::Dev;
     if (s == "prod")       return Profile::Prod;
     if (s == "prod.local") return Profile::ProdLocal;
-    throw std::invalid_argument(std::string("Unknown profile '") + std::string(s) + "'. Valid values: dev, prod, prod.local");
+    if (s == "sim")        return Profile::Sim;
+    throw std::invalid_argument(std::string("Unknown profile '") + std::string(s) + "'. Valid values: dev, prod, prod.local, sim");
 }
 
 static glz::error_ctx readTomlFile(auto& val, const std::string& path) {

@@ -111,5 +111,6 @@ TEST(ConfigLoader, ParseProfile)
     EXPECT_EQ(ConfigLoader::parseProfile("dev"), Profile::Dev);
     EXPECT_EQ(ConfigLoader::parseProfile("prod"), Profile::Prod);
     EXPECT_EQ(ConfigLoader::parseProfile("prod.local"), Profile::ProdLocal);
+    EXPECT_EQ(ConfigLoader::parseProfile("sim"), Profile::Sim);
     EXPECT_THROW(ConfigLoader::parseProfile("staging"), std::invalid_argument);
 }
