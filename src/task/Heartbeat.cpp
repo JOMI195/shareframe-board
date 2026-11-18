@@ -8,6 +8,7 @@
 #include "repository/IImageRepository.hpp"
 #include "util/Subprocess.hpp"
 #include "util/SysInfo.hpp"
+#include "ipc/EventTopics.hpp"
 #include "Version.hpp"
 #include <algorithm>
 #include <arpa/inet.h>
@@ -194,6 +195,12 @@ void Heartbeat::_saveEventCursor(int64_t seq) const
         if (ec)
             logger_->warn("Could not save event cursor: {}", ec.message());
     }
+}
+
+void Heartbeat::onWsEvent(const std::string& topic)
+{
+    if (topic == event_topics::WsConnected)
+        runNow();
 }
 
 nlohmann::json Heartbeat::_getSysInfo() const

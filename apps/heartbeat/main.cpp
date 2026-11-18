@@ -3,7 +3,6 @@
 #include "db/Database.hpp"
 #include "events/EventBus.hpp"
 #include "ipc/EventSubscriber.hpp"
-#include "ipc/EventTopics.hpp"
 #include "ipc/HealthCheck.hpp"
 #include "ipc/IpcClient.hpp"
 #include "ipc/NngRepServer.hpp"
@@ -42,12 +41,9 @@ int main(int argc, char* argv[])
     Heartbeat heartbeat(eventBus, cfg, http, authTokenManager, wsIpc, displayIpc, dashboardIpc, updateIpc, imageRepo);
     heartbeat.start();
 
-    // SUB: send an immediate heartbeat whenever the websocket service
-    // (re)connects, so the server sees the frame without waiting for the interval.
     EventSubscriber wsEvents(cfg.ipc.wsPub, [&](const std::string& topic, const nlohmann::json&)
     {
-        if (topic == event_topics::WsConnected)
-            heartbeat.runNow();
+        heartbeat.onWsEvent(topic);
     });
     wsEvents.start();
 
