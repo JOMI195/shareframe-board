@@ -362,17 +362,17 @@ std::string DashboardServer::_extractSessionId(const ix::HttpRequestPtr& req)
     if (it == req->headers.end())
         return {};
 
-    // Parse "session=<id>" from cookie header
-    const std::string& cookie = it->second;
-    const std::string prefix = "session=";
-    const size_t pos = cookie.find(prefix);
-    if (pos == std::string::npos)
-        return {};
-
-    const size_t start = pos + prefix.size();
-    size_t end = cookie.find(';', start);
-    if (end == std::string::npos)
-        end = cookie.size();
-
-    return cookie.substr(start, end - start);
+    // "name=value; name=value": only the cookie named exactly "session" counts.
+    std::string_view cookies = it->second;
+    while (!cookies.empty())
+    {
+        const auto end = cookies.find(';');
+        auto pair = cookies.substr(0, end);
+        cookies = end == std::string_view::npos ? std::string_view{} : cookies.substr(end + 1);
+        while (!pair.empty() && pair.front() == ' ')
+            pair.remove_prefix(1);
+        if (pair.starts_with("session="))
+            return std::string(pair.substr(8));
+    }
+    return {};
 }
