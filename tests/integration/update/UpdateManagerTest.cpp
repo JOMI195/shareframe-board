@@ -48,7 +48,7 @@ protected:
         const auto& dir = db.dir();
         return {(dir / "rauc/pending").string(), (dir / "rauc/pending-meta.json").string(),
                 (dir / "update-history.jsonl").string(), (dir / "cache").string(),
-                (dir / "tryboot").string(), "tryboot-backend"};
+                (dir / "tryboot").string(), "tryboot-backend", (dir / "cmdline").string()};
     }
 
     std::string phase() { return updates.status().value("phase", ""); }
@@ -134,4 +134,15 @@ TEST_F(UpdateManagerTest, RebootThatFailsEndsTheUpdateInsteadOfWaitingForever)
     EXPECT_EQ(statusScreens(), (std::vector<std::string>{"update", "hide"}));
     EXPECT_EQ(ledLog(), "updating\nupdate-done\nerror\n");
     EXPECT_NE(historyLog().find("install-failed"), std::string::npos);
+}
+
+// The dashboard and the heartbeat tell a trial boot by these two differing.
+TEST_F(UpdateManagerTest, ReportsTheSlotItBootedAndTheOneTheFirmwareCommitted)
+{
+    std::ofstream(paths().cmdline) << "console=ttyS1,115200 rauc.slot=B panic=10\n";
+    shims.add("tryboot-backend", "[ \"$1\" = get-primary ] && echo A");
+
+    const auto status = updates.status();
+    EXPECT_EQ(status.value("booted_slot", ""), "B");
+    EXPECT_EQ(status.value("committed_slot", ""), "A");
 }

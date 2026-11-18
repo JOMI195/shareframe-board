@@ -107,9 +107,9 @@ std::optional<nlohmann::json> UpdateManager::_latestReleaseJson() const
     }
 }
 
-std::string UpdateManager::_bootedSlot()
+std::string UpdateManager::_bootedSlot() const
 {
-    const std::string cmdline = readFirstLine("/proc/cmdline");
+    const std::string cmdline = readFirstLine(paths_.cmdline);
     const auto pos = cmdline.find("rauc.slot=");
     return pos == std::string::npos ? "" : cmdline.substr(pos + 10, 1);
 }
