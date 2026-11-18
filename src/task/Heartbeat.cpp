@@ -7,6 +7,7 @@
 #include "net/HTTPClient.hpp"
 #include "repository/IImageRepository.hpp"
 #include "util/Subprocess.hpp"
+#include "util/SysInfo.hpp"
 #include "Version.hpp"
 #include <algorithm>
 #include <arpa/inet.h>
@@ -197,29 +198,13 @@ void Heartbeat::_saveEventCursor(int64_t seq) const
 
 nlohmann::json Heartbeat::_getSysInfo() const
 {
-    nlohmann::json result = nlohmann::json::object();
     auto info = Subprocess::run({"shareframe-sysinfo"}, 10);
     if (info.exitCode != 0)
     {
         logger_->warn("shareframe-sysinfo failed: {}", info.stdErr);
-        return result;
+        return nlohmann::json::object();
     }
-    std::istringstream stream(info.stdOut);
-    std::string line;
-    while (std::getline(stream, line))
-    {
-        auto eq = line.find('=');
-        if (eq == std::string::npos || eq == 0) continue;
-        const auto key = line.substr(0, eq);
-        const auto val = line.substr(eq + 1);
-        // Coerce numeric/bool strings to typed JSON scalars.
-        if (val == "true")  { result[key] = true;  continue; }
-        if (val == "false") { result[key] = false; continue; }
-        try { std::size_t p; long long i = std::stoll(val, &p); if (p == val.size()) { result[key] = i; continue; } } catch (...) {}
-        try { std::size_t p; double d  = std::stod(val, &p);  if (p == val.size()) { result[key] = d; continue; } } catch (...) {}
-        result[key] = val;
-    }
-    return result;
+    return SysInfo::parse(info.stdOut);
 }
 
 std::string Heartbeat::_getLocalIp()
