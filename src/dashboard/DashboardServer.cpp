@@ -105,7 +105,6 @@ void DashboardServer::_initRoutes()
 
         // System
         {"GET",  "/api/system/info",             [this](auto& req, auto&) { return systemHandlers_.handleInfo(req); }},
-        {"GET",  "/api/system/check-internet",   [this](auto& req, auto&) { return systemHandlers_.handleCheckInternet(req); }},
         {"POST", "/api/system/restart",          [this](auto& req, auto&) { return systemHandlers_.handleRestart(req); }},
         {"POST", "/api/system/shutdown",         [this](auto& req, auto&) { return systemHandlers_.handleShutdown(req); }},
         {"POST", "/api/system/factory-reset",    [this](auto& req, auto&) { return systemHandlers_.handleFactoryReset(req); }},
