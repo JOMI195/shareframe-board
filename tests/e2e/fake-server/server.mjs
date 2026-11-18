@@ -4,6 +4,7 @@ import http from 'node:http';
 import { createHash, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { gunzipSync } from 'node:zlib';
 import { WebSocketServer } from 'ws';
 
 const PORT = Number(process.env.PORT ?? 9000);
@@ -17,6 +18,7 @@ let tokenRequests = 0;
 // Every picture pushed so far; a reset removes them from the frame again.
 const pushedIds = new Set();
 let nextImageId = 1000;
+let nextCommandId = 1;
 const state = freshState();
 
 function freshState() {
@@ -26,6 +28,7 @@ function freshState() {
     release: null,
     bundles: new Map(),
     bundleDownloads: [],
+    diagnostics: [],
   };
 }
 
@@ -102,6 +105,17 @@ const routes = {
     json(res, 200, state.release);
   },
 
+  // A gzip support package: from the dashboard, before a remote reboot, or on request.
+  'POST /api/frames/frame-diagnostics/': async (req, res) => {
+    if (!tokens.has(tokenFrom(req))) return json(res, 401, {});
+    const chunks = [];
+    for await (const c of req) chunks.push(c);
+    const query = new URL(req.url, 'http://x').searchParams;
+    let text = null;
+    try { text = gunzipSync(Buffer.concat(chunks)).toString(); } catch { /* recorded as not gzip */ }
+    state.diagnostics.push({ trigger: query.get('trigger'), commandId: query.get('command_id'), text });
+    json(res, 200, {});
+  },
   'GET /__test/state': (req, res) =>
     json(res, 200, {
       connectedFrames: sockets.size,
@@ -109,6 +123,7 @@ const routes = {
       heartbeats: state.heartbeats,
       frameMessages: state.frameMessages,
       bundleDownloads: state.bundleDownloads,
+      diagnostics: state.diagnostics,
     }),
   'POST /__test/reset': (req, res) => {
     if (pushedIds.size > 0) broadcast({ type: 'clear_specific_sent_images', sent_image_ids: [...pushedIds] });
@@ -127,6 +142,12 @@ const routes = {
       expiry_unix_timestamp: Math.floor(Date.now() / 1000) + expiresInSecs,
     });
     json(res, 200, { id, delivered });
+  },
+  // An admin's remote command; the frame answers with command_result messages.
+  'POST /__test/command': async (req, res) => {
+    const { command, arg = '', expiresInSecs = 300, id = nextCommandId++ } = await readBody(req);
+    const expires_at = Math.floor(Date.now() / 1000) + expiresInSecs;
+    json(res, 200, { id, delivered: broadcast({ type: 'command', id, command, arg, expires_at }) });
   },
   'POST /__test/send': async (req, res) => json(res, 200, { delivered: broadcast(await readBody(req)) }),
   'POST /__test/send-raw': async (req, res) => {

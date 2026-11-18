@@ -15,7 +15,7 @@ RUN --mount=type=cache,target=/build \
 
 FROM debian:trixie-slim
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libssl3t64 zlib1g procps busybox wpasupplicant \
+    && apt-get install -y --no-install-recommends libssl3t64 zlib1g procps busybox wpasupplicant s6 \
     && rm -rf /var/lib/apt/lists/*
 # The image's own scripts, from shareframe-hardware's br2-external (build context "hardware"),
 # under ash as on the board; the shims only stand in for hardware and the init system.
@@ -23,7 +23,11 @@ RUN ln -sf /bin/busybox /bin/sh
 COPY --from=hardware overlay/usr/bin/ /usr/bin/
 COPY --from=hardware overlay/usr/lib/shareframe/ /usr/lib/shareframe/
 COPY --from=hardware package/shareframe-rauc/files/tryboot-backend /usr/lib/rauc/tryboot-backend
-COPY --from=build /out/ /usr/local/bin/
+# The apps under s6 with the image's own run and finish scripts.
+COPY --from=hardware package/shareframe-init/source/60-app/ /etc/s6-app/
+COPY --from=hardware overlay/usr/libexec/s6/service-finish overlay/usr/libexec/s6/display-crash-guard /usr/libexec/s6/
+RUN echo dev > /etc/shareframe-profile && chmod +x /etc/s6-app/*/run /etc/s6-app/*/finish
+COPY --from=build /out/ /usr/bin/
 COPY migrations/ /usr/share/shareframe/migrations/
 COPY assets/ /usr/share/shareframe/assets/
 COPY tests/e2e/board/config.toml /etc/shareframe/config.toml
@@ -34,7 +38,6 @@ COPY tests/e2e/board/shims/ /opt/shims/
 COPY tests/e2e/board/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN echo "VERSION=1.2.0" > /etc/shareframe-release
 ENV PATH=/opt/shims:$PATH \
-    SHAREFRAME_PROFILE=dev \
     CONSOLE=/dev/null \
     CMDLINE=/state/cmdline \
     NO_MOUNT=1 FW_MNT=/state/fw \

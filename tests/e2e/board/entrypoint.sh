@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# Minimal stand-in for the board's s6 supervision: run every service, restart
-# it when it exits, and expose pid files for the s6-svc / s6-svstat shims.
+# The board's boot in short: seed /state, migrate the database, then supervise the apps.
 set -euo pipefail
 
 SERVICES=(display websocket dashboard heartbeat update)
 
-mkdir -p /data/logs /data/shareframe /panel /state /run/shareframe
+mkdir -p /data/logs /panel /state/shareframe /run/shareframe
 # /state is shared with the Playwright runner: it reads the shim log, the Wi-Fi config and
 # the update staging, and switches the Wi-Fi mode the dashboard sees.
 # Specs restore /state/defaults/* between tests.
@@ -33,42 +32,27 @@ ln -sf /state/wifi-mode /run/shareframe/wifi-mode
 ln -sf /state/wifi-retry-requested /run/shareframe/wifi-retry-requested
 ln -sfn /state/wifi /data/wifi
 ln -sfn /state/rauc /data/rauc
+# The board's own state (event log, update history, safe mode, the remote-reboot rate limit).
+ln -sfn /state/shareframe /data/shareframe
+# Logs where the image keeps them, so diagnostics and the log pages read the device paths.
+mkdir -p /var/log
+ln -sfn /data/logs /var/log/shareframe
 # The parts of /sys the image's scripts read that a container lacks.
 mkdir -p "$LED" "$SYSFS/class/thermal/thermal_zone0" "$SYSFS/class/net/wlan0"
 echo 1 > "$LED/max_brightness"
 echo 'none [timer]' > "$LED/trigger"
 echo 42500 > "$SYSFS/class/thermal/thermal_zone0/temp"
 echo up > "$SYSFS/class/net/wlan0/operstate"
-printf 'e2e kernel: boot ok\ne2e kernel: wlan0 up\n' > /data/logs/system.log
+# The last line is a credential diagnostics must never carry.
+printf 'e2e kernel: boot ok\ne2e kernel: wlan0 up\nwpa_supplicant[42]: psk=CANARY-PSK-1234\n' > /data/logs/system.log
+ln -sf /data/logs/system.log /var/log/messages
 
 cd /data
 shareframe-migrate
 
-supervise() {
-    local name=$1 dir=/run/service/shareframe-$1
-    mkdir -p "$dir"
-    while true; do
-        "shareframe-$name" &
-        echo $! > "$dir/pid"
-        date +%s > "$dir/started"
-        wait "$!" || true
-        rm -f "$dir/pid"
-        [[ -f /run/stopping ]] && return
-        sleep 0.5
-    done
-}
-
-shutdown() {
-    touch /run/stopping
-    for name in "${SERVICES[@]}"; do
-        [[ -f /run/service/shareframe-$name/pid ]] && kill "$(cat /run/service/shareframe-$name/pid)" 2>/dev/null || true
-    done
-    wait
-    exit 0
-}
-trap shutdown TERM INT
-
+# s6 supervises the apps with the image's own run/finish scripts, as on the board.
 for name in "${SERVICES[@]}"; do
-    supervise "$name" &
+    mkdir -p /run/service
+    cp -r "/etc/s6-app/shareframe-$name" /run/service/
 done
-wait
+exec s6-svscan /run/service

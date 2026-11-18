@@ -111,7 +111,9 @@ export const retryFlag = path.join(STATE_DIR, 'wifi-retry-requested');
 
 export async function resetBoardState() {
   await cp(path.join(STATE_DIR, 'defaults'), STATE_DIR, { recursive: true });
-  for (const stale of [retryFlag, path.join(STATE_DIR, 'factory-reset')]) await rm(stale, { force: true });
+  const own = (f: string) => path.join(STATE_DIR, 'shareframe', f);
+  for (const stale of [retryFlag, path.join(STATE_DIR, 'factory-reset'), own('remote-reboot-at'), own('safe-mode-remote')])
+    await rm(stale, { force: true });
   const rauc = path.join(STATE_DIR, 'rauc');
   for (const f of await readdir(rauc).catch(() => [])) await rm(path.join(rauc, f), { recursive: true, force: true });
   await writeFile(path.join(STATE_DIR, 'shim-calls.log'), '');
@@ -161,13 +163,39 @@ type ServerState = {
   heartbeats: Record<string, unknown>[];
   frameMessages: Record<string, unknown>[];
   bundleDownloads: { name: string; authorized: boolean }[];
+  diagnostics: { trigger: string; commandId: string | null; text: string | null }[];
 };
+
+type CommandResult = { type: 'command_result'; id: number; status: string; reason: string };
 
 export class FakeServer {
   constructor(private readonly request: APIRequestContext) {}
 
   async state(): Promise<ServerState> {
     return (await this.request.get(`${FAKE_SERVER}/__test/state`)).json();
+  }
+
+  /** Sends an admin's remote command; returns its id. */
+  async sendCommand(command: string, arg = '', opts: { expiresInSecs?: number } = {}): Promise<number> {
+    const res = await this.request.post(`${FAKE_SERVER}/__test/command`, { data: { command, arg, ...opts } });
+    return (await res.json()).id;
+  }
+
+  /** The statuses the frame reported for a command, in order (accepted, done, rejected, …). */
+  async commandResults(id: number): Promise<CommandResult[]> {
+    return (await this.state()).frameMessages.filter(
+      (m): m is CommandResult => m.type === 'command_result' && m.id === id);
+  }
+
+  async expectCommandResult(id: number, status: string): Promise<CommandResult> {
+    await expect
+      .poll(async () => (await this.commandResults(id)).map((r) => r.status), { message: `command #${id} ${status}`, timeout: 30_000 })
+      .toContain(status);
+    return (await this.commandResults(id)).find((r) => r.status === status)!;
+  }
+
+  async diagnostics() {
+    return (await this.state()).diagnostics;
   }
 
   async waitForFrame() {

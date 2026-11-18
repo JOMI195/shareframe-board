@@ -116,7 +116,8 @@ Prefer a step in an existing spec over a new one; the stack takes about a minute
   (panel, shim log, persisted state), not just the toast. `navigation.spec.ts` loads every
   page and fails on any API call that errors. `server-traffic.spec.ts` covers everything
   the server sends over the frames socket: pictures, removals, expiry, clear-display,
-  duplicates, garbage, dropped connections and rejected tokens.
+  duplicates, garbage, dropped connections, rejected tokens, and the remote commands
+  (restart, safe mode, reboot and its rate limit, factory reset, update, rejections).
 - **Phones first.** Owners mostly set the frame up from a phone on its hotspot. The
   `mobile` project (Pixel 7) runs only `*.mobile.spec.ts`, after the `desktop` project:
   side menu, dialogs, snackbars and floating buttons on a small screen, no sideways
@@ -138,14 +139,17 @@ Prefer a step in an existing spec over a new one; the stack takes about a minute
 - **Shims.** `board/shims/` only stands in for hardware and the init system: `wpa_cli`
   (wpa_supplicant: answers only while the board is a station, keeps networks in the real
   config file), `rauc` (stages the other slot through the real tryboot backend), `reboot`,
-  `shutdown`, `s6-linux-init-shutdown`, `s6-svc`, `s6-svstat`, `ping`. They log to
+  `shutdown`, `s6-linux-init-shutdown`, `ping`. The apps run under real s6 (`s6-svscan`)
+  with the image's own run and finish scripts, so `s6-svc` and `s6-svstat` are real. They log to
   `/state/shim-calls.log`; assert with `expectShimCall(line)`. A new `Subprocess::run` of
   a shareframe-hardware command needs nothing here; one of a hardware or init tool needs a
   shim. Paths the scripts read that a container lacks (`/sys` pieces, the kernel cmdline,
   the boot partition) point into `/run/fake-sys` and `/state` through their environment
   variables in `board.Dockerfile`.
 - **Board state.** `/state` is shared with the runner: the Wi-Fi config (`/data/wifi`),
-  the update staging (`/data/rauc`), the boot partition files and the cmdline live there.
+  the update staging (`/data/rauc`), the board's own state (`/data/shareframe`: event log,
+  update history, safe mode, the remote-reboot rate limit), the boot partition files and
+  the cmdline live there.
   `setWifiMode('ap')` switches what the Wi-Fi daemon reports (and stops `wpa_cli`
   answering, as on the board); defaults live in `/state/defaults/` and are restored before
   every test. The runner is root, so it can read what the scripts keep private; `test.sh`
@@ -153,7 +157,10 @@ Prefer a step in an existing spec over a new one; the stack takes about a minute
 - **Fake server.** It assigns picture ids (`server.sendPicture(fixture)` returns the id)
   and remembers them, so a reset removes them from the frame again. `offerRelease`
   serves a bundle (`corrupt: true` breaks its checksum), `disconnect(code?)` closes or
-  drops the frame's socket. A new board → server call needs a route in `server.mjs`.
+  drops the frame's socket. `sendCommand(command, arg)` sends an admin's remote command,
+  `expectCommandResult(id, status)` waits for the frame's answer, `diagnostics()` holds
+  the support packages the frame uploaded (unzipped). A new board → server call needs a
+  route in `server.mjs`.
 - **Config.** `board/config.toml` is the complete config of the e2e board (no profile
   overlay). The frame's ed25519 identity is generated when the image is built; keys are
   never committed.
