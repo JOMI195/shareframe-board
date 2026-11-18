@@ -19,3 +19,15 @@ TEST(SessionManager, SessionsAreUniqueAndUnknownIdsInvalid)
     EXPECT_FALSE(sm.isValid(""));
     EXPECT_FALSE(sm.isValid(std::string(64, '0')));
 }
+
+TEST(SessionManager, ASessionEndsAfterItsMaximumAge)
+{
+    auto now = SessionManager::Clock::now();
+    SessionManager sm{[&] { return now; }};
+    const auto id = sm.createSession();
+
+    now += SessionManager::kSessionMaxAge - std::chrono::seconds(1);
+    EXPECT_TRUE(sm.isValid(id));
+    now += std::chrono::seconds(1);
+    EXPECT_FALSE(sm.isValid(id));
+}

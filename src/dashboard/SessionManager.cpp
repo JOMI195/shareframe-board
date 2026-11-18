@@ -17,7 +17,7 @@ std::string SessionManager::createSession()
     std::string id = oss.str();
 
     std::lock_guard lk(mtx_);
-    sessions_[id] = Session{Clock::now() + kSessionMaxAge};
+    sessions_[id] = Session{now_() + kSessionMaxAge};
     return id;
 }
 
@@ -27,7 +27,7 @@ bool SessionManager::isValid(const std::string& sessionId) const
     auto it = sessions_.find(sessionId);
     if (it == sessions_.end())
         return false;
-    return Clock::now() < it->second.expiresAt;
+    return now_() < it->second.expiresAt;
 }
 
 void SessionManager::removeSession(const std::string& sessionId)
