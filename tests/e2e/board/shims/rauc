@@ -1,2 +1,7 @@
 #!/usr/bin/env bash
+# The install itself is not emulated; staging the other slot is, as RAUC hands it to the tryboot backend.
 /opt/shims/_log "rauc $*"
+if [[ "${1:-}" == install ]]; then
+    booted=$(sed -n 's/.*rauc\.slot=\([AB]\).*/\1/p' "${CMDLINE:-/proc/cmdline}")
+    /usr/lib/rauc/tryboot-backend set-primary "$([[ $booted == A ]] && echo B || echo A)"
+fi

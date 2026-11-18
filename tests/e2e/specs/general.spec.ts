@@ -1,4 +1,4 @@
-import { DASHBOARD_PASSWORD, expectShimCall, isCleared, showsStatus, waitForPanel } from '../support/board';
+import { DASHBOARD_PASSWORD, expectShimCall, factoryResetScheduled, isCleared, showsStatus, waitForPanel } from '../support/board';
 import { card, expect, signIn, test } from '../support/fixtures';
 
 test('device info shows the identity the server knows and live system metrics', async ({ page, server }) => {
@@ -54,5 +54,6 @@ test('factory reset from the general page schedules the wipe', async ({ page }) 
   await page.goto('/general/');
   await page.getByRole('button', { name: 'Zurücksetzen' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Zurücksetzen' }).click();
-  await expectShimCall('shareframe-factory-reset --yes');
+  await expect.poll(factoryResetScheduled, { message: 'wipe marked for the next boot' }).toBe(true);
+  await expectShimCall('reboot');
 });

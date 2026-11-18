@@ -5,6 +5,8 @@ services:
     build:
       context: ../..
       dockerfile: tests/e2e/board/board.Dockerfile
+      additional_contexts:
+        hardware: ${SHAREFRAME_HARDWARE_DIR:-../../../shareframe-hardware}/br2-external
     image: shareframe-board-e2e-board
     volumes:
       - panel:/panel
@@ -36,11 +38,15 @@ services:
       dockerfile: runner.Dockerfile
     image: shareframe-board-e2e-runner
     profiles: [runner]
-    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    # Root reads what the board's scripts keep private (ap.conf is 0600); test.sh hands the
+    # reports back to HOST_UID afterwards.
+    user: root
     ipc: host
     environment:
       CI: "1"
       HOME: /tmp
+      HOST_UID: ${HOST_UID:-1000}
+      HOST_GID: ${HOST_GID:-1000}
     ports:
       - "127.0.0.1:8089:8089"
     volumes:

@@ -2,10 +2,14 @@
 // and the frames WebSocket. Tests drive it through /__test/*.
 import http from 'node:http';
 import { createHash, randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { WebSocketServer } from 'ws';
 
 const PORT = Number(process.env.PORT ?? 9000);
 const VALID_OTP = '123456';
+const PUBLIC_URL = process.env.PUBLIC_URL ?? `http://fake-server:${PORT}`;
+const BUNDLE_DIR = process.env.BUNDLE_DIR ?? '/bundles';
 
 // Tokens survive a reset so connected frames keep their session.
 const tokens = new Set();
@@ -133,13 +137,14 @@ const routes = {
     json(res, 200, { delivered: sockets.size });
   },
   // Offers a release whose bundle the frame can download; `corrupt` breaks its checksum.
+  // `bundleFile` serves a real bundle from BUNDLE_DIR instead of the inline text.
   'POST /__test/release': async (req, res) => {
-    const { bundle = 'e2e bundle', corrupt = false, ...release } = await readBody(req);
+    const { bundle = 'e2e bundle', bundleFile, corrupt = false, ...release } = await readBody(req);
     const name = `shareframe-${release.version}.raucb`;
-    const bytes = Buffer.from(bundle);
+    const bytes = bundleFile ? await readFile(path.join(BUNDLE_DIR, path.basename(bundleFile))) : Buffer.from(bundle);
     state.bundles.set(name, bytes);
     const checksum = createHash('sha256').update(corrupt ? Buffer.from('other') : bytes).digest('hex');
-    state.release = { download_url: `http://fake-server:${PORT}/bundle?name=${name}`, checksum, ...release };
+    state.release = { download_url: `${PUBLIC_URL}/bundle?name=${name}`, checksum, ...release };
     json(res, 200, state.release);
   },
   // Ends the frame's socket: with a close code like the server would, or abruptly.

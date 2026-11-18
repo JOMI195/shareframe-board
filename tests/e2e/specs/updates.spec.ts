@@ -1,4 +1,4 @@
-import { expectShimCall, INSTALLED_VERSION, showsStatus, waitForPanel } from '../support/board';
+import { expectShimCall, INSTALLED_VERSION, pendingSlot, showsStatus, waitForPanel } from '../support/board';
 import { expect, signIn, test } from '../support/fixtures';
 
 // Runs last (alphabetical): a successful install leaves the update service waiting
@@ -53,6 +53,7 @@ test('installing from the dashboard downloads, verifies and hands over to rauc',
   await page.getByRole('dialog').getByRole('button', { name: 'Installieren' }).click();
 
   await expectShimCall('rauc install /data/cache/shareframe-9.9.2.raucb');
+  await expect.poll(pendingSlot, { message: 'the tryboot backend staged the other slot' }).toBe('B');
   await expectShimCall('s6-linux-init-shutdown -r now');
   await waitForPanel(showsStatus('update'), 'update status screen');
   expect((await board.get('/api/system/updates/status')).phase).toBe('awaiting-reboot');

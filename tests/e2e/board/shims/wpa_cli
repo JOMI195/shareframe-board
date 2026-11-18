@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# wpa_supplicant behind wpa_cli. It answers only while the board is a station (the hotspot
+# stops it on the board) and keeps its networks in the config file, as it saves them there.
+/opt/shims/_log "wpa_cli $*"
+[[ "${1:-}" == -i ]] && shift 2
+conf=/data/wifi/wpa_supplicant.conf
+if [[ "$(cat /state/wifi-mode 2>/dev/null)" == ap ]]; then
+    echo "Failed to connect to non-global ctrl_ifname: wlan0  error: No such file or directory"
+    exit 255
+fi
+
+blocks() { awk '/^[[:space:]]*network=[{]/ { n++ } END { print n + 0 }' "$conf"; }
+
+# The raw value of <key> in network <id>: "quoted" or hex, as wpa_supplicant stores it.
+field() {
+    ID="$1" KEY="$2" awk '/^[[:space:]]*network=[{]/ { b++; next }
+        b - 1 == ENVIRON["ID"] && $0 ~ "^[[:space:]]*" ENVIRON["KEY"] "=" { sub(/^[[:space:]]*[a-z_]+=/, ""); print; exit }' "$conf"
+}
+
+# rewrite <id> set <key> <value> | drop
+rewrite() {
+    ID="$1" OP="$2" KEY="${3:-}" VAL="${4:-}" awk '
+        BEGIN { id = ENVIRON["ID"]; op = ENVIRON["OP"]; key = ENVIRON["KEY"]; val = ENVIRON["VAL"] }
+        /^[[:space:]]*network=[{]/ { b++; mine = (b - 1 == id); if (mine && op == "drop") skip = 1 }
+        skip { if ($0 ~ /^[[:space:]]*}/) skip = 0; next }
+        mine && op == "set" && $0 ~ "^[[:space:]]*" key "=" { next }
+        mine && op == "set" && $0 ~ /^[[:space:]]*}/ { print "\t" key "=" val; mine = 0 }
+        { print }' "$conf" > "$conf.tmp" && cat "$conf.tmp" > "$conf" && rm -f "$conf.tmp"
+}
+
+# wpa_cli prints SSIDs with printf_encode: \" \\ and \xNN for anything not printable ASCII.
+shown() {
+    local v="$1" out="" i c
+    if [[ "$v" == \"*\" ]]; then
+        v="${v:1:${#v}-2}"; v="${v//\\/\\\\}"; printf '%s' "${v//\"/\\\"}"; return
+    fi
+    for ((i = 0; i < ${#v}; i += 2)); do
+        c=$((16#${v:i:2}))
+        if ((c == 34)); then out+='\"'
+        elif ((c == 92)); then out+='\\'
+        elif ((c >= 32 && c <= 126)); then out+="$(printf "\\$(printf %o "$c")")"
+        else out+="$(printf '\\x%02x' "$c")"; fi
+    done
+    printf '%s' "$out"
+}
+
+case "${1:-}" in
+    ping) echo PONG ;;
+    status)
+        ssid=$(sed -n 's/.*"ssid": *"\([^"]*\)".*/\1/p' /state/wifi-mode.json)
+        printf 'bssid=02:00:00:00:01:00\nssid=%s\nid=0\nmode=station\nkey_mgmt=WPA2-PSK\nwpa_state=COMPLETED\n' "$ssid" ;;
+    list_networks)
+        echo 'network id / ssid / bssid / flags'
+        for ((i = 0; i < $(blocks); i++)); do printf '%d\t%s\tany\t\n' "$i" "$(shown "$(field "$i" ssid)")"; done ;;
+    add_network) printf '\nnetwork={\n}\n' >> "$conf"; echo $(($(blocks) - 1)) ;;
+    set_network) rewrite "$2" set "$3" "$4"; echo OK ;;
+    get_network) field "$2" "$3" ;;
+    remove_network) rewrite "$2" drop; echo OK ;;
+    enable_network|select_network|save_config|reconfigure|reassociate|disconnect) echo OK ;;
+    *) echo "UNKNOWN COMMAND"; exit 1 ;;
+esac
