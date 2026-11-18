@@ -5,6 +5,7 @@
 #include <cstring>
 #include <poll.h>
 #include <sys/wait.h>
+#include <thread>
 #include <unistd.h>
 
 SubprocessResult Subprocess::run(const std::vector<std::string>& args, int timeoutSecs)
@@ -106,8 +107,18 @@ SubprocessResult Subprocess::run(const std::vector<std::string>& args, int timeo
     if (outPipe[0] >= 0) close(outPipe[0]);
     if (errPipe[0] >= 0) close(errPipe[0]);
 
+    // The output can close long before the child ends; the deadline still holds.
     int status = 0;
-    waitpid(pid, &status, 0);
+    while (waitpid(pid, &status, WNOHANG) == 0)
+    {
+        if (std::chrono::steady_clock::now() >= deadline)
+        {
+            kill(pid, SIGKILL);
+            waitpid(pid, nullptr, 0);
+            return {-1, stdOut, "timeout after " + std::to_string(timeoutSecs) + "s"};
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
     int exitCode = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 
     return {exitCode, stdOut, stdErr};
