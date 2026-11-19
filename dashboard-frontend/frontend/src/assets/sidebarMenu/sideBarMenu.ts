@@ -28,7 +28,7 @@ import {
 } from "../endpoints/app/appEndpoints";
 
 // Sidebar is grouped into a user section (always shown) and an admin section
-// ("Verwaltung") that is only revealed when advanced mode is enabled.
+// ("Verwaltung") that is only revealed by the expert mode switch on the system page.
 export const sidebarSections: ISidebarSection[] = [
     {
         section: "Steuerung",
@@ -38,6 +38,7 @@ export const sidebarSections: ISidebarSection[] = [
             { name: "Anpassung", url: getCustomizationUrl(), icon: TuneIcon },
             { name: "Netzwerk", url: getNetworkUrl(), icon: WifiIcon },
             { name: "Updates", url: getUpdatesyUrl(), icon: UpdateIcon },
+            { name: "System", url: getGeneralSettingsUrl(), icon: InfoIcon },
         ],
     },
     {
@@ -50,7 +51,6 @@ export const sidebarSections: ISidebarSection[] = [
             { name: "Dashboard", url: getServiceDetailUrl("dashboard"), icon: DashboardIcon },
             { name: "Heartbeat", url: getServiceDetailUrl("heartbeat"), icon: MonitorHeartIcon },
             { name: "Update-Dienst", url: getServiceDetailUrl("update"), icon: UpdateIcon },
-            { name: "System", url: getGeneralSettingsUrl(), icon: InfoIcon },
             { name: "Display-Zustand", url: getDisplayHealthUrl(), icon: HealthAndSafetyIcon },
             { name: "Update-Verlauf", url: getUpdateHistoryPageUrl(), icon: HistoryIcon },
             { name: "Protokolle", url: getLogsUrl(), icon: ArticleIcon },

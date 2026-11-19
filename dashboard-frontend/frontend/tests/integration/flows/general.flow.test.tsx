@@ -9,7 +9,8 @@ import { advance, useBoardClock } from '@tests/helpers/time';
 import { makeFrameInfo } from '@tests/fixtures';
 import { apiUrl, failsWith, ok, server, spyOnRequests, withFrameInfo } from '@tests/mocks';
 
-const openGeneral = () => renderRoute('/general/', { preloadedState: signedInState() });
+const openGeneral = (expert = false) =>
+  renderRoute('/general/', { preloadedState: signedInState({ navigation: { advancedMode: expert } }) });
 
 describe('system info', () => {
   it('shows device, network and system metrics', async () => {
@@ -26,7 +27,7 @@ describe('system info', () => {
         }),
       ),
     );
-    openGeneral();
+    openGeneral(true);
 
     const device = await findCard('Gerät');
     expect(await within(device).findByText('SER-1')).toBeInTheDocument();
@@ -35,6 +36,20 @@ describe('system info', () => {
     expect(within(card('Netzwerk')).getByText('Hotspot')).toBeInTheDocument();
     expect(within(card('System')).getByText('256 MB / 512 MB (50%)')).toBeInTheDocument();
     expect(within(card('System')).getByText('45.2 °C')).toBeInTheDocument();
+  });
+
+  it('shows network and system metrics only in expert mode', async () => {
+    const { user, store } = openGeneral();
+
+    expect(await findCard('Gerät')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 2, name: 'Netzwerk' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 2, name: 'System' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('switch', { name: 'Expertenmodus' }));
+
+    expect(store.getState().navigation.advancedMode).toBe(true);
+    expect(await findCard('Netzwerk')).toBeInTheDocument();
+    expect(card('System')).toBeInTheDocument();
   });
 
   it('reports a failed load', async () => {

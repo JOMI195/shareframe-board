@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Stack } from '@mui/material';
+import { Button, FormControlLabel, Stack, Switch, Typography } from '@mui/material';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import RestoreIcon from '@mui/icons-material/Restore';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
@@ -7,6 +7,7 @@ import uuid from 'react-uuid';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { selectFrameInfoState, fetchFrameInfos } from '@/store/frameInfo/frameInfo.Slice';
 import { openGeneralChangePasswordDialog, openGeneralFactoryResetDialog } from '@/store/dialogs/dialogs.Slice';
+import { getAdvancedMode, toggleAdvancedMode } from '@/store/navigation/navigation.Slice';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import ChangePasswordDialog from './dialogs/changePasswordDialog';
 import FactoryResetDialog from '@/common/components/factoryResetDialog';
@@ -74,6 +75,7 @@ const fmtWifiMode = (m?: string): string => (m ? WIFI_MODE_LABELS[m] ?? m : DASH
 const General = () => {
     const dispatch = useAppDispatch();
     const info = useAppSelector(selectFrameInfoState).frameInfo;
+    const expertMode = useAppSelector(getAdvancedMode);
     const [sendingDiagnostics, setSendingDiagnostics] = useState(false);
 
     const sendDiagnostics = async () => {
@@ -119,29 +121,33 @@ const General = () => {
                     ]}
                 />
 
-                <ShareframeInfoCard
-                    title="Netzwerk"
-                    sections={[
-                        { label: "Modus", content: fmtWifiMode(info?.wifi_mode) },
-                        { label: "WLAN", content: orDash(info?.wlan_ssid) },
-                        { label: "Signal", content: fmtSignal(info?.wlan_signal_dbm) },
-                        { label: "IP (WLAN)", content: orDash(info?.ip_wlan0) },
-                        { label: "IP (USB)", content: orDash(info?.ip_usb0) },
-                    ]}
-                />
+                {expertMode && (
+                    <ShareframeInfoCard
+                        title="Netzwerk"
+                        sections={[
+                            { label: "Modus", content: fmtWifiMode(info?.wifi_mode) },
+                            { label: "WLAN", content: orDash(info?.wlan_ssid) },
+                            { label: "Signal", content: fmtSignal(info?.wlan_signal_dbm) },
+                            { label: "IP (WLAN)", content: orDash(info?.ip_wlan0) },
+                            { label: "IP (USB)", content: orDash(info?.ip_usb0) },
+                        ]}
+                    />
+                )}
 
-                <ShareframeInfoCard
-                    title="System"
-                    sections={[
-                        { label: "Systemzustand", content: fmtHealth(info?.health_state) },
-                        { label: "CPU-Auslastung", content: fmtPct(info?.cpu_usage_percent) },
-                        { label: "CPU-Takt", content: fmtFreq(info?.cpu_freq_mhz) },
-                        { label: "CPU-Temperatur", content: fmtTemp(info?.cpu_temp_celsius) },
-                        { label: "Load (1/5/15 min)", content: fmtLoad(info?.load_1, info?.load_5, info?.load_15) },
-                        { label: "Arbeitsspeicher", content: fmtUsage(info?.ram_available_bytes, info?.ram_total_bytes) },
-                        { label: "Speicher (/data)", content: fmtUsage(info?.storage_data_free_bytes, info?.storage_data_total_bytes) },
-                    ]}
-                />
+                {expertMode && (
+                    <ShareframeInfoCard
+                        title="System"
+                        sections={[
+                            { label: "Systemzustand", content: fmtHealth(info?.health_state) },
+                            { label: "CPU-Auslastung", content: fmtPct(info?.cpu_usage_percent) },
+                            { label: "CPU-Takt", content: fmtFreq(info?.cpu_freq_mhz) },
+                            { label: "CPU-Temperatur", content: fmtTemp(info?.cpu_temp_celsius) },
+                            { label: "Load (1/5/15 min)", content: fmtLoad(info?.load_1, info?.load_5, info?.load_15) },
+                            { label: "Arbeitsspeicher", content: fmtUsage(info?.ram_available_bytes, info?.ram_total_bytes) },
+                            { label: "Speicher (/data)", content: fmtUsage(info?.storage_data_free_bytes, info?.storage_data_total_bytes) },
+                        ]}
+                    />
+                )}
 
                 <ShareframeInfoCard
                     title="Hardwarespezifikation"
@@ -189,6 +195,33 @@ const General = () => {
                             {sendingDiagnostics ? "Wird gesendet …" : "Diagnose senden"}
                         </Button>
                     }
+                />
+
+                <ShareframeInfoCard
+                    title="Expertenmodus"
+                    sections={[
+                        {
+                            content: {
+                                type: 'reactNode',
+                                value: (
+                                    <Stack spacing={2}>
+                                        <Typography variant="body2">
+                                            Zeigt technische Details und die Verwaltung im Menü.
+                                        </Typography>
+                                        <FormControlLabel
+                                            control={
+                                                <Switch
+                                                    checked={expertMode}
+                                                    onChange={() => dispatch(toggleAdvancedMode())}
+                                                />
+                                            }
+                                            label="Expertenmodus"
+                                        />
+                                    </Stack>
+                                ),
+                            },
+                        },
+                    ]}
                 />
 
                 <ShareframeInfoCard

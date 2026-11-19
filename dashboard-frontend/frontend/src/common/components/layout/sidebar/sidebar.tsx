@@ -7,7 +7,6 @@ import {
     ListItemIcon,
     ListItemText,
     ListSubheader,
-    Switch,
     Box,
     SwipeableDrawer,
     useTheme,
@@ -15,11 +14,10 @@ import {
     Tooltip,
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
-import TuneIcon from '@mui/icons-material/Tune';
 import PowerSettingsNewIcon from '@mui/icons-material/PowerSettingsNew';
 import PowerMenu from '@/common/components/powerMenu';
 import { useAppDispatch, useAppSelector } from '@/store';
-import { closeSidebar, getSidebar, openSidedbar, getAdvancedMode, toggleAdvancedMode } from '@/store/navigation/navigation.Slice';
+import { closeSidebar, getSidebar, openSidedbar, getAdvancedMode } from '@/store/navigation/navigation.Slice';
 import { sidebarSections } from '@/assets/sidebarMenu/sideBarMenu';
 import { Link as RouterLink, useLocation } from 'react-router';
 import { getAuthenticationUrl, getSignOutUrl } from '@/assets/endpoints/app/authEndpoints';
@@ -103,50 +101,6 @@ const Sidebar: React.FC = () => {
         ));
     };
 
-    // A real switch in a label, so the row is one control instead of a button around a switch.
-    const renderAdvancedToggle = () => shouldShowIconsOnly ? withTooltip('Erweiterter Modus', (
-        <ListItem disablePadding>
-            <ListItemButton
-                aria-pressed={advancedMode}
-                aria-label="Erweiterter Modus"
-                onClick={() => dispatch(toggleAdvancedMode())}
-                sx={{ ...itemSx, backgroundColor: advancedMode ? 'action.selected' : 'inherit' }}
-            >
-                <ListItemIcon sx={iconSx}>
-                    <TuneIcon color={advancedMode ? 'primary' : 'inherit'} />
-                </ListItemIcon>
-            </ListItemButton>
-        </ListItem>
-    )) : (
-        <ListItem disablePadding>
-            <Box
-                component="label"
-                sx={{
-                    ...itemSx,
-                    px: 2,
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    backgroundColor: advancedMode ? 'action.selected' : 'inherit',
-                    '&:hover': { backgroundColor: 'action.hover' },
-                }}
-            >
-                <ListItemIcon sx={iconSx}>
-                    <TuneIcon color={advancedMode ? 'primary' : 'inherit'} />
-                </ListItemIcon>
-                <ListItemText primary="Erweitert" />
-                <Switch
-                    edge="end"
-                    size="small"
-                    checked={advancedMode}
-                    onChange={() => dispatch(toggleAdvancedMode())}
-                    slotProps={{ input: { role: 'switch', 'aria-label': 'Erweiterter Modus' } }}
-                />
-            </Box>
-        </ListItem>
-    );
-
     const content = (
         <Box
             sx={{
@@ -178,7 +132,6 @@ const Sidebar: React.FC = () => {
                         ))}
                 </List>
                 <List>
-                    {renderAdvancedToggle()}
                     <PowerMenu
                         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
                         transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
