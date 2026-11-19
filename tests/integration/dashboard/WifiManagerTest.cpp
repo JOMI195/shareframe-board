@@ -74,3 +74,9 @@ TEST_F(WifiManagerTest, ARetryRequestIsLeftNextToTheWifiMode)
     EXPECT_TRUE(wifi.requestConnect().contains("message"));
     EXPECT_TRUE(std::filesystem::exists(dir.path() / "wifi-retry-requested"));
 }
+
+TEST_F(WifiManagerTest, TheNetworkTheBoardIsOnShowsByItsRealName)
+{
+    shims.add("shareframe-wifi", "[ \"$1\" = status ] && printf 'ssid=M\\\\xc3\\\\xbcller WLAN\\nwpa_state=COMPLETED\\n'");
+    EXPECT_EQ(wifi.getCurrentConnection().at("connection_name"), "Müller WLAN");
+}

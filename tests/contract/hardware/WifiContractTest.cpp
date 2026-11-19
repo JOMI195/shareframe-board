@@ -22,11 +22,11 @@ protected:
 };
 }
 
-// SSIDs stay in wpa_cli's encoding: forgetting a network sends back exactly what was listed.
+// wpa_cli escapes what is not printable ASCII; the owner sees, and forgets by, the real name.
 TEST_F(WifiContractTest, SavedNetworksAreTheListedSsidsInListOrder)
 {
     const auto networks = wifi.getSavedNetworks().at("networks");
-    EXPECT_EQ(networks, (nlohmann::json{"home", "Caf\\xc3\\xa9 Wi-Fi", "my net", "5", "quote\\\"d"}));
+    EXPECT_EQ(networks, (nlohmann::json{"home", "Café Wi-Fi", "my net", "5", "quote\"d"}));
 }
 
 TEST_F(WifiContractTest, CurrentConnectionIsTheAssociatedSsid)

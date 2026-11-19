@@ -153,6 +153,7 @@ set(COMMON_SOURCES
         src/util/FileHash.cpp
         src/util/WifiMode.cpp
         src/util/SysInfo.cpp
+        src/util/WpaText.cpp
         src/repository/TokenRepository.cpp
         src/repository/ImageRepository.cpp
         src/repository/SettingsRepository.cpp

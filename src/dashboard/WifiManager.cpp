@@ -1,6 +1,7 @@
 #include "dashboard/WifiManager.hpp"
 #include "util/Subprocess.hpp"
 #include "util/WifiMode.hpp"
+#include "util/WpaText.hpp"
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -33,7 +34,7 @@ nlohmann::json WifiManager::getCurrentConnection() const
     while (std::getline(stream, line))
     {
         if (line.rfind("ssid=", 0) == 0)
-            ssid = line.substr(5);
+            ssid = WpaText::decode(line.substr(5));
         else if (line.rfind("wpa_state=", 0) == 0)
             completed = (line.substr(10) == "COMPLETED");
     }
@@ -70,8 +71,8 @@ nlohmann::json WifiManager::getSavedNetworks() const
         auto t1 = line.find('\t');
         if (t1 == std::string::npos) continue;
         auto t2 = line.find('\t', t1 + 1);
-        std::string ssid = line.substr(
-            t1 + 1, (t2 == std::string::npos ? line.size() : t2) - (t1 + 1));
+        std::string ssid = WpaText::decode(line.substr(
+            t1 + 1, (t2 == std::string::npos ? line.size() : t2) - (t1 + 1)));
 
         if (ssid.empty() || WifiMode::isProtectedNetwork(ssid)) continue;
         networks.push_back(ssid);

@@ -57,3 +57,18 @@ test('the hotspot password can be revealed and changed', async ({ page }) => {
   await expect(page.getByText('Hotspot-Passwort geändert')).toBeVisible();
   await expect.poll(apConf, { message: 'new password stored for the hotspot' }).toContain("AP_PASS='newhotspot'");
 });
+
+test('a network named with accents is shown and forgotten by that name', async ({ page }) => {
+  await page.getByRole('button', { name: 'WLAN hinzufügen' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/Netzwerkname/).fill('Café Wi-Fi');
+  await dialog.getByLabel(/^Passwort$/).fill('cafepass1');
+  await dialog.getByRole('button', { name: 'Hinzufügen' }).click();
+  await expectSavedNetwork('Café Wi-Fi', 'cafepass1');
+  await expect(savedNetworks(page)).toContainText(['Café Wi-Fi']);
+
+  await savedNetworks(page).getByRole('button', { name: '„Café Wi-Fi“ entfernen' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Entfernen' }).click();
+  await expect(page.getByText('WLAN entfernt')).toBeVisible();
+  await expect.poll(savedWifiNetworks, { message: 'gone from the board' }).not.toContain('Café Wi-Fi');
+});

@@ -32,7 +32,7 @@ rewrite() {
 shown() {
     local v="$1" out="" i c
     if [[ "$v" == \"*\" ]]; then
-        v="${v:1:${#v}-2}"; v="${v//\\/\\\\}"; printf '%s' "${v//\"/\\\"}"; return
+        v=$(printf '%s' "${v:1:${#v}-2}" | od -An -tx1 | tr -d ' \n')
     fi
     for ((i = 0; i < ${#v}; i += 2)); do
         c=$((16#${v:i:2}))
