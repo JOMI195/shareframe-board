@@ -43,7 +43,10 @@ void DashboardServer::start()
     server_.setOnConnectionCallback(
         [this](const ix::HttpRequestPtr& req, const std::shared_ptr<ix::ConnectionState>& connState)
         {
-            return _handleRequest(req, connState);
+            auto res = _handleRequest(req, connState);
+            // ix serves one request per connection.
+            res->headers["Connection"] = "close";
+            return res;
         });
 
     if (auto [ok, errMsg] = server_.listen(); !ok)

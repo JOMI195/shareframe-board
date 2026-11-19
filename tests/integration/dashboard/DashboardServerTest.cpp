@@ -33,6 +33,7 @@ struct Response
     int status;
     nlohmann::json body;
     std::string setCookie;
+    std::string connection;
 };
 
 class DashboardServerTest : public ::testing::Test
@@ -77,6 +78,8 @@ protected:
         Response out{r->statusCode, nlohmann::json::parse(r->body, nullptr, false), ""};
         if (const auto it = r->headers.find("Set-Cookie"); it != r->headers.end())
             out.setCookie = it->second;
+        if (const auto it = r->headers.find("Connection"); it != r->headers.end())
+            out.connection = it->second;
         return out;
     }
 
@@ -192,6 +195,15 @@ TEST_F(DashboardServerTest, TheHotspotPasswordIsHiddenFromTheLanButNotFromTheOwn
     EXPECT_EQ(request("GET", "/api/connection/mode", "", session()).body["data"]["ap_password"], "hotspot-pass");
     wifiMode("ap");
     EXPECT_EQ(request("GET", "/api/connection/mode").body["data"]["ap_password"], "hotspot-pass");
+}
+
+// The server closes every connection after one answer; a client that reused it would lose its next request.
+TEST_F(DashboardServerTest, EveryAnswerSaysTheConnectionCloses)
+{
+    EXPECT_EQ(login("initial-pass").connection, "close");
+    EXPECT_EQ(login("wrong").connection, "close");
+    EXPECT_EQ(request("GET", "/api/system/info").connection, "close");
+    EXPECT_EQ(request("GET", "/api/nope", "", session()).connection, "close");
 }
 
 TEST_F(DashboardServerTest, UnknownRoutesAndBrokenBodiesGetTheEnvelope)
