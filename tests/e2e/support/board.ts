@@ -1,4 +1,5 @@
-import { readFile, rm, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { cp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, type APIRequestContext, type TestInfo } from '@playwright/test';
 import { PNG } from 'pngjs';
@@ -6,9 +7,24 @@ import { PNG } from 'pngjs';
 const PANEL_DIR = process.env.PANEL_DIR ?? '/panel';
 const STATE_DIR = process.env.STATE_DIR ?? '/state';
 const FAKE_SERVER = process.env.FAKE_SERVER_URL ?? 'http://fake-server:9000';
+// ssh arguments for a board that is not a local container (the simulator).
+const BOARD_SSH = process.env.BOARD_SSH?.split(' ').filter(Boolean);
 export const FIXTURES = path.resolve(import.meta.dirname, '../fixtures');
 export const DASHBOARD_PASSWORD = 'e2e-password';
 export const INSTALLED_VERSION = '1.2.0';
+
+/** Runs a shell command on the simulated board over ssh. */
+export function onBoard(command: string): Promise<Buffer> {
+  if (!BOARD_SSH) throw new Error('BOARD_SSH is not set');
+  return new Promise((resolve, reject) =>
+    execFile('ssh', [...BOARD_SSH, command], { encoding: 'buffer', maxBuffer: 4 << 20 }, (err, stdout, stderr) =>
+      err ? reject(new Error(`${command}: ${stderr.toString() || err.message}`)) : resolve(stdout),
+    ),
+  );
+}
+
+const panelFile = (name: string) =>
+  BOARD_SSH ? onBoard(`cat ${PANEL_DIR}/${name}`) : readFile(path.join(PANEL_DIR, name));
 
 // ---- virtual panel
 
@@ -16,7 +32,7 @@ export type Panel = { state: 'image' | 'cleared'; source: string; seq: number };
 
 export async function readPanel(): Promise<Panel | null> {
   try {
-    return JSON.parse(await readFile(path.join(PANEL_DIR, 'panel.json'), 'utf8'));
+    return JSON.parse((await panelFile('panel.json')).toString('utf8'));
   } catch {
     return null;
   }
@@ -29,7 +45,7 @@ export async function waitForPanel(predicate: (p: Panel) => boolean, message: st
   while (Date.now() < deadline) {
     last = await readPanel();
     if (last && predicate(last)) return last;
-    await new Promise((r) => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, BOARD_SSH ? 1000 : 100));
   }
   throw new Error(`Timed out waiting for: ${message}. Last panel: ${JSON.stringify(last)}`);
 }
@@ -46,7 +62,7 @@ export class Frame {
   private constructor(readonly width: number, readonly height: number, private readonly bits: Buffer) {}
 
   static async read() {
-    const pbm = await readFile(path.join(PANEL_DIR, 'panel.pbm'));
+    const pbm = await panelFile('panel.pbm');
     const header = pbm.subarray(0, 16).toString('latin1').match(/^P4\n(\d+) (\d+)\n/);
     if (!header) throw new Error('panel.pbm has no P4 header');
     return new Frame(Number(header[1]), Number(header[2]), pbm.subarray(header[0].length));
@@ -79,7 +95,7 @@ export async function attachPanel(testInfo: TestInfo, name: string) {
   await testInfo.attach(name, { body: (await Frame.read()).png(), contentType: 'image/png' });
 }
 
-// ---- board side effects (shims) and network state
+// ---- board side effects (the image's scripts and the shims) and network state
 
 export async function shimCalls(): Promise<string[]> {
   const log = await readFile(path.join(STATE_DIR, 'shim-calls.log'), 'utf8').catch(() => '');
@@ -94,10 +110,42 @@ export async function expectShimCall(line: string) {
 export const retryFlag = path.join(STATE_DIR, 'wifi-retry-requested');
 
 export async function resetBoardState() {
-  for (const file of ['wifi-mode.json', 'wifi-mode', 'wifi-networks'])
-    await writeFile(path.join(STATE_DIR, file), await readFile(path.join(STATE_DIR, 'defaults', file)));
-  await rm(retryFlag, { force: true });
+  await cp(path.join(STATE_DIR, 'defaults'), STATE_DIR, { recursive: true });
+  const own = (f: string) => path.join(STATE_DIR, 'shareframe', f);
+  for (const stale of [retryFlag, path.join(STATE_DIR, 'factory-reset'), own('remote-reboot-at'), own('safe-mode-remote'), own('update-history.jsonl')])
+    await rm(stale, { force: true });
+  const rauc = path.join(STATE_DIR, 'rauc');
+  for (const f of await readdir(rauc).catch(() => [])) await rm(path.join(rauc, f), { recursive: true, force: true });
   await writeFile(path.join(STATE_DIR, 'shim-calls.log'), '');
+}
+
+const wifiConf = () => readFile(path.join(STATE_DIR, 'wifi', 'wpa_supplicant.conf'), 'utf8');
+
+/** SSIDs in the board's wpa_supplicant.conf, "quoted" or hex as wpa_supplicant saves them. */
+export async function savedWifiNetworks(): Promise<string[]> {
+  return [...(await wifiConf()).matchAll(/^\s*ssid=(.*)$/gm)].map(([, v]) =>
+    v.startsWith('"') ? v.slice(1, -1) : Buffer.from(v, 'hex').toString('utf8'));
+}
+
+/** The network is saved on the board, with its password hashed, never in plain text. */
+export async function expectSavedNetwork(ssid: string, password: string) {
+  await expect.poll(savedWifiNetworks, { message: `${ssid} saved on the board` }).toContain(ssid);
+  expect(await wifiConf(), 'plain-text password in wpa_supplicant.conf').not.toContain(password);
+}
+
+/** The hotspot credentials as the board's ap.conf holds them (shell-sourced on the board). */
+export async function apConf(): Promise<string> {
+  return readFile(path.join(STATE_DIR, 'wifi', 'ap.conf'), 'utf8');
+}
+
+/** The slot an installed update waits in (/data/rauc/pending), or '' when none does. */
+export async function pendingSlot(): Promise<string> {
+  return (await readFile(path.join(STATE_DIR, 'rauc', 'pending'), 'utf8').catch(() => '')).trim();
+}
+
+/** shareframe-factory-reset left its mark for the next boot's wipe. */
+export async function factoryResetScheduled(): Promise<boolean> {
+  return readFile(path.join(STATE_DIR, 'factory-reset')).then(() => true, () => false);
 }
 
 /** Switches what the board's Wi-Fi daemon reports, e.g. the hotspot fallback. */
@@ -115,13 +163,39 @@ type ServerState = {
   heartbeats: Record<string, unknown>[];
   frameMessages: Record<string, unknown>[];
   bundleDownloads: { name: string; authorized: boolean }[];
+  diagnostics: { trigger: string; commandId: string | null; text: string | null }[];
 };
+
+type CommandResult = { type: 'command_result'; id: number; status: string; reason: string };
 
 export class FakeServer {
   constructor(private readonly request: APIRequestContext) {}
 
   async state(): Promise<ServerState> {
     return (await this.request.get(`${FAKE_SERVER}/__test/state`)).json();
+  }
+
+  /** Sends an admin's remote command; returns its id. */
+  async sendCommand(command: string, arg = '', opts: { expiresInSecs?: number } = {}): Promise<number> {
+    const res = await this.request.post(`${FAKE_SERVER}/__test/command`, { data: { command, arg, ...opts } });
+    return (await res.json()).id;
+  }
+
+  /** The statuses the frame reported for a command, in order (accepted, done, rejected, …). */
+  async commandResults(id: number): Promise<CommandResult[]> {
+    return (await this.state()).frameMessages.filter(
+      (m): m is CommandResult => m.type === 'command_result' && m.id === id);
+  }
+
+  async expectCommandResult(id: number, status: string): Promise<CommandResult> {
+    await expect
+      .poll(async () => (await this.commandResults(id)).map((r) => r.status), { message: `command #${id} ${status}`, timeout: 30_000 })
+      .toContain(status);
+    return (await this.commandResults(id)).find((r) => r.status === status)!;
+  }
+
+  async diagnostics() {
+    return (await this.state()).diagnostics;
   }
 
   async waitForFrame() {
@@ -162,7 +236,7 @@ export class FakeServer {
     await this.send({ type: 'clear_specific_sent_images', sent_image_ids: ids });
   }
 
-  async offerRelease(release: { version: string; release_notes?: string; criticality?: string; corrupt?: boolean }) {
+  async offerRelease(release: { version: string; release_notes?: string; criticality?: string; corrupt?: boolean; bundleFile?: string }) {
     await this.request.post(`${FAKE_SERVER}/__test/release`, {
       data: { release_notes: 'E2E release', release_date: '2026-10-01T10:00:00Z', criticality: 'normal', ...release },
     });

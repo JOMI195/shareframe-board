@@ -1,4 +1,6 @@
+#include "auth/FrameIdentity.hpp"
 #include "net/WebsocketClient.hpp"
+#include "net/WsCloseCodes.hpp"
 #include "support/FakeWsServer.hpp"
 #include "support/ImageFixture.hpp"
 #include "support/TokenStore.hpp"
@@ -18,6 +20,9 @@ using namespace std::chrono_literals;
 
 namespace
 {
+constexpr auto kSeed = "21c9Dcjx35psgsQau2FZR9dE1fB3qUOSNYcyUe5FqTE=";
+constexpr auto kObtain = "POST /api/frames/obtain-frame-token/";
+
 /// Accepts every connection and hangs up at once, so each reconnect attempt fails and is counted.
 class HangUpListener
 {
@@ -74,6 +79,9 @@ protected:
     WebsocketClientTest()
     {
         cfg.baseUrl = server.baseUrl();
+        cfg.secrets.ed25519PrivateKey = kSeed;
+        cfg.frameId = FrameIdentity::fingerprint(kSeed);
+        server.on(kObtain, 200, R"({"access_token":"fresh-token","expires_at":"2099-01-01T00:00:00Z"})");
         storeValidToken(db.get());
     }
 
@@ -174,4 +182,34 @@ TEST_F(WebsocketClientTest, ReconnectNowLeavesAnOpenSocketAlone)
     client.reconnectNow();
     std::this_thread::sleep_for(300ms);
     EXPECT_EQ(server.openHeaders().size(), 1u);
+}
+
+TEST_F(WebsocketClientTest, ARejectedTokenIsReplacedBeforeTheNextConnect)
+{
+    ASSERT_TRUE(server.start());
+    connect();
+    for (const int code : {ws::CLOSE_AUTH_REJECTED, ws::CLOSE_TOKEN_REVOKED})
+    {
+        server.on(kObtain, 200, R"({"access_token":"fresh-)" + std::to_string(code) + R"(","expires_at":"2099-01-01T00:00:00Z"})");
+        const auto opened = server.openHeaders().size();
+        server.closeAll(code, "token rejected");
+
+        ASSERT_TRUE(waitFor([&] { return server.openHeaders().size() == opened + 1; }, 10000ms)) << code;
+        EXPECT_EQ(server.openHeaders().back().at("Authorization"), "Frame-Access-Token fresh-" + std::to_string(code));
+        EXPECT_EQ(tokens.get()->value, "fresh-" + std::to_string(code));
+    }
+    EXPECT_EQ(server.httpRequests(kObtain), 2);
+}
+
+TEST_F(WebsocketClientTest, AnOrdinaryCloseReconnectsWithTheSameToken)
+{
+    ASSERT_TRUE(server.start());
+    connect();
+    server.closeAll(1000, "restart");
+
+    ASSERT_TRUE(waitFor([&] { return server.openHeaders().size() == 2; }, 10000ms));
+    EXPECT_EQ(server.openHeaders().back().at("Authorization"), "Frame-Access-Token test-token");
+    ASSERT_TRUE(tokens.get().has_value()) << "other services share the stored token";
+    EXPECT_EQ(tokens.get()->value, "test-token");
+    EXPECT_EQ(server.httpRequests(kObtain), 0);
 }

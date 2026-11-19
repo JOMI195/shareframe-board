@@ -67,3 +67,53 @@ TEST_F(AuthTokenManagerTest, ServerWithoutClaimCodesLeavesItEmpty)
     EXPECT_TRUE(auth.isUnregistered());
     EXPECT_EQ(auth.claimCode(), "");
 }
+
+namespace
+{
+constexpr auto kVerify = "POST /api/frames/verify-frame-auth-token/";
+const std::string kFresh = R"({"access_token":"fresh-token","expires_at":"2099-01-01T00:00:00"})";
+}
+
+// Every heartbeat and picture fetch asks for the token: a valid one must not cost a request.
+TEST_F(AuthTokenManagerTest, AValidCachedTokenIsUsedWithoutAskingTheServer)
+{
+    tokens.save({"cached-token", std::time(nullptr) + 3600});
+    EXPECT_EQ(auth.getOrFetchToken(), "cached-token");
+    EXPECT_TRUE(backend.requests().empty());
+}
+
+TEST_F(AuthTokenManagerTest, AnExpiredTokenTheServerStillAcceptsIsKept)
+{
+    tokens.save({"old-token", std::time(nullptr) - 10});
+    backend.on(kVerify, 200);
+    EXPECT_EQ(auth.getOrFetchToken(), "old-token");
+    EXPECT_TRUE(backend.requests("/api/frames/obtain-frame-token/").empty());
+}
+
+TEST_F(AuthTokenManagerTest, AnExpiredTokenTheServerRejectsIsReplaced)
+{
+    tokens.save({"old-token", std::time(nullptr) - 10});
+    backend.on(kVerify, 401);
+    backend.on(kObtain, 200, kFresh);
+    EXPECT_EQ(auth.getOrFetchToken(), "fresh-token");
+    EXPECT_EQ(tokens.get()->value, "fresh-token");
+}
+
+TEST_F(AuthTokenManagerTest, InvalidateMakesTheNextCallFetchAFreshToken)
+{
+    tokens.save({"revoked-token", std::time(nullptr) + 3600});
+    backend.on(kObtain, 200, kFresh);
+    auth.invalidate();
+    EXPECT_EQ(auth.getOrFetchToken(), "fresh-token");
+}
+
+// The server's answer is trusted only when it is a token: anything else leaves no token.
+TEST_F(AuthTokenManagerTest, AnUnusableAnswerGivesNoToken)
+{
+    backend.on(kObtain, 200, R"({"access_token":"t","expires_at":"next tuesday"})");
+    EXPECT_FALSE(auth.getOrFetchToken());
+    EXPECT_FALSE(tokens.get());
+    backend.on(kObtain, 500);
+    EXPECT_FALSE(auth.getOrFetchToken());
+    EXPECT_FALSE(auth.isUnregistered());
+}

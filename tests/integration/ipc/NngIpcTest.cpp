@@ -126,3 +126,49 @@ TEST(NngIpc, PubSubDeliversTopicAndPayload)
     EXPECT_EQ(got.front().first, "image.new");
     EXPECT_EQ(got.front().second["id"], 42);
 }
+
+// The websocket service publishes; when s6 restarts it, the display must hear it again.
+TEST(NngIpc, ASubscriberHearsAPublisherThatRestarted)
+{
+    TempDir dir;
+    const auto url = endpoint(dir, "pub.sock");
+    std::mutex m;
+    std::vector<std::string> topics;
+    EventSubscriber sub(url, [&](const std::string& topic, const nlohmann::json&)
+    {
+        std::lock_guard lk(m);
+        topics.push_back(topic);
+    });
+    sub.start();
+    const auto heard = [&](const std::string& topic)
+    {
+        std::lock_guard lk(m);
+        return std::ranges::find(topics, topic) != topics.end();
+    };
+
+    {
+        EventPublisher first(url);
+        ASSERT_TRUE(first.start());
+        ASSERT_TRUE(waitFor([&] { first.publish("before", {}); return heard("before"); }, 5000ms));
+    }
+    EventPublisher second(url);
+    ASSERT_TRUE(second.start());
+    EXPECT_TRUE(waitFor([&] { second.publish("after", {}); return heard("after"); }, 10000ms));
+}
+
+// A request whose server died answers nothing in time instead of hanging the caller.
+TEST(NngIpc, ARequestToAServerThatStoppedTimesOut)
+{
+    TempDir dir;
+    const auto url = endpoint(dir, "rep.sock");
+    auto server = std::make_unique<NngRepServer>(url, health::respond);
+    server->start();
+    IpcClient client(url);
+    ASSERT_TRUE(client.sendAndReceive({IpcMessageType::GetHealth, {}}, 2000ms));
+
+    server->stop();
+    server.reset();
+    const auto start = std::chrono::steady_clock::now();
+    EXPECT_FALSE(client.sendAndReceive({IpcMessageType::GetHealth, {}}, 500ms));
+    EXPECT_LT(std::chrono::steady_clock::now() - start, 3s);
+}

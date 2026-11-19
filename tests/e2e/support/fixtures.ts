@@ -47,10 +47,17 @@ export { expect };
 export async function signIn(page: Page, password = DASHBOARD_PASSWORD) {
   await page.clock.install();
   await page.goto('/auth/sign-in');
-  await page.getByRole('button', { name: 'Mit Passwort anmelden' }).click();
-  await page.getByRole('textbox', { name: 'Passwort', exact: true }).fill(password);
+  // On its hotspot the frame has no server for a code login and asks for the password straight away.
+  const choosePassword = page.getByRole('button', { name: 'Mit Passwort anmelden' });
+  const passwordBox = page.getByRole('textbox', { name: 'Passwort', exact: true });
+  await expect(choosePassword.or(passwordBox).first()).toBeVisible();
+  if (await choosePassword.isVisible()) await choosePassword.click();
+  await passwordBox.fill(password);
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
-  await expect(page.getByRole('heading', { level: 2, name: 'Diashow' })).toBeVisible();
+  // Without Wi-Fi the dashboard opens on the network page instead of home.
+  const home = page.getByRole('heading', { level: 2, name: 'Diashow' });
+  const network = page.getByRole('heading', { level: 1, name: 'Netzwerk' });
+  await expect(home.or(network).first()).toBeVisible();
   await page.clock.fastForward('00:21');
 }
 
@@ -70,8 +77,10 @@ export function trackApiErrors(page: Page) {
   page.on('response', (res) => {
     if (res.url().includes('/api/') && res.status() >= 400) failures.push(`${res.status()} ${new URL(res.url()).pathname}`);
   });
+  // A navigation aborts what the page left in flight; that is not a failing call.
   page.on('requestfailed', (req) => {
-    if (req.url().includes('/api/')) failures.push(`failed ${new URL(req.url()).pathname}`);
+    if (req.url().includes('/api/') && req.failure()?.errorText !== 'net::ERR_ABORTED')
+      failures.push(`failed ${new URL(req.url()).pathname}`);
   });
   return failures;
 }

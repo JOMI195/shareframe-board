@@ -2,23 +2,10 @@
 #include "dashboard/ResponseUtil.hpp"
 #include "dashboard/Validation.hpp"
 #include "util/Subprocess.hpp"
+#include "util/SysInfo.hpp"
 #include "Version.hpp"
 
-#include <sstream>
-
 using namespace dashboard;
-
-namespace {
-// Coerce a sysinfo value token into a typed JSON scalar for the frontend.
-nlohmann::json coerceScalar(const std::string& v)
-{
-    if (v == "true")  return true;
-    if (v == "false") return false;
-    try { std::size_t p; long long i = std::stoll(v, &p); if (p == v.size()) return i; } catch (...) {}
-    try { std::size_t p; double d = std::stod(v, &p);     if (p == v.size()) return d; } catch (...) {}
-    return v;
-}
-} // namespace
 
 SystemHandlers::SystemHandlers(const AppConfig& cfg, WifiManager& wifi, const DiagnosticsUploader& diagnostics,
                                IpcClient& displayIpc)
@@ -47,22 +34,14 @@ ix::HttpResponsePtr SystemHandlers::handleInfo(const ix::HttpRequestPtr& /*req*/
     auto info = Subprocess::run({"shareframe-sysinfo"}, 10);
     if (info.exitCode == 0)
     {
-        std::istringstream stream(info.stdOut);
-        std::string line;
-        while (std::getline(stream, line))
-        {
-            auto eq = line.find('=');
-            if (eq == std::string::npos || eq == 0) continue;
-            data[line.substr(0, eq)] = coerceScalar(line.substr(eq + 1));
-        }
+        data.update(SysInfo::parse(info.stdOut));
     }
     else
     {
         logger_->warn("shareframe-sysinfo failed: {}", info.stdErr);
     }
 
-    // Compiled in, so it wins over the sysinfo key and skips coerceScalar (an
-    // all-digit sha would otherwise come back as a JSON number).
+    // Compiled in, so it wins over the sysinfo key.
     data["app_sha"] = shareframe::kAppSha;
 
     // SSID can contain spaces, so take it from the wifi parser, not key=value.
@@ -70,16 +49,6 @@ ix::HttpResponsePtr SystemHandlers::handleInfo(const ix::HttpRequestPtr& /*req*/
     data["wlan_ssid"] = wifi.value("connection_name", "");
 
     return jsonResponse(200, "OK", data);
-}
-
-ix::HttpResponsePtr SystemHandlers::handleCheckInternet(const ix::HttpRequestPtr& /*req*/) const
-{
-    auto result = Subprocess::run({"ping", "-c", "2", "-w", "3", "1.1.1.1"}, 10);
-
-    return jsonResponse(200, "OK", {
-        {"connected", result.exitCode == 0},
-        {"output", result.stdOut}
-    });
 }
 
 ix::HttpResponsePtr SystemHandlers::handleRestart(const ix::HttpRequestPtr& /*req*/) const

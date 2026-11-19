@@ -1,0 +1,34 @@
+debug = true
+production = false
+base_dir = "/data/shareframe"
+base_url = "10.0.2.2:9000"
+
+[log]
+log_path = "/var/log/shareframe"
+
+[database]
+database_path = "/data/shareframe/db"
+migrations_path = "/usr/share/shareframe/migrations"
+
+[image]
+image_save_path = "/data/shareframe/images"
+
+[display]
+mock_display = true
+mock_output_dir = "/run/shareframe/panel"
+min_refresh_secs = 5
+loading_image_path = "/usr/share/shareframe/assets/image/loading"
+default_images_path = "/usr/share/shareframe/assets/image/default"
+setup_font_path = "/usr/share/shareframe/assets/font/DejaVuSans.ttf"
+bold_font_path = "/usr/share/shareframe/assets/font/DejaVuSans-Bold.ttf"
+
+[dashboard_application]
+host = "127.0.0.1"
+port = 8080
+http_verify_otp_url = "/api/frames/verify-frame-otp/"
+
+[heartbeat]
+interval_secs = 30
+
+[expiry_cleanup]
+interval_secs = 30

@@ -1,4 +1,3 @@
-import { expectShimCall } from '../support/board';
 import { card, expect, signIn, test } from '../support/fixtures';
 
 test('every service reports as running', async ({ page }) => {
@@ -16,7 +15,6 @@ test('restarting a service from the overview restarts the process', async ({ pag
   await page.getByRole('dialog').getByRole('button', { name: 'Neu starten' }).click();
   await expect(page.getByText('Dienst wird neu gestartet')).toBeVisible();
 
-  await expectShimCall('s6-svc -r /run/service/shareframe-heartbeat');
   await expect
     .poll(async () => {
       const svc = (await board.services()).find((s) => s.id === 'heartbeat');

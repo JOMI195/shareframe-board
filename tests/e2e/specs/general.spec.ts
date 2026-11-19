@@ -1,4 +1,4 @@
-import { DASHBOARD_PASSWORD, expectShimCall, isCleared, showsStatus, waitForPanel } from '../support/board';
+import { DASHBOARD_PASSWORD, expectShimCall, factoryResetScheduled, isCleared, showsStatus, waitForPanel } from '../support/board';
 import { card, expect, signIn, test } from '../support/fixtures';
 
 test('device info shows the identity the server knows and live system metrics', async ({ page, server }) => {
@@ -54,5 +54,21 @@ test('factory reset from the general page schedules the wipe', async ({ page }) 
   await page.goto('/general/');
   await page.getByRole('button', { name: 'Zurücksetzen' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Zurücksetzen' }).click();
-  await expectShimCall('shareframe-factory-reset --yes');
+  await expect.poll(factoryResetScheduled, { message: 'wipe marked for the next boot' }).toBe(true);
+  await expectShimCall('reboot');
+});
+
+test('diagnostics reach the server with the board state and without credentials', async ({ page, server }) => {
+  await signIn(page);
+  await page.goto('/general/');
+  await page.getByRole('button', { name: 'Diagnose senden' }).click();
+  await expect(page.getByText('Diagnose an den Support gesendet')).toBeVisible();
+
+  const [sent] = await server.diagnostics();
+  expect(sent.trigger).toBe('owner');
+  for (const section of ['release', 'sysinfo', 'services', 'events', 'syslog'])
+    expect(sent.text, `section ${section}`).toContain(`===== ${section} =====`);
+  expect(sent.text).toContain('shareframe-display: up (pid');
+  expect(sent.text).toContain('e2e kernel: wlan0 up');
+  expect(sent.text).not.toContain('CANARY-PSK-1234');
 });

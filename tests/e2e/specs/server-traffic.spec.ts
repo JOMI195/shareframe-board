@@ -1,4 +1,7 @@
-import { attachPanel, Frame, isCleared, readPanel, showsDefault, showsImage, waitForPanel } from '../support/board';
+import {
+  attachPanel, expectShimCall, factoryResetScheduled, Frame, isCleared, pendingSlot, readPanel, shimCalls, showsDefault,
+  showsImage, waitForPanel,
+} from '../support/board';
 import { expect, test } from '../support/fixtures';
 
 // Everything the Shareframe server can send over the frames WebSocket, and how the
@@ -128,6 +131,7 @@ test.describe('connection', () => {
   });
 
   test('a dropped connection is re-established and resynced', async ({ server, board }) => {
+    await server.waitForFrame();
     const id = await server.sendPicture('left-black.jpg');
     await waitForPanel(showsImage(id), `picture ${id} on panel`);
 
@@ -147,5 +151,78 @@ test.describe('connection', () => {
     await expect.poll(async () => (await server.state()).connectedFrames, { timeout: 20_000 }).toBe(1);
     const id = await server.sendPicture('left-black.jpg');
     await waitForPanel(showsImage(id), 'picture over the new connection');
+  });
+});
+
+// An admin's commands go through the board's own gates (shareframe-remote-gate,
+// shareframe-safe-mode) and are answered with command_result messages.
+test.describe('remote commands', () => {
+  test('restart_service restarts that service', async ({ server, board }) => {
+    const before = (await board.services()).find((s) => s.id === 'heartbeat')!.pid;
+    const id = await server.sendCommand('restart_service', 'heartbeat');
+    await server.expectCommandResult(id, 'done');
+    await expect
+      .poll(async () => {
+        const svc = (await board.services()).find((s) => s.id === 'heartbeat');
+        return svc?.running && svc.pid !== before;
+      }, { message: 'heartbeat restarted under a new pid' })
+      .toBe(true);
+  });
+
+  test('safe mode stops the display until the server lifts it', async ({ server, board }) => {
+    const enter = await server.sendCommand('enter_safe_mode');
+    await server.expectCommandResult(enter, 'done');
+    await expect
+      .poll(async () => (await board.services()).find((s) => s.id === 'display')?.running, { message: 'display stopped' })
+      .toBe(false);
+    await expect
+      .poll(async () => (await server.state()).heartbeats.at(-1)?.safe_mode, { message: 'heartbeat reports safe mode' })
+      .toBe('remote');
+
+    const exit = await server.sendCommand('exit_safe_mode');
+    await server.expectCommandResult(exit, 'done');
+    await expect
+      .poll(async () => (await board.services()).find((s) => s.id === 'display')?.running, { message: 'display back' })
+      .toBe(true);
+    await waitForPanel(showsDefault, 'slideshow after safe mode');
+  });
+
+  test('a reboot sends diagnostics first, and a second one inside the rate limit is refused', async ({ server }) => {
+    const first = await server.sendCommand('reboot');
+    await server.expectCommandResult(first, 'accepted');
+    await expectShimCall('reboot');
+    expect(await server.diagnostics()).toContainEqual(expect.objectContaining({ trigger: 'pre-reboot', commandId: String(first) }));
+
+    const second = await server.sendCommand('reboot');
+    const refused = await server.expectCommandResult(second, 'rejected');
+    expect(refused.reason).toMatch(/less than 30 minutes ago/);
+  });
+
+  test('a factory reset is scheduled only after its diagnostics reached the server', async ({ server }) => {
+    const id = await server.sendCommand('factory_reset');
+    await server.expectCommandResult(id, 'accepted');
+    await expect.poll(factoryResetScheduled, { message: 'wipe marked for the next boot' }).toBe(true);
+    expect(await server.diagnostics()).toContainEqual(expect.objectContaining({ trigger: 'pre-reboot', commandId: String(id) }));
+  });
+
+  test('update_install installs the newer release into the other slot', async ({ server, board }) => {
+    await server.offerRelease({ version: '9.9.3' });
+    const id = await server.sendCommand('update_install');
+    await server.expectCommandResult(id, 'accepted');
+    await expect.poll(pendingSlot, { message: 'the other slot staged', timeout: 30_000 }).toBe('B');
+    await board.restartService('update');
+  });
+
+  test('unknown, malformed and expired commands are rejected and nothing runs', async ({ server }) => {
+    const cases: [string, string, number, string][] = [
+      ['format_disk', '', 300, 'unknown command'],
+      ['restart_service', 'sshd', 300, 'invalid argument'],
+      ['reboot', '', -10, 'expired'],
+    ];
+    for (const [command, arg, expiresInSecs, reason] of cases) {
+      const id = await server.sendCommand(command, arg, { expiresInSecs });
+      expect((await server.expectCommandResult(id, 'rejected')).reason, command).toBe(reason);
+    }
+    expect(await shimCalls()).not.toContain('reboot');
   });
 });

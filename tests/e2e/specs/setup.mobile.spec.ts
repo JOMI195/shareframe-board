@@ -1,4 +1,4 @@
-import { DASHBOARD_PASSWORD, expectShimCall, setWifiMode } from '../support/board';
+import { DASHBOARD_PASSWORD, expectSavedNetwork, setWifiMode } from '../support/board';
 import { card, expect, test } from '../support/fixtures';
 import { boxOf, expectNoHorizontalScroll } from '../support/layout';
 
@@ -27,7 +27,7 @@ test('signs in with the device password and adds a WLAN in a fullscreen dialog',
   await dialog.getByLabel(/^Passwort$/).fill('homepass1');
   await dialog.getByRole('button', { name: 'Hinzufügen' }).click();
 
-  await expectShimCall('shareframe-wifi add HomeNet homepass1');
+  await expectSavedNetwork('HomeNet', 'homepass1');
   await expect(dialog).toBeHidden();
   await expect(page.getByText(/WLAN gespeichert/)).toBeInViewport();
 });

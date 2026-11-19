@@ -18,6 +18,10 @@ public:
               AuthTokenManager& auth, IpcClient& wsIpc, IpcClient& displayIpc,
               IpcClient& dashboardIpc, IpcClient& updateIpc, IImageRepository& images);
 
+    /// Events of the websocket service: a (re)connect sends a heartbeat at once, so the server
+    /// sees the frame without waiting for the interval.
+    void onWsEvent(const std::string& topic);
+
 protected:
     [[nodiscard]] int intervalSecs() const override;
     void execute() override;

@@ -212,3 +212,25 @@ describe('power', () => {
     expect(store.getState().loadingWall.isLoadingWallVisible).toBe(false);
   });
 });
+
+describe('diagnostics', () => {
+  it('sends the support package and says so; the button waits for the board', async () => {
+    let release!: () => void;
+    const sent = new Promise<void>((resolve) => { release = resolve; });
+    server.use(http.post(apiUrl(api.getSendDiagnosticsUrl()), async () => { await sent; return ok(); }));
+    openGeneral();
+
+    const button = await screen.findByRole('button', { name: 'Diagnose senden' });
+    button.click();
+    expect(await screen.findByRole('button', { name: 'Wird gesendet …' })).toBeDisabled();
+    release();
+    expect(await screen.findByText('Diagnose an den Support gesendet')).toBeInTheDocument();
+  });
+
+  it('a failed upload says it failed', async () => {
+    server.use(...failsWith('post', api.getSendDiagnosticsUrl(), 502, 'Upload fehlgeschlagen'));
+    openGeneral();
+    (await screen.findByRole('button', { name: 'Diagnose senden' })).click();
+    expect(await screen.findByText('Diagnose konnte nicht gesendet werden')).toBeInTheDocument();
+  });
+});

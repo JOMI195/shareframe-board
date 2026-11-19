@@ -28,6 +28,7 @@ public:
         std::string cacheDir = "/data/cache";
         std::string trybootFlag = "/run/tryboot";
         std::string trybootBackend = "/usr/lib/rauc/tryboot-backend";
+        std::string cmdline = "/proc/cmdline";
     };
 
     UpdateManager(const AppConfig& cfg, HTTPClient& http, AuthTokenManager& authTokenManager, IpcClient& displayIpc,
@@ -56,7 +57,7 @@ private:
     void _worker(nlohmann::json release);
     void _fail(const std::string& error, const std::string& toVersion);
     [[nodiscard]] std::optional<nlohmann::json> _latestReleaseJson() const;
-    [[nodiscard]] static std::string _bootedSlot();
+    [[nodiscard]] std::string _bootedSlot() const;
     [[nodiscard]] std::string _pendingSlot() const;
     [[nodiscard]] std::string _committedSlot() const;
 

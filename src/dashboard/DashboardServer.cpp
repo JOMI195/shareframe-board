@@ -43,7 +43,10 @@ void DashboardServer::start()
     server_.setOnConnectionCallback(
         [this](const ix::HttpRequestPtr& req, const std::shared_ptr<ix::ConnectionState>& connState)
         {
-            return _handleRequest(req, connState);
+            auto res = _handleRequest(req, connState);
+            // ix serves one request per connection.
+            res->headers["Connection"] = "close";
+            return res;
         });
 
     if (auto [ok, errMsg] = server_.listen(); !ok)
@@ -105,7 +108,6 @@ void DashboardServer::_initRoutes()
 
         // System
         {"GET",  "/api/system/info",             [this](auto& req, auto&) { return systemHandlers_.handleInfo(req); }},
-        {"GET",  "/api/system/check-internet",   [this](auto& req, auto&) { return systemHandlers_.handleCheckInternet(req); }},
         {"POST", "/api/system/restart",          [this](auto& req, auto&) { return systemHandlers_.handleRestart(req); }},
         {"POST", "/api/system/shutdown",         [this](auto& req, auto&) { return systemHandlers_.handleShutdown(req); }},
         {"POST", "/api/system/factory-reset",    [this](auto& req, auto&) { return systemHandlers_.handleFactoryReset(req); }},
@@ -225,7 +227,7 @@ ix::HttpResponsePtr DashboardServer::_sessionLoginResponse() const
     ix::WebSocketHttpHeaders respHeaders;
     respHeaders["Content-Type"] = "application/json";
     respHeaders["Set-Cookie"] = "session=" + sessionId
-        + "; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800";
+        + "; HttpOnly; SameSite=Lax; Path=/";
 
     // Same envelope as jsonResponse, but by hand to attach the Set-Cookie header.
     nlohmann::json respBody = {
@@ -363,17 +365,17 @@ std::string DashboardServer::_extractSessionId(const ix::HttpRequestPtr& req)
     if (it == req->headers.end())
         return {};
 
-    // Parse "session=<id>" from cookie header
-    const std::string& cookie = it->second;
-    const std::string prefix = "session=";
-    const size_t pos = cookie.find(prefix);
-    if (pos == std::string::npos)
-        return {};
-
-    const size_t start = pos + prefix.size();
-    size_t end = cookie.find(';', start);
-    if (end == std::string::npos)
-        end = cookie.size();
-
-    return cookie.substr(start, end - start);
+    // "name=value; name=value": only the cookie named exactly "session" counts.
+    std::string_view cookies = it->second;
+    while (!cookies.empty())
+    {
+        const auto end = cookies.find(';');
+        auto pair = cookies.substr(0, end);
+        cookies = end == std::string_view::npos ? std::string_view{} : cookies.substr(end + 1);
+        while (!pair.empty() && pair.front() == ' ')
+            pair.remove_prefix(1);
+        if (pair.starts_with("session="))
+            return std::string(pair.substr(8));
+    }
+    return {};
 }

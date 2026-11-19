@@ -6,6 +6,7 @@ BUILD_ROOT="${SHAREFRAME_BUILD_ROOT:-$ROOT}"
 CPP_COMPOSE="$ROOT/tests/docker/docker-compose.yml"
 E2E_COMPOSE="$ROOT/tests/e2e/docker-compose.yml"
 FRONTEND="$ROOT/dashboard-frontend/frontend"
+cd "$ROOT"
 
 usage() {
     cat <<'EOF'
@@ -13,7 +14,8 @@ Usage: ./test.sh <command> [--docker] [--keep] [extra args]
 
   unit          C++ unit tests (no I/O)
   integration   C++ integration tests (SQLite, nng sockets, files)
-  cpp           unit + integration
+  contract      C++ contract tests: IPC between the apps, formats shared with shareframe-hardware
+  cpp           unit + integration + contract
   asan          all C++ tests under AddressSanitizer + UBSan
   coverage      all C++ tests + gcovr HTML report
   frontend      dashboard frontend lint, typecheck and Vitest
@@ -51,8 +53,12 @@ run_cpp() {
     [[ "$preset" == test ]] && dir="$BUILD_ROOT/build-test"
 
     cmake --preset "$preset" -B "$dir" >/dev/null
-    cmake --build "$dir" --target shareframe-unit-tests shareframe-integration-tests -j "$(nproc)"
-    ctest --test-dir "$dir" --output-on-failure -j "$(nproc)" ${label:+-L "$label"} "${args[@]}"
+    cmake --build "$dir" --target shareframe-unit-tests shareframe-integration-tests shareframe-contract-tests -j "$(nproc)"
+    mkdir -p "$dir/reports"
+    # Counters of an earlier run would mix into this one's report.
+    [[ "$preset" == test-coverage ]] && find "$dir" -name '*.gcda' -delete
+    ctest --test-dir "$dir" --output-on-failure -j "$(nproc)" ${label:+-L "$label"} \
+          --output-junit "$dir/reports/${label:-cpp}.xml" "${args[@]}"
 
     if [[ "$preset" == test-coverage ]]; then
         if ! command -v gcovr >/dev/null; then
@@ -61,13 +67,16 @@ run_cpp() {
         fi
         mkdir -p "$dir/coverage"
         gcovr --root "$ROOT" --filter "$ROOT/src/" --filter "$ROOT/include/" \
-              --object-directory "$dir" --html-details "$dir/coverage/index.html" --print-summary
+              --object-directory "$dir" --html-details "$dir/coverage/index.html" --print-summary \
+              --fail-under-line 87 --fail-under-function 91
         echo "Coverage report: ${dir#"$ROOT"/}/coverage/index.html"
     fi
 }
 
 run_frontend() {
-    (cd "$FRONTEND" && { [[ -d node_modules ]] || npm ci; } && npm run check)
+    mkdir -p "$BUILD_ROOT/build-test/reports"
+    (cd "$FRONTEND" && { [[ -d node_modules ]] || npm ci; } &&
+        npm run check -- --reporter=default --reporter=junit --outputFile.junit="$BUILD_ROOT/build-test/reports/frontend.xml")
 }
 
 run_e2e() {
@@ -76,12 +85,13 @@ run_e2e() {
     local status=0
     "${compose[@]}" build
     "${compose[@]}" up -d --wait board fake-server frontend
+    local playwright='npx playwright test "$@"; s=$?; chown -R "$HOST_UID:$HOST_GID" playwright-report test-results; exit $s'
     if (( ui )); then
         echo "Playwright UI: http://localhost:8089 (dashboard: http://localhost:8088)"
         "${compose[@]}" run --rm --service-ports e2e \
-            npx playwright test --ui-host=0.0.0.0 --ui-port=8089 "${args[@]}" || status=$?
+            sh -c "$playwright" playwright --ui-host=0.0.0.0 --ui-port=8089 "${args[@]}" || status=$?
     else
-        "${compose[@]}" run --rm e2e npx playwright test "${args[@]}" || status=$?
+        "${compose[@]}" run --rm e2e sh -c "$playwright" playwright "${args[@]}" || status=$?
     fi
     if (( keep )); then
         echo "Stack left running (dashboard: http://localhost:8088). Stop it with: docker compose -f $E2E_COMPOSE down -v"
@@ -93,7 +103,7 @@ run_e2e() {
 }
 
 case "$cmd" in
-    unit|integration|cpp|asan|coverage)
+    unit|integration|contract|cpp|asan|coverage)
         if (( docker )); then
             export HOST_UID="$(id -u)" HOST_GID="$(id -g)"
             exec docker compose -f "$CPP_COMPOSE" run --rm --build cpp "$cmd" "${args[@]}"
@@ -101,6 +111,7 @@ case "$cmd" in
         case "$cmd" in
             unit) run_cpp test unit ;;
             integration) run_cpp test integration ;;
+            contract) run_cpp test contract ;;
             cpp) run_cpp test ;;
             asan) run_cpp test-asan ;;
             coverage) run_cpp test-coverage ;;

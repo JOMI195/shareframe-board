@@ -1,4 +1,4 @@
-import { expectShimCall } from '../support/board';
+import { expectSavedNetwork } from '../support/board';
 import { expect, signIn, test } from '../support/fixtures';
 import { boxOf } from '../support/layout';
 
@@ -59,6 +59,6 @@ test('Enter on the keyboard submits a form dialog', async ({ page }) => {
   await dialog.getByLabel(/^Passwort$/).fill('gardenpass');
   await dialog.getByLabel(/^Passwort$/).press('Enter');
 
-  await expectShimCall('shareframe-wifi add Garden gardenpass');
+  await expectSavedNetwork('Garden', 'gardenpass');
   await expect(dialog).toBeHidden();
 });

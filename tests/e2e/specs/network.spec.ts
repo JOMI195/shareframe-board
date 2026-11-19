@@ -1,4 +1,4 @@
-import { expectShimCall, shimCalls } from '../support/board';
+import { apConf, expectSavedNetwork, savedWifiNetworks } from '../support/board';
 import { card, expect, signIn, test } from '../support/fixtures';
 
 const savedNetworks = (page: import('@playwright/test').Page) =>
@@ -22,7 +22,7 @@ test('adding a network saves it on the board', async ({ page }) => {
   await dialog.getByRole('button', { name: 'Hinzufügen' }).click();
 
   await expect(page.getByText('WLAN hinzugefügt')).toBeVisible();
-  await expectShimCall('shareframe-wifi add Garden gardenpass');
+  await expectSavedNetwork('Garden', 'gardenpass');
   await expect(savedNetworks(page)).toContainText(['Garden']);
 });
 
@@ -31,7 +31,7 @@ test('forgetting a network removes it from the board', async ({ page }) => {
   await page.getByRole('dialog').getByRole('button', { name: 'Entfernen' }).click();
 
   await expect(page.getByText('WLAN entfernt')).toBeVisible();
-  await expectShimCall('shareframe-wifi del Neighbour');
+  await expect.poll(savedWifiNetworks, { message: 'Neighbour gone from the board' }).not.toContain('Neighbour');
   await expect(savedNetworks(page)).toHaveText(['E2E-WiFi']);
 });
 
@@ -40,7 +40,7 @@ test('the network the board is connected to cannot be forgotten', async ({ page 
   await page.getByRole('dialog').getByRole('button', { name: 'Entfernen' }).click();
 
   await expect(page.getByText('WLAN konnte nicht entfernt werden')).toBeVisible();
-  expect(await shimCalls()).not.toContain('shareframe-wifi del E2E-WiFi');
+  expect(await savedWifiNetworks()).toContain('E2E-WiFi');
 });
 
 test('the hotspot password can be revealed and changed', async ({ page }) => {
@@ -55,5 +55,20 @@ test('the hotspot password can be revealed and changed', async ({ page }) => {
   await dialog.getByRole('button', { name: 'Passwort ändern' }).click();
 
   await expect(page.getByText('Hotspot-Passwort geändert')).toBeVisible();
-  await expectShimCall('shareframe-ap setpass newhotspot');
+  await expect.poll(apConf, { message: 'new password stored for the hotspot' }).toContain("AP_PASS='newhotspot'");
+});
+
+test('a network named with accents is shown and forgotten by that name', async ({ page }) => {
+  await page.getByRole('button', { name: 'WLAN hinzufügen' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/Netzwerkname/).fill('Café Wi-Fi');
+  await dialog.getByLabel(/^Passwort$/).fill('cafepass1');
+  await dialog.getByRole('button', { name: 'Hinzufügen' }).click();
+  await expectSavedNetwork('Café Wi-Fi', 'cafepass1');
+  await expect(savedNetworks(page)).toContainText(['Café Wi-Fi']);
+
+  await savedNetworks(page).getByRole('button', { name: '„Café Wi-Fi“ entfernen' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Entfernen' }).click();
+  await expect(page.getByText('WLAN entfernt')).toBeVisible();
+  await expect.poll(savedWifiNetworks, { message: 'gone from the board' }).not.toContain('Café Wi-Fi');
 });

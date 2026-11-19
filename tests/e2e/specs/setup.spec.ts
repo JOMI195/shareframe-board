@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import {
-  attachPanel, DASHBOARD_PASSWORD, expectShimCall, Frame, retryFlag, setWifiMode, showsApSetup, showsDefault,
+  attachPanel, DASHBOARD_PASSWORD, expectSavedNetwork, factoryResetScheduled, Frame, retryFlag, setWifiMode, showsApSetup, showsDefault,
   showsRegistration, showsStatus, waitForPanel,
 } from '../support/board';
 import { card, expect, test } from '../support/fixtures';
@@ -34,7 +34,7 @@ test('on the hotspot a saved network is only tried on request', async ({ page })
   await add.getByLabel(/Netzwerkname/).fill('HomeNet');
   await add.getByLabel(/^Passwort$/).fill('homepass1');
   await add.getByRole('button', { name: 'Hinzufügen' }).click();
-  await expectShimCall('shareframe-wifi add HomeNet homepass1');
+  await expectSavedNetwork('HomeNet', 'homepass1');
   expect(existsSync(retryFlag), 'saving alone switched the board over').toBe(false);
 
   await card(page, 'WLAN einrichten').getByRole('button', { name: 'Jetzt verbinden' }).click();
@@ -72,7 +72,7 @@ test('on the hotspot a visitor can reset the frame to factory defaults from the 
   await page.goto('/auth/sign-in');
   await page.getByRole('button', { name: /Auf Werkseinstellungen zurücksetzen/ }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Zurücksetzen' }).click();
-  await expectShimCall('shareframe-factory-reset --yes');
+  await expect.poll(factoryResetScheduled, { message: 'wipe marked for the next boot' }).toBe(true);
   await waitForPanel(showsStatus('factory_reset'), 'factory reset status screen');
 });
 
