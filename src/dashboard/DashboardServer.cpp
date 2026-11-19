@@ -227,7 +227,7 @@ ix::HttpResponsePtr DashboardServer::_sessionLoginResponse() const
     ix::WebSocketHttpHeaders respHeaders;
     respHeaders["Content-Type"] = "application/json";
     respHeaders["Set-Cookie"] = "session=" + sessionId
-        + "; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800";
+        + "; HttpOnly; SameSite=Lax; Path=/";
 
     // Same envelope as jsonResponse, but by hand to attach the Set-Cookie header.
     nlohmann::json respBody = {

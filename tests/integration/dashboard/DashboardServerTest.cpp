@@ -132,6 +132,7 @@ TEST_F(DashboardServerTest, LoginSetsAnHttpOnlySessionCookieThatOpensTheDashboar
     EXPECT_NE(r.setCookie.find("HttpOnly"), std::string::npos);
     EXPECT_NE(r.setCookie.find("SameSite=Lax"), std::string::npos);
     EXPECT_NE(r.setCookie.find("Path=/"), std::string::npos);
+    EXPECT_EQ(r.setCookie.find("Max-Age"), std::string::npos) << "the board decides when a session ends";
 
     const auto cookie = r.setCookie.substr(0, r.setCookie.find(';'));
     EXPECT_EQ(request("GET", "/api/auth/status", "", cookie).body["data"]["authenticated"], true);
