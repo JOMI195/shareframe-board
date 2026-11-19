@@ -112,7 +112,7 @@ export const retryFlag = path.join(STATE_DIR, 'wifi-retry-requested');
 export async function resetBoardState() {
   await cp(path.join(STATE_DIR, 'defaults'), STATE_DIR, { recursive: true });
   const own = (f: string) => path.join(STATE_DIR, 'shareframe', f);
-  for (const stale of [retryFlag, path.join(STATE_DIR, 'factory-reset'), own('remote-reboot-at'), own('safe-mode-remote')])
+  for (const stale of [retryFlag, path.join(STATE_DIR, 'factory-reset'), own('remote-reboot-at'), own('safe-mode-remote'), own('update-history.jsonl')])
     await rm(stale, { force: true });
   const rauc = path.join(STATE_DIR, 'rauc');
   for (const f of await readdir(rauc).catch(() => [])) await rm(path.join(rauc, f), { recursive: true, force: true });

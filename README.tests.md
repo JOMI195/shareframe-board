@@ -165,7 +165,7 @@ Prefer a step in an existing spec over a new one; the stack takes about a minute
   overlay). The frame's ed25519 identity is generated when the image is built; keys are
   never committed.
 - **Isolation.** One board, one worker, alphabetical order. The `cleanBoard` auto fixture
-  resets network state and the shim log, removes every pushed picture, restarts the
+  resets network state, the update staging and history and the shim log, removes every pushed picture, restarts the
   slideshow and waits for a default image. A test that changes settings or the password
   restores them itself.
 - **UI locks.** The dashboard locks actions for 20 s after load and 3 min after each action.
