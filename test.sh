@@ -54,6 +54,8 @@ run_cpp() {
     cmake --preset "$preset" -B "$dir" >/dev/null
     cmake --build "$dir" --target shareframe-unit-tests shareframe-integration-tests shareframe-contract-tests -j "$(nproc)"
     mkdir -p "$dir/reports"
+    # Counters of an earlier run would mix into this one's report.
+    [[ "$preset" == test-coverage ]] && find "$dir" -name '*.gcda' -delete
     ctest --test-dir "$dir" --output-on-failure -j "$(nproc)" ${label:+-L "$label"} \
           --output-junit "$dir/reports/${label:-cpp}.xml" "${args[@]}"
 
@@ -65,7 +67,7 @@ run_cpp() {
         mkdir -p "$dir/coverage"
         gcovr --root "$ROOT" --filter "$ROOT/src/" --filter "$ROOT/include/" \
               --object-directory "$dir" --html-details "$dir/coverage/index.html" --print-summary \
-              --fail-under-line 79 --fail-under-function 84
+              --fail-under-line 87 --fail-under-function 91
         echo "Coverage report: ${dir#"$ROOT"/}/coverage/index.html"
     fi
 }
