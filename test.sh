@@ -6,6 +6,7 @@ BUILD_ROOT="${SHAREFRAME_BUILD_ROOT:-$ROOT}"
 CPP_COMPOSE="$ROOT/tests/docker/docker-compose.yml"
 E2E_COMPOSE="$ROOT/tests/e2e/docker-compose.yml"
 FRONTEND="$ROOT/dashboard-frontend/frontend"
+cd "$ROOT"
 
 usage() {
     cat <<'EOF'
