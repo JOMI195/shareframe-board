@@ -74,6 +74,8 @@ FetchContent_Declare(ixwebsocket
             -e "s/hints.ai_family = AF_[A-Z0-9]+/hints.ai_family = ${SHAREFRAME_IP_FAMILY}/"
             -e "s/return AddrInfoPtr[{] res, freeaddrinfo [}]/return res ? AddrInfoPtr{ res, freeaddrinfo } : nullptr/"
             ixwebsocket/IXDNSLookup.cpp
+        # Timeouts on the wall clock end every request in flight when NTP steps it forward.
+        COMMAND sed -i -e "s/system_clock/steady_clock/g" ixwebsocket/IXCancellationRequest.cpp
         EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(ixwebsocket)
 target_link_libraries(external INTERFACE ixwebsocket)
