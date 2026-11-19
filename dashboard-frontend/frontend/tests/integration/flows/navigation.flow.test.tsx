@@ -22,13 +22,15 @@ describe('navigation', () => {
     expect(await screen.findByRole('heading', { name: 'WLAN' })).toBeInTheDocument();
   });
 
-  it('reveals the admin pages in advanced mode', async () => {
+  it('reveals the admin pages once expert mode is on in the system page', async () => {
     const { user } = renderRoute('/', { preloadedState: signedInState() });
     await openMenu(user);
 
     expect(within(sidebar()).queryByRole('link', { name: 'Protokolle' })).not.toBeInTheDocument();
 
-    await user.click(within(sidebar()).getByRole('switch', { name: 'Erweiterter Modus' }));
+    await user.click(within(sidebar()).getByRole('link', { name: 'System' }));
+    await user.click(await screen.findByRole('switch', { name: 'Expertenmodus' }));
+    await openMenu(user);
 
     expect(within(sidebar()).getByRole('link', { name: 'Protokolle' })).toBeInTheDocument();
     expect(within(sidebar()).getByText('Verwaltung')).toBeInTheDocument();

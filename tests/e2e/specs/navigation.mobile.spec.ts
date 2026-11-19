@@ -6,10 +6,11 @@ const mainPages = [
   { name: 'Anpassung', url: /\/customization\/$/ },
   { name: 'Netzwerk', url: /\/network\/$/ },
   { name: 'Updates', url: /\/updates\/$/ },
+  { name: 'System', url: /\/general\/$/ },
   { name: 'Steuerung', url: /\/$/ },
 ];
 
-const adminPages = ['/services/', '/services/display', '/general/', '/display-health/', '/update-history/', '/logs/'];
+const adminPages = ['/services/', '/services/display', '/display-health/', '/update-history/', '/logs/'];
 
 test.describe('navigation on a phone', () => {
   test('reaches every main page through the side menu without sideways scrolling', async ({ page }) => {

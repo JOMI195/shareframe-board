@@ -108,6 +108,6 @@ describe('sign-out', () => {
 
     await screen.findByText('Willkommen bei deinem Bilderrahmen');
 
-    expect(screen.queryByText('Protokolle konnten nicht geladen werden')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText('Protokolle konnten nicht geladen werden')).not.toBeInTheDocument());
   });
 });

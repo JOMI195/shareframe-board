@@ -8,6 +8,8 @@ test('device info shows the identity the server knows and live system metrics', 
   await signIn(page);
   await page.goto('/general/');
   await expect(card(page, 'Gerät')).toContainText(serial);
+  await expect(card(page, 'System')).toBeHidden();
+  await page.getByRole('switch', { name: 'Expertenmodus' }).check();
   await expect(card(page, 'System')).toContainText('42.5 °C');
 });
 
