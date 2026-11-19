@@ -131,6 +131,7 @@ test.describe('connection', () => {
   });
 
   test('a dropped connection is re-established and resynced', async ({ server, board }) => {
+    await server.waitForFrame();
     const id = await server.sendPicture('left-black.jpg');
     await waitForPanel(showsImage(id), `picture ${id} on panel`);
 
