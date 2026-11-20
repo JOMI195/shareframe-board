@@ -32,7 +32,8 @@ void drawQr(Canvas& canvas, const std::string& payload)
                         canvas.black(left + mx * module + x, top + my * module + y);
 }
 
-void drawText(Canvas& canvas, const Font& font, const std::vector<std::string>& paragraphs)
+void drawText(Canvas& canvas, const Font& font, const std::vector<std::string>& paragraphs,
+              const std::optional<size_t> emphasized)
 {
     const int left = kSafe.x0 + kQrBox + kColumnGap;
     const int maxWidth = kSafe.x1 - left;
@@ -46,7 +47,7 @@ void drawText(Canvas& canvas, const Font& font, const std::vector<std::string>& 
         int height = 0;
         for (size_t i = 0; i < paragraphs.size(); ++i)
         {
-            const int px = i == 0 ? title : body;
+            const int px = i == 0 || i == emphasized ? title : body;
             auto lines = wrap(font, decodeUtf8(paragraphs[i]), px, maxWidth);
             height += static_cast<int>(lines.size()) * font.lineHeight(px) + (i > 0 ? gap : 0);
             blocks.emplace_back(std::move(lines), px);

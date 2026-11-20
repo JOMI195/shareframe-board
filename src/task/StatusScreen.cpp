@@ -1,5 +1,6 @@
 #include "task/StatusScreen.hpp"
 #include "display/LogoScreenRenderer.hpp"
+#include "util/PanelCode.hpp"
 #include <filesystem>
 
 StatusScreen::StatusScreen(EventBus& bus, const AppConfig& cfg, DisplayManager& display)
@@ -7,7 +8,7 @@ StatusScreen::StatusScreen(EventBus& bus, const AppConfig& cfg, DisplayManager& 
 {
 }
 
-void StatusScreen::set(const StatusScreenKind kind, const std::string& version)
+void StatusScreen::set(const StatusScreenKind kind, const std::string& version, const std::string& code)
 {
     std::string title, detail;
     switch (kind)
@@ -23,10 +24,15 @@ void StatusScreen::set(const StatusScreenKind kind, const std::string& version)
         title = "Wird zurückgesetzt …";
         detail = "Werkseinstellungen";
         break;
+    case StatusScreenKind::ResetCode:
+        title = "Zurücksetzen? Code " + panel_code::grouped(code);
+        detail = "Gültig 5 Minuten. Warst du das nicht, ignoriere es.";
+        break;
     }
     const auto image = std::filesystem::path(cfg_.display.loadingImagePath) / LogoScreenRenderer::IMAGE;
     std::lock_guard lk(mtx_);
     buffer_ = LogoScreenRenderer::render(image, title, detail, cfg_.display.boldFontPath, cfg_.display.setupFontPath);
+    text_ = {title, detail};
     source_ = "status:" + toString(kind);
     shown_ = false;
 }
@@ -41,6 +47,7 @@ void StatusScreen::finishForShutdown()
 void StatusScreen::_run(const std::stop_token st)
 {
     std::vector<uint8_t> buffer;
+    std::vector<std::string> text;
     std::string source;
     {
         std::lock_guard lk(mtx_);
@@ -48,9 +55,10 @@ void StatusScreen::_run(const std::stop_token st)
             return;
         buffer = buffer_;
         source = source_;
+        text = text_;
     }
 
-    const bool shown = display_.displayBuffer(buffer, source, st);
+    const bool shown = display_.displayBuffer(buffer, source, st, RefreshPolicy::RespectMinInterval, text);
     if (shown)
         logger_->info("Showing {}", source);
     else if (!st.stop_requested())

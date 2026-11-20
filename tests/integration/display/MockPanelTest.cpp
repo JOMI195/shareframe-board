@@ -110,9 +110,11 @@ TEST_F(MockPanelTest, ImmediateRefreshIgnoresMinInterval)
     DisplayManager display(cfg, metrics);
     ASSERT_TRUE(paint(display, kLoadingImage));
 
-    ASSERT_TRUE(display.displayBuffer(PhotoRenderer::render(kLoadingImage), "urgent", {}, RefreshPolicy::Immediate));
+    ASSERT_TRUE(display.displayBuffer(PhotoRenderer::render(kLoadingImage), "urgent", {}, RefreshPolicy::Immediate,
+                                      {"Rahmen einrichten", "Code 482 913"}));
     EXPECT_EQ(meta()["source"], "urgent");
     EXPECT_EQ(meta()["seq"], 2);
+    EXPECT_EQ(meta()["text"], nlohmann::json::array({"Rahmen einrichten", "Code 482 913"})) << "the specs read codes from here";
 }
 
 TEST_F(MockPanelTest, StopCancelsRefreshWaitingForMinInterval)

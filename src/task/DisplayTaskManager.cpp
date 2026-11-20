@@ -164,7 +164,7 @@ void DisplayTaskManager::_carryOut(const ScreenDecision& decision, const Wishes&
     if (decision.action == ScreenAction::Keep)
     {
         if (decision.target == Screen::ApSetup)
-            apSetup_.setCredentials(wishes.apSetup.ssid, wishes.apSetup.password);
+            apSetup_.setCredentials(wishes.apSetup.ssid, wishes.apSetup.password, wishes.apSetup.code);
         return;
     }
 
@@ -181,11 +181,11 @@ void DisplayTaskManager::_prepare(const Screen target, const Wishes& wishes)
 {
     if (target == Screen::Status)
     {
-        status_.set(*wishes.status.kind, wishes.status.version);
+        status_.set(*wishes.status.kind, wishes.status.version, wishes.status.code);
         shownStatus_ = wishes.status;
     }
     else if (target == Screen::ApSetup)
-        apSetup_.setCredentials(wishes.apSetup.ssid, wishes.apSetup.password);
+        apSetup_.setCredentials(wishes.apSetup.ssid, wishes.apSetup.password, wishes.apSetup.code);
     else if (target == Screen::NightBlank)
     {
         shownNightEnd_ = settings_.getNightEndHour();

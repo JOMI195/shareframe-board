@@ -38,3 +38,11 @@ TEST(StatusWindow, HidingLeavesNothingToTimeOut)
     EXPECT_EQ(window.endsAt(kTimeout), std::nullopt);
     EXPECT_EQ(window.expire(10 + kTimeout, kTimeout), std::nullopt);
 }
+
+TEST(StatusWindow, AScreenWithItsOwnTimeoutEndsOnIt)
+{
+    StatusWindow window;
+    window.request({StatusScreenKind::ResetCode, "", "482913", 300}, 0);
+    EXPECT_EQ(window.endsAt(kTimeout * 1000), 300'000);
+    EXPECT_EQ(window.expire(300'000, kTimeout * 1000), StatusScreenKind::ResetCode);
+}

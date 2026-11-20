@@ -159,6 +159,7 @@ set(COMMON_SOURCES
         src/repository/SettingsRepository.cpp
         src/settings/PlaybackOrder.cpp
         src/util/stb_impl.cpp
+        src/util/PanelCode.cpp
         src/repository/DisplayMetricsRepository.cpp
         src/app/Bootstrap.cpp
         src/util/Subprocess.cpp

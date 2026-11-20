@@ -162,7 +162,8 @@ void DisplayManager::_clearHw()
 }
 
 bool DisplayManager::displayBuffer(const std::vector<uint8_t>& buffer, const std::string& source,
-                                   const std::stop_token st, const RefreshPolicy policy)
+                                   const std::stop_token st, const RefreshPolicy policy,
+                                   const std::vector<std::string>& text)
 {
     std::lock_guard lock(_hwMutex);
     if (policy == RefreshPolicy::Immediate)
@@ -184,7 +185,7 @@ bool DisplayManager::displayBuffer(const std::vector<uint8_t>& buffer, const std
         _logger->info("Shutdown in progress, skipping display of {}", source);
         return false;
     }
-    return _sendBufferHw(buffer, source);
+    return _sendBufferHw(buffer, source, text);
 }
 
 bool DisplayManager::paintForShutdown(const std::vector<uint8_t>& buffer, const std::string& source)
@@ -195,7 +196,8 @@ bool DisplayManager::paintForShutdown(const std::vector<uint8_t>& buffer, const 
     return _sendBufferHw(buffer, source);
 }
 
-bool DisplayManager::_sendBufferHw(const std::vector<uint8_t>& buffer, const std::string& source)
+bool DisplayManager::_sendBufferHw(const std::vector<uint8_t>& buffer, const std::string& source,
+                                   const std::vector<std::string>& text)
 {
     if (buffer.size() != BUFFER_SIZE)
     {
@@ -208,7 +210,7 @@ bool DisplayManager::_sendBufferHw(const std::vector<uint8_t>& buffer, const std
     {
         _logger->info("[mock] Display: {}", source);
         if (!_cfg.display.mockOutputDir.empty())
-            _writeMockPanel(buffer, PanelContent::Image, source);
+            _writeMockPanel(buffer, PanelContent::Image, source, text);
         _recordScreen(PanelContent::Image, source);
         _lastDisplayTime.store(std::chrono::steady_clock::now());
         return true;
@@ -370,7 +372,7 @@ void DisplayManager::_recordScreen(const PanelContent content, const std::string
 }
 
 void DisplayManager::_writeMockPanel(const std::vector<uint8_t>& buffer, const PanelContent content,
-                                     const std::string& source)
+                                     const std::string& source, const std::vector<std::string>& text)
 {
     const std::filesystem::path dir(_cfg.display.mockOutputDir);
     std::filesystem::create_directories(dir);
@@ -386,7 +388,8 @@ void DisplayManager::_writeMockPanel(const std::vector<uint8_t>& buffer, const P
 
     {
         std::ofstream meta(dir / "panel.json.tmp");
-        meta << nlohmann::json{{"state", std::string(toString(content))}, {"source", source}, {"seq", ++_mockSeq}}
+        meta << nlohmann::json{{"state", std::string(toString(content))}, {"source", source}, {"seq", ++_mockSeq},
+                               {"text", text}}
             .dump();
     }
     std::filesystem::rename(dir / "panel.json.tmp", dir / "panel.json");

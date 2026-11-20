@@ -2,6 +2,7 @@
 #include "support/TempDir.hpp"
 #include "support/Wait.hpp"
 #include "task/WifiModeWatcher.hpp"
+#include "util/PanelCode.hpp"
 #include <fstream>
 #include <gtest/gtest.h>
 #include <thread>
@@ -19,6 +20,7 @@ protected:
     {
         AppConfig cfg;
         cfg.display.wifiModePath = (dir.path() / "wifi-mode.json").string();
+        cfg.display.setupCodePath = (dir.path() / "setup-code").string();
         cfg.display.apSetupBootWindowSecs = 2000000000;
         return cfg;
     }
@@ -55,7 +57,18 @@ TEST_F(WifiModeWatcherTest, TheHotspotWithItsCredentialsAsksForTheSetupScreen)
     mode({{"mode", "ap"}, {"ap_ssid", "frame"}, {"ap_password", "hotspot-1"}});
     start();
     ASSERT_TRUE(waitFor([&] { return states.size() == 1; }));
-    EXPECT_EQ(states.get()[0], (ApSetupStateEvent{true, "frame", "hotspot-1"}));
+    const auto code = panel_code::read(cfg.display.setupCodePath);
+    ASSERT_EQ(code.size(), 6u);
+    EXPECT_EQ(states.get()[0], (ApSetupStateEvent{true, "frame", "hotspot-1", code}));
+}
+
+TEST_F(WifiModeWatcherTest, ARestartedDisplayShowsTheCodeThePanelAlreadyHas)
+{
+    std::ofstream(cfg.display.setupCodePath) << "482913\n";
+    mode({{"mode", "ap"}, {"ap_ssid", "frame"}, {"ap_password", "hotspot-1"}});
+    start();
+    ASSERT_TRUE(waitFor([&] { return states.size() == 1; }));
+    EXPECT_EQ(states.get()[0].code, "482913");
 }
 
 TEST_F(WifiModeWatcherTest, ConnectingAfterwardsEndsItAndAnUnchangedModeIsNotRepeated)

@@ -67,6 +67,7 @@ struct DisplayConfig
     int nightIntervalSecs = 3600;
     std::string nightStyle = "hold";
     std::string wifiModePath = "/run/shareframe/wifi-mode.json";
+    std::string setupCodePath = "/run/shareframe/setup-code";
     // The setup QR only shows this long after boot, before the first connection.
     int apSetupBootWindowSecs = 600;
     std::string setupUrl = "http://192.168.4.1";

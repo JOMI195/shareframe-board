@@ -12,7 +12,7 @@ class ApNetworkSetupScreen : public Task
 public:
     ApNetworkSetupScreen(EventBus& bus, const AppConfig& cfg, DisplayManager& display);
 
-    void setCredentials(std::string ssid, std::string password);
+    void setCredentials(std::string ssid, std::string password, std::string code);
 
 protected:
     void _run(std::stop_token st) override;
@@ -22,5 +22,6 @@ private:
     DisplayManager& display_;
     std::string ssid_;
     std::string password_;
+    std::string code_;
     bool dirty_ = false;
 };

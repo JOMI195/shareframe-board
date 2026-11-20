@@ -203,8 +203,10 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
             return nlohmann::json::object();
         }
         spdlog::info("IPC: show status screen {}", toString(*kind));
-        bus_.publish<Topic::STATUS_SCREEN>(StatusScreenEvent{kind, msg.data.value("version", "")});
-        return nlohmann::json::object();
+        bus_.publish<Topic::STATUS_SCREEN>(StatusScreenEvent{kind, msg.data.value("version", ""),
+                                                             msg.data.value("code", ""),
+                                                             msg.data.value("timeout_secs", 0)});
+        return {{"shows_in_secs", display_.secondsUntilRefreshReady()}};
     }
 
     case IpcMessageType::HideStatusScreen:

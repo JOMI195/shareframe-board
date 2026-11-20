@@ -55,6 +55,7 @@ struct ApSetupStateEvent
     bool required = false;
     std::string ssid;
     std::string password;
+    std::string code;
     bool operator==(const ApSetupStateEvent&) const = default;
 };
 template <> struct TopicMessage<Topic::AP_SETUP_STATE> { using type = ApSetupStateEvent; };
@@ -64,6 +65,8 @@ struct StatusScreenEvent
 {
     std::optional<StatusScreenKind> kind;
     std::string version;
+    std::string code;
+    int timeoutSecs = 0; ///< 0 = the display's default
     bool operator==(const StatusScreenEvent&) const = default;
 };
 template <> struct TopicMessage<Topic::STATUS_SCREEN> { using type = StatusScreenEvent; };

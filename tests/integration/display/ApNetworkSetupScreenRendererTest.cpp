@@ -25,8 +25,9 @@ TEST(ApNetworkSetupScreenRenderer, LongCredentialsStayInsideTheVisibleArea)
 {
     const std::string ssid(32, 'W');
     const std::string password(63, 'M');
-    const auto buffer = Renderer::render(ssid, password, "http://192.168.4.1",
-                                         std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans.ttf");
+    const auto text = Renderer::paragraphs(ssid, password, "http://192.168.4.1", "482913");
+    const auto buffer = Renderer::render(ssid, password, text, std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans.ttf",
+                                         true);
     ASSERT_EQ(buffer.size(), DisplayManager::BUFFER_SIZE);
 
     constexpr auto safe = Renderer::SAFE_AREA;

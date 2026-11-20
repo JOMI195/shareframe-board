@@ -1,4 +1,5 @@
 #include "task/WifiModeWatcher.hpp"
+#include "util/PanelCode.hpp"
 #include "util/WifiMode.hpp"
 #include <ctime>
 
@@ -31,11 +32,14 @@ void WifiModeWatcher::execute()
             logger_->warn("AP mode without an SSID in {}, keeping the current screen", cfg_.display.wifiModePath);
             return;
         }
+        state.code = panel_code::readOrCreate(cfg_.display.setupCodePath);
     }
 
     if (state == last_)
         return;
     last_ = state;
+    if (state.required && state.code.empty())
+        logger_->error("No setup code at {}, the setup screen shows none", cfg_.display.setupCodePath);
     logger_->info("Wi-Fi setup screen {} (mode={})", state.required ? "required" : "not required",
                   mode.value("mode", ""));
     bus_.publish<Topic::AP_SETUP_STATE>(state);
