@@ -13,6 +13,7 @@ import { DialogAction, PlaybackMode } from '@/types';
 import PlaybackOrderSelect from './playbackOrderSelect';
 import SlideshowImagesGrid from './slideshowImagesGrid';
 import SlideshowImagePreviewDialog from './slideshowImagePreviewDialog';
+import { pollWhileVisible } from '@/common/utils/poll';
 
 const POLL_MS = 15000;
 
@@ -27,9 +28,7 @@ const SlideshowImages: React.FC = () => {
 
     useEffect(() => {
         if (isEditing) return;
-        dispatch(fetchSlideshowImages());
-        const id = setInterval(() => dispatch(fetchSlideshowImages()), POLL_MS);
-        return () => clearInterval(id);
+        return pollWhileVisible(() => dispatch(fetchSlideshowImages()), POLL_MS);
     }, [dispatch, isEditing]);
 
     const byId = new Map(images.map((img) => [img.id, img]));

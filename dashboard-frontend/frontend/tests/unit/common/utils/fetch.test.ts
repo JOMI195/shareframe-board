@@ -38,6 +38,26 @@ describe('fetchWithTimeout', () => {
     await expect(pending).rejects.toThrow('Aborted');
   });
 
+  // A board that stopped answering must not leave a spinner for minutes.
+  it('gives up on a silent board after 15 seconds unless told otherwise', async () => {
+    vi.useFakeTimers();
+    stubFetch((_url, init) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+      }),
+    );
+
+    const pending = fetchWithTimeout('/api/system/health');
+    const settled = vi.fn();
+    pending.catch(settled);
+    vi.advanceTimersByTime(14_999);
+    await Promise.resolve();
+    expect(settled).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+
+    await expect(pending).rejects.toThrow('Aborted');
+  });
+
   it('rethrows network errors', async () => {
     stubFetch(async () => {
       throw new TypeError('Failed to fetch');

@@ -3,6 +3,7 @@ import { AppDispatch, RootState } from '..';
 import { fetchWithTimeout } from '@/common/utils/fetch';
 import { getSlideshowStatusUrl } from '@/assets/endpoints/api/frame';
 import { INowShowing } from '@/types';
+import { pollWhileVisible } from '@/common/utils/poll';
 
 
 // Types for Slideshow Status State
@@ -73,18 +74,7 @@ export const startContinuousStatusCheck = () => (dispatch: AppDispatch) => {
         dispatch(checkSlideshowStatusThunk());
     };
 
-    // Initial immediate check
-    performCheck();
-
-    // Set up continuous interval
-    const intervalId = setInterval(performCheck, 5000); // Check every 5 seconds
-
-    // Return a function to stop the interval
-    return () => {
-        if (intervalId) {
-            clearInterval(intervalId);
-        }
-    };
+    return pollWhileVisible(performCheck, 5000);
 };
 
 // Slice

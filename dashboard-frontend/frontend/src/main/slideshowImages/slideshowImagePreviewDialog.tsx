@@ -8,7 +8,7 @@ import UserAvatar from '@/common/components/userAvatar';
 import { getReadablyFileSize } from '@/common/utils/files/fileSize.helpers';
 import { getImageFileUrl } from '@/assets/endpoints/api/frame';
 import { DialogAction, ISlideshowImage } from '@/types';
-import { fetchWithTimeout } from '@/common/utils/fetch';
+import { fetchWithTimeout, SLOW_TIMEOUT_MS } from '@/common/utils/fetch';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { selectSlideshowStatus } from '@/store/slideshowStatus/slideshowStatus.Slice';
 import { selectSlideshowOperation, showImageThunk } from '@/store/slideshowOperation/slideshowOperation.Slice';
@@ -61,7 +61,7 @@ const SlideshowImagePreviewDialog: React.FC<SlideshowImagePreviewDialogProps> = 
     const handleDownload = async () => {
         if (!image) return;
         try {
-            const response = await fetchWithTimeout(getImageFileUrl(image.id));
+            const response = await fetchWithTimeout(getImageFileUrl(image.id), {}, SLOW_TIMEOUT_MS);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const url = URL.createObjectURL(await response.blob());
             const link = document.createElement('a');

@@ -3,6 +3,7 @@ import { setCurrentPath } from "@/store/navigation/navigation.Slice";
 import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router";
 import { fetchConnectionMode } from "@/store/connectionMode/connectionMode.Slice";
+import { pollWhileVisible } from '@/common/utils/poll';
 
 const RouterContext = () => {
     const dispatch = useAppDispatch();
@@ -14,9 +15,7 @@ const RouterContext = () => {
 
     // Central network-mode poll; the banner, header and sign-in read the slice.
     useEffect(() => {
-        dispatch(fetchConnectionMode());
-        const id = setInterval(() => dispatch(fetchConnectionMode()), 10000);
-        return () => clearInterval(id);
+        return pollWhileVisible(() => dispatch(fetchConnectionMode()), 10000);
     }, [dispatch]);
 
     return (

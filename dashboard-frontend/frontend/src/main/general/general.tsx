@@ -14,6 +14,7 @@ import FactoryResetDialog from '@/common/components/factoryResetDialog';
 import { addAlertSnackbar } from '@/store/snackbars/snackbars.Slice';
 import { fetchWithTimeout } from '@/common/utils/fetch';
 import { getSendDiagnosticsUrl } from '@/assets/endpoints/api/frame';
+import { pollWhileVisible } from '@/common/utils/poll';
 
 const RESOLUTION = "800mm x 480mm";
 const SYSTEM_INFO_POLL_MS = 5000;
@@ -94,9 +95,7 @@ const General = () => {
 
     // Poll live metrics while this page is open (layout fetches once on mount).
     useEffect(() => {
-        dispatch(fetchFrameInfos());
-        const id = setInterval(() => { dispatch(fetchFrameInfos()); }, SYSTEM_INFO_POLL_MS);
-        return () => clearInterval(id);
+        return pollWhileVisible(() => dispatch(fetchFrameInfos()), SYSTEM_INFO_POLL_MS);
     }, [dispatch]);
 
     return (

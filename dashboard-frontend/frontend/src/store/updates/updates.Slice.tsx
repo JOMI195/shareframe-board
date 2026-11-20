@@ -3,7 +3,7 @@ import { RootState } from '@/store';
 import uuid from 'react-uuid';
 import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '@/store/snackbars/snackbars.Slice';
 import { IServerResponse } from '@/types';
-import { fetchWithTimeout } from '@/common/utils/fetch';
+import { fetchWithTimeout, SLOW_TIMEOUT_MS } from '@/common/utils/fetch';
 import { getLatestReleaseUrl, getPerformUpdateUrl, getUpdateStatusUrl, getUpdateHistoryUrl } from '@/assets/endpoints/api/frame';
 import { showLoadingWall } from '../loadingWall/loadingWall.Slice';
 import { getHomeUrl } from '@/assets/endpoints/app/appEndpoints';
@@ -57,7 +57,7 @@ export const fetchLatestRelease = createAsyncThunk(
     'updates/fetchLatestRelease',
     async (_, { dispatch, rejectWithValue }) => {
         try {
-            const response = await fetchWithTimeout(getLatestReleaseUrl());
+            const response = await fetchWithTimeout(getLatestReleaseUrl(), {}, SLOW_TIMEOUT_MS);
             const payload: IServerResponse & { data: Release | null } = await response.json();
 
             if (payload.success) {
@@ -81,7 +81,7 @@ export const performUpdate = createAsyncThunk(
         try {
             dispatch(addLoadingSnackbar(snackbarId, "Update wird gestartet"));
 
-            const response = await fetchWithTimeout(getPerformUpdateUrl(), { method: 'POST', });
+            const response = await fetchWithTimeout(getPerformUpdateUrl(), { method: 'POST' }, SLOW_TIMEOUT_MS);
             const payload: IServerResponse = await response.json();
 
             if (payload.success) {

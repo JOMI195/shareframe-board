@@ -3,7 +3,7 @@ import { RootState } from '..';
 import { IServerResponse } from '@/types';
 import uuid from 'react-uuid';
 import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '../snackbars/snackbars.Slice';
-import { fetchWithTimeout } from '@/common/utils/fetch';
+import { fetchWithTimeout, SCRIPT_TIMEOUT_MS } from '@/common/utils/fetch';
 import { boardErrorMessage, unreachableMessage } from '@/common/utils/errors/boardErrors';
 import { getAuthStatusUrl, getLoginUrl, getChangePasswordUrl, getLogoutUrl } from '@/assets/endpoints/api/frame';
 
@@ -59,7 +59,7 @@ export const loginThunk = createAsyncThunk(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(credentials),
-      });
+      }, SCRIPT_TIMEOUT_MS);
 
       const data: IServerResponse = await response.json();
 

@@ -11,6 +11,7 @@ import LogsContent from '@/main/monitoring/logsContent';
 import LogFilter, { LogFilterParams } from '@/main/monitoring/logFilter';
 import { HealthChip, RestartButton } from './serviceUtils';
 import { formatUptime } from './formatUptime';
+import { pollWhileVisible } from '@/common/utils/poll';
 
 const POLL_MS = 10000;
 
@@ -29,11 +30,10 @@ const ServiceDetail: React.FC<{ serviceId: ServiceType }> = ({ serviceId }) => {
     };
 
     useEffect(() => {
-        dispatch(fetchServices());
         loadLogs();
-        const t = setInterval(() => dispatch(fetchServices()), POLL_MS);
+        const stop = pollWhileVisible(() => dispatch(fetchServices()), POLL_MS);
         return () => {
-            clearInterval(t);
+            stop();
             dispatch(clearLogs());
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps

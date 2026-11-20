@@ -23,6 +23,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import ReleaseNotes from '@/common/components/releaseNotes';
 import Dialogs from './dialogs/dialogs';
+import { pollWhileVisible } from '@/common/utils/poll';
 
 const phaseLabel = (phase: string): string => {
     switch (phase) {
@@ -61,9 +62,7 @@ const Updates = () => {
 
     // Poll the installer state; tighter while an update runs.
     useEffect(() => {
-        dispatch(fetchUpdateStatus());
-        const interval = setInterval(() => dispatch(fetchUpdateStatus()), updateActive ? 3000 : 15000);
-        return () => clearInterval(interval);
+        return pollWhileVisible(() => dispatch(fetchUpdateStatus()), updateActive ? 3000 : 15000);
     }, [dispatch, updateActive]);
 
     return (
