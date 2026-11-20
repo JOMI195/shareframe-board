@@ -359,3 +359,22 @@ TEST_F(DisplayImageLoopTest, DailyClearLeavesAStoppedSlideshowBlank)
     std::this_thread::sleep_for(500ms);
     EXPECT_TRUE(cleared());
 }
+
+// A picture the decoder cannot read used to hold the panel for a whole interval, every round.
+TEST_F(DisplayImageLoopTest, AnUnreadablePictureIsPassedOverForGood)
+{
+    settings.setDisplayInterval(3600);
+    const auto broken = db.dir() / "1.jpg";
+    std::ofstream(broken) << "not a picture";
+    repo.save({1, "alice", broken, std::time(nullptr) + 3600});
+    const auto good = db.dir() / "2.jpg";
+    std::filesystem::copy_file(std::string(SHAREFRAME_ASSETS_DIR) + "/image/loading/logo-frame-generic-shareframe.jpg", good);
+    repo.save({2, "bob", good, std::time(nullptr) + 3600});
+    start();
+
+    ASSERT_TRUE(waitFor([&] { return source() == good.string(); }));
+    const auto shown = seq();
+    bus.publish<Topic::SKIP_IMAGE>({});
+    ASSERT_TRUE(waitFor([&] { return seq() > shown; }));
+    EXPECT_EQ(source(), good.string()) << "the unreadable one came back";
+}
