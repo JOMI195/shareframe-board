@@ -1,6 +1,6 @@
 #include "ipc/EventPublisher.hpp"
+#include "ipc/IpcSocketPath.hpp"
 #include <nng/protocol/pubsub0/pub.h>
-#include <unistd.h>
 #include <utility>
 
 EventPublisher::EventPublisher(std::string url)
@@ -16,8 +16,7 @@ EventPublisher::~EventPublisher()
     {
         nng_close(sock_);
         open_ = false;
-        if (url_.starts_with("ipc://"))
-            ::unlink(url_.substr(6).c_str());
+        ipc_socket::remove(url_);
     }
 }
 
@@ -29,8 +28,7 @@ bool EventPublisher::start()
         logger_->error("nng_pub0_open failed: {}", nng_strerror(rv));
         return false;
     }
-    if (url_.starts_with("ipc://"))
-        ::unlink(url_.substr(6).c_str());
+    ipc_socket::prepare(url_);
     if (const int rv = nng_listen(sock_, url_.c_str(), nullptr, 0); rv != 0)
     {
         logger_->error("nng_listen({}) failed: {}", url_, nng_strerror(rv));

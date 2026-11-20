@@ -1,20 +1,9 @@
 #include "ipc/NngRepServer.hpp"
+#include "ipc/IpcSocketPath.hpp"
 #include <nng/protocol/reqrep0/rep.h>
 #include <algorithm>
-#include <unistd.h>
 #include <utility>
 
-namespace
-{
-// nng's ipc:// transport binds a Unix socket file; remove a stale one first so a
-// crashed predecessor doesn't block listen().
-void unlinkIfIpc(const std::string& url)
-{
-    constexpr std::string_view prefix = "ipc://";
-    if (url.starts_with(prefix))
-        ::unlink(url.substr(prefix.size()).c_str());
-}
-} // namespace
 
 NngRepServer::NngRepServer(std::string url, Handler handler, const int workers)
     : url_(std::move(url)), handler_(std::move(handler)),
@@ -35,7 +24,7 @@ void NngRepServer::start()
         return;
     }
 
-    unlinkIfIpc(url_);
+    ipc_socket::prepare(url_);
     if (const int rv = nng_listen(sock_, url_.c_str(), nullptr, 0); rv != 0)
     {
         logger_->error("nng_listen({}) failed: {}", url_, nng_strerror(rv));
@@ -69,7 +58,7 @@ void NngRepServer::stop()
     {
         nng_close(sock_);
         open_ = false;
-        unlinkIfIpc(url_);
+        ipc_socket::remove(url_);
         logger_->info("REP server stopped ({})", url_);
     }
 }
