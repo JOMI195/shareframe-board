@@ -56,6 +56,8 @@ struct ApSetupStateEvent
     std::string ssid;
     std::string password;
     std::string code;
+    // The Wi-Fi daemon's reason for the last failed attempt; empty for none.
+    std::string failure;
     bool operator==(const ApSetupStateEvent&) const = default;
 };
 template <> struct TopicMessage<Topic::AP_SETUP_STATE> { using type = ApSetupStateEvent; };

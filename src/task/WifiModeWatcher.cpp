@@ -36,6 +36,7 @@ void WifiModeWatcher::execute()
             return;
         }
         state.code = panel_code::readOrCreate(cfg_.display.setupCodePath);
+        state.failure = mode.value("last_failed_reason", "");
     }
 
     if (state == last_)

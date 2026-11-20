@@ -64,6 +64,14 @@ TEST_F(WifiModeWatcherTest, TheHotspotWithItsCredentialsAsksForTheSetupScreen)
     EXPECT_EQ(states.get()[0], (ApSetupStateEvent{true, "frame", "hotspot-1", code}));
 }
 
+TEST_F(WifiModeWatcherTest, ThePanelHearsWhyTheLastAttemptFailed)
+{
+    mode({{"mode", "ap"}, {"ap_ssid", "frame"}, {"ap_password", "hotspot-1"}, {"last_failed_reason", "not_found"}});
+    start();
+    ASSERT_TRUE(waitFor([&] { return states.size() == 1; }));
+    EXPECT_EQ(states.get()[0].failure, "not_found");
+}
+
 TEST_F(WifiModeWatcherTest, ARestartedDisplayShowsTheCodeThePanelAlreadyHas)
 {
     std::ofstream(cfg.display.setupCodePath) << "482913\n";
