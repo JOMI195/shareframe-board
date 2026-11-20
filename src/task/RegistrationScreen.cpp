@@ -1,9 +1,16 @@
 #include "task/RegistrationScreen.hpp"
 #include "display/RegistrationScreenRenderer.hpp"
+#include <unistd.h>
 
 namespace
 {
 constexpr auto kRecheck = std::chrono::seconds(5);
+
+std::string hostname()
+{
+    char host[256]{};
+    return gethostname(host, sizeof host - 1) == 0 ? std::string(host) : std::string{};
+}
 }
 
 RegistrationScreen::RegistrationScreen(EventBus& bus, const AppConfig& cfg, DisplayManager& display)
@@ -41,9 +48,9 @@ void RegistrationScreen::_run(const std::stop_token st)
         {
             const auto url = RegistrationScreenRenderer::registerUrl(cfg_.httpBaseUrl(), cfg_.display.registerPath,
                                                                      claimCode);
-            const auto buffer = RegistrationScreenRenderer::render(url, cfg_.baseUrl, cfg_.frameId, claimCode,
-                                                                   cfg_.display.setupFontPath);
-            shown = display_.displayBuffer(buffer, "registration", st);
+            const auto text = RegistrationScreenRenderer::paragraphs(cfg_.baseUrl, cfg_.frameId, claimCode, hostname());
+            const auto buffer = RegistrationScreenRenderer::render(url, text, cfg_.display.setupFontPath);
+            shown = display_.displayBuffer(buffer, "registration", st, RefreshPolicy::RespectMinInterval, text);
             if (shown)
                 logger_->info("Showing registration screen for {}", cfg_.frameId);
             else if (!st.stop_requested())

@@ -16,8 +16,11 @@ public:
     /// Groups the code into blocks of four, the way the website's register dialog shows it.
     [[nodiscard]] static std::string formatClaimCode(const std::string& claimCode);
 
+    /// The text beside the QR code; `hostname` gives the dashboard's address, none without it.
+    [[nodiscard]] static std::vector<std::string> paragraphs(const std::string& host, const std::string& serial,
+                                                             const std::string& claimCode, const std::string& hostname);
+
     /// The full 1-bit panel buffer (1 = white).
-    [[nodiscard]] static std::vector<uint8_t> render(const std::string& url, const std::string& host,
-                                                     const std::string& serial, const std::string& claimCode,
+    [[nodiscard]] static std::vector<uint8_t> render(const std::string& url, const std::vector<std::string>& paragraphs,
                                                      const std::string& fontPath);
 };
