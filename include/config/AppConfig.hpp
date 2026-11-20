@@ -119,12 +119,12 @@ struct DisplayApplicationConfig
 // may override to /run/shareframe.
 struct IpcConfig
 {
-    std::string wsRep        = "ipc:///tmp/shareframe-ws.rep.sock";
-    std::string wsPub        = "ipc:///tmp/shareframe-ws.pub.sock";
-    std::string displayRep   = "ipc:///tmp/shareframe-display.rep.sock";
-    std::string dashboardRep = "ipc:///tmp/shareframe-dashboard.rep.sock";
-    std::string heartbeatRep = "ipc:///tmp/shareframe-heartbeat.rep.sock";
-    std::string updateRep    = "ipc:///tmp/shareframe-update.rep.sock";
+    std::string wsRep        = "ipc:///run/shareframe/ws.rep.sock";
+    std::string wsPub        = "ipc:///run/shareframe/ws.pub.sock";
+    std::string displayRep   = "ipc:///run/shareframe/display.rep.sock";
+    std::string dashboardRep = "ipc:///run/shareframe/dashboard.rep.sock";
+    std::string heartbeatRep = "ipc:///run/shareframe/heartbeat.rep.sock";
+    std::string updateRep    = "ipc:///run/shareframe/update.rep.sock";
 };
 
 struct HeartbeatApplicationConfig
