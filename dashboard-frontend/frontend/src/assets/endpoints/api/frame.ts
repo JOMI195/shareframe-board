@@ -17,6 +17,7 @@ export const getConnectionConnectUrl = () => `${getConnectionBaseUrl()}/connect`
 export const getConnectionForgetUrl = () => `${getConnectionBaseUrl()}/forget`;
 export const getConnectionApplyUrl = () => `${getConnectionBaseUrl()}/apply`;
 export const getConnectionModeUrl = () => `${getConnectionBaseUrl()}/mode`;
+export const getConnectionScanUrl = () => `${getConnectionBaseUrl()}/scan`;
 export const getApPasswordUrl = () => `${getConnectionBaseUrl()}/ap-password`;
 
 // Frame / slideshow

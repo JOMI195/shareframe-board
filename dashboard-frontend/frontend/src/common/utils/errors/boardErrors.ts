@@ -9,6 +9,8 @@ const KNOWN_MESSAGES: Record<string, string> = {
     'Invalid SSID (max 32 bytes, no control chars)': 'Der Netzwerkname ist ungültig. Er darf höchstens 32 Zeichen haben.',
     'Invalid password (8-63 chars, no control chars)': 'Das WLAN-Passwort braucht 8 bis 63 Zeichen.',
     'Invalid network name': 'Der Netzwerkname ist ungültig.',
+    'Active network': 'Mit diesem WLAN ist der Bilderrahmen gerade verbunden, deshalb kann es nicht entfernt werden.',
+    'Protected network': 'Dieses WLAN lässt sich hier nicht ändern.',
     'Not in access point mode': 'Das geht nur, solange der Bilderrahmen seinen Hotspot bereitstellt.',
     'Update service not reachable': 'Der Update-Dienst ist gerade nicht erreichbar.',
     'Failed to check for updates': 'Die Suche nach Updates ist gerade nicht möglich.',

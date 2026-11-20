@@ -15,5 +15,6 @@ export const makeConnectionMode = (over: Partial<ConnectionModePayload> = {}): C
   server_offline_secs: 0,
   server_last_contact_at: 1_760_000_000,
   last_failed_secs_ago: null,
+  last_failed_reason: '',
   ...over,
 });

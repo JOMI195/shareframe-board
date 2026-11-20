@@ -9,22 +9,20 @@ import FormDialog from '@/common/components/formDialog';
 import { usePiConnection } from '@/context/piConnection/piConnectionContextValue';
 import { useAppDispatch, useAppSelector } from '@/store';
 import {
-    closeNetworkAddNetworkDialog,
     closeNetworkChangeApPasswordDialog,
     closeNetworkConnectDialog,
     closeNetworkForgetNetworkDialog,
     getDialogs
 } from '@/store/dialogs/dialogs.Slice';
 import {
-    addNetwork,
     changeApPassword,
     connectToSavedNetworks,
     forgetNetwork,
-    NetworkCredentials,
     selectNetworkState
 } from '@/store/network/network.Slice';
 import { selectConnectionMode } from '@/store/connectionMode/connectionMode.Slice';
 import { boardAddress } from '@/common/utils/boardAddress';
+import AddNetworkDialog from './addNetworkDialog';
 
 const AP_PASSWORD_MIN = 8;
 const AP_PASSWORD_MAX = 63;
@@ -38,7 +36,6 @@ const Dialogs: React.FC = () => {
     const { mode, ap_ssid, hostname } = useAppSelector(selectConnectionMode);
     const dialogs = useAppSelector(getDialogs).network;
 
-    const [newNetwork, setNewNetwork] = useState<NetworkCredentials>({ ssid: '', password: '' });
     const [submitting, setSubmitting] = useState<boolean>(false);
     const [showPassword, setShowPassword] = useState(false);
     const [apPassword, setApPassword] = useState('');
@@ -53,19 +50,6 @@ const Dialogs: React.FC = () => {
         && apPassword === apPasswordConfirm
         && !loading && isConnected;
 
-    const handleSubmitNetwork = async (): Promise<void> => {
-        setSubmitting(true);
-        try {
-            await dispatch(addNetwork(newNetwork)).unwrap();
-            dispatch(closeNetworkAddNetworkDialog());
-            setNewNetwork({ ssid: '', password: '' });
-        } catch {
-            // The thunk reports the failure; the input stays for another try.
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
     const handleForgetNetwork = async (): Promise<void> => {
         setSubmitting(true);
         try {
@@ -75,12 +59,6 @@ const Dialogs: React.FC = () => {
             // Closed either way: an open modal would hide the error snackbar from screen readers.
             dispatch(closeNetworkForgetNetworkDialog());
         }
-    };
-
-    const handleCloseAddDialog = (): void => {
-        if (submitting) return;
-        dispatch(closeNetworkAddNetworkDialog());
-        setNewNetwork({ ssid: '', password: '' });
     };
 
     const handleCloseApPasswordDialog = (): void => {
@@ -134,40 +112,7 @@ const Dialogs: React.FC = () => {
 
     return (
         <>
-            <FormDialog
-                open={dialogs.addNetwork.open}
-                title="WLAN hinzufügen"
-                submitLabel="Hinzufügen"
-                onSubmit={handleSubmitNetwork}
-                onClose={handleCloseAddDialog}
-                submitDisabled={loading || !isConnected}
-                loading={submitting}
-            >
-                <TextField
-                    autoFocus
-                    margin="dense"
-                    id="ssid"
-                    label="Netzwerkname (SSID)"
-                    type="text"
-                    autoComplete="off"
-                    autoCapitalize="none"
-                    fullWidth
-                    value={newNetwork.ssid}
-                    onChange={(e) => setNewNetwork({ ...newNetwork, ssid: e.target.value })}
-                    slotProps={{ htmlInput: { autoCorrect: 'off', spellCheck: false } }}
-                />
-                <TextField
-                    margin="dense"
-                    id="password"
-                    label="Passwort"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="off"
-                    fullWidth
-                    value={newNetwork.password}
-                    onChange={(e) => setNewNetwork({ ...newNetwork, password: e.target.value })}
-                    slotProps={{ input: { endAdornment: passwordVisibilityAdornment } }}
-                />
-            </FormDialog>
+            <AddNetworkDialog />
 
             <ConfirmDialog
                 open={dialogs.forgetNetwork.open}

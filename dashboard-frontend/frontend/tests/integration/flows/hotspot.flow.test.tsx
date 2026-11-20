@@ -86,16 +86,23 @@ describe('connecting from the hotspot', () => {
     expect(screen.queryByRole('heading', { name: 'WLAN einrichten' })).not.toBeInTheDocument();
   });
 
-  it('tells after saving a network how to switch over', async () => {
-    const { user } = await openNetworkOnHotspot();
+  it('saves a network and switches over to it in one step', async () => {
+    const connect = spyOnRequests('post', api.getConnectionConnectUrl());
+    const apply = spyOnRequests('post', api.getConnectionApplyUrl());
+    server.use(connect.handler, apply.handler);
+    const { user } = await openNetworkOnHotspot([]);
 
     await user.click(screen.getByRole('button', { name: 'WLAN hinzufügen' }));
     const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(/http:\/\/shareframe-board-1234\.local/)).toBeInTheDocument();
     await user.type(within(dialog).getByLabelText(/Netzwerkname/), 'Garden');
     await user.type(within(dialog).getByLabelText(/^Passwort$/), 'gardenpass');
-    await user.click(within(dialog).getByRole('button', { name: 'Hinzufügen' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern & verbinden' }));
 
-    expect(await screen.findByText(/Mit „Jetzt verbinden“ wechselt der Bilderrahmen ins WLAN/)).toBeInTheDocument();
+    await waitFor(() => expect(apply.calls).toHaveLength(1));
+    expect(connect.calls).toHaveLength(1);
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(await within(card('WLAN einrichten')).findByText(/Der Rahmen verbindet sich/)).toBeInTheDocument();
   });
 
   it('asks the board to try the saved networks and explains where to find it', async () => {
@@ -133,6 +140,12 @@ describe('connecting from the hotspot', () => {
 
     expect(await within(card('WLAN einrichten')).findByText(/Vor 3 Minuten war keines der gespeicherten/))
       .toBeInTheDocument();
+  });
+
+  it('names why the last attempt failed', async () => {
+    await openNetworkOnHotspot(['HomeNet'], { last_failed_secs_ago: 180, last_failed_reason: 'wrong_password' });
+
+    expect(await within(card('WLAN einrichten')).findByText(/Das WLAN-Passwort stimmt nicht/)).toBeInTheDocument();
   });
 
   it('needs a saved network first', async () => {

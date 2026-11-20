@@ -4,8 +4,8 @@ import { RootState } from '@/store'; // Adjust import path as needed
 import uuid from 'react-uuid';
 import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '@/store/snackbars/snackbars.Slice';
 import { IServerResponse } from '@/types';
-import { fetchWithTimeout } from '@/common/utils/fetch';
-import { getConnectionStatusUrl, getConnectionSavedNetworksUrl, getConnectionConnectUrl, getConnectionForgetUrl, getApPasswordUrl, getConnectionApplyUrl } from '@/assets/endpoints/api/frame';
+import { fetchWithTimeout, SCRIPT_TIMEOUT_MS } from '@/common/utils/fetch';
+import { getConnectionStatusUrl, getConnectionSavedNetworksUrl, getConnectionConnectUrl, getConnectionForgetUrl, getApPasswordUrl, getConnectionApplyUrl, getConnectionScanUrl } from '@/assets/endpoints/api/frame';
 
 // Interfaces
 export interface NetworkCredentials {
@@ -13,7 +13,15 @@ export interface NetworkCredentials {
     password: string;
 }
 
+export interface NetworkInReach {
+    ssid: string;
+    signal: number;
+    secured: boolean;
+}
+
 export interface NetworkState {
+    // What the board's radio saw on its last station attempt; empty until it saw something.
+    inReach: NetworkInReach[];
     currentConnection: string;
     savedNetworks: string[];
     loading: boolean;
@@ -24,6 +32,7 @@ export interface NetworkState {
 
 // Initial State
 const initialState: NetworkState = {
+    inReach: [],
     currentConnection: 'Wird geladen …',
     savedNetworks: [],
     loading: false,
@@ -60,11 +69,27 @@ export const fetchNetworkData = createAsyncThunk(
     }
 );
 
+// Only a help to pick from: without it the name is typed.
+export const fetchNetworksInReach = createAsyncThunk(
+    'network/fetchNetworksInReach',
+    async (_, { rejectWithValue }) => {
+        try {
+            const response = await fetchWithTimeout(getConnectionScanUrl());
+            const payload: IServerResponse = await response.json();
+            if (payload.success) return ((payload.data as { networks?: NetworkInReach[] })?.networks ?? []);
+            return rejectWithValue(payload.message);
+        } catch {
+            return rejectWithValue('unreachable');
+        }
+    }
+);
+
+// An empty password saves an open network.
 export const addNetwork = createAsyncThunk(
     'network/addNetwork',
     async (credentials: NetworkCredentials, { dispatch, getState, rejectWithValue }) => {
-        if (!credentials.ssid || !credentials.password) {
-            dispatch(addAlertSnackbar(uuid(), "Gib Netzwerkname und Passwort ein", "error"));
+        if (!credentials.ssid) {
+            dispatch(addAlertSnackbar(uuid(), "Gib einen Netzwerknamen ein", "error"));
             return rejectWithValue('Missing credentials');
         }
 
@@ -82,15 +107,13 @@ export const addNetwork = createAsyncThunk(
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(credentials),
-            });
+            }, SCRIPT_TIMEOUT_MS);
 
             const data: IServerResponse = await response.json();
 
             if (data.success) {
                 const onHotspot = (getState() as RootState).connectionMode.mode === 'ap';
-                dispatch(addAlertSnackbar(uuid(), onHotspot
-                    ? "WLAN gespeichert. Mit „Jetzt verbinden“ wechselt der Bilderrahmen ins WLAN."
-                    : "WLAN hinzugefügt", "success"));
+                dispatch(addAlertSnackbar(uuid(), onHotspot ? "WLAN gespeichert" : "WLAN hinzugefügt", "success"));
                 dispatch(fetchNetworkData());
                 return credentials.ssid;
             } else {
@@ -161,7 +184,7 @@ export const changeApPassword = createAsyncThunk(
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ password }),
-            });
+            }, SCRIPT_TIMEOUT_MS);
 
             const data: IServerResponse = await response.json();
 
@@ -233,6 +256,10 @@ export const networkSlice = createSlice({
         builder.addCase(addNetwork.rejected, (state, action) => {
             state.loading = false;
             state.error = action.payload as string;
+        });
+
+        builder.addCase(fetchNetworksInReach.fulfilled, (state, action) => {
+            state.inReach = action.payload;
         });
 
         builder.addCase(connectToSavedNetworks.fulfilled, (state) => {

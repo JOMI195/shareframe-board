@@ -26,6 +26,8 @@ export interface ConnectionModeState {
     server_last_contact_at: number;
     // How long ago the last try of the saved networks failed and the hotspot came back; null = none.
     last_failed_secs_ago: number | null;
+    // Why it failed: wrong_password, not_found, not_joined, no_address, no_networks; empty = none.
+    last_failed_reason: string;
     // The same moment on the browser's clock (ms), to compare with actions taken here.
     last_failed_at: number | null;
     loaded: boolean;
@@ -44,6 +46,7 @@ const initialState: ConnectionModeState = {
     server_offline_secs: 0,
     server_last_contact_at: 0,
     last_failed_secs_ago: null,
+    last_failed_reason: '',
     last_failed_at: null,
     loaded: false,
 };
@@ -84,6 +87,7 @@ export const connectionModeSlice = createSlice({
             state.server_offline_secs = d.server_offline_secs ?? 0;
             state.server_last_contact_at = d.server_last_contact_at ?? 0;
             state.last_failed_secs_ago = d.last_failed_secs_ago ?? null;
+            state.last_failed_reason = d.last_failed_reason ?? '';
             state.last_failed_at = state.last_failed_secs_ago === null
                 ? null : Date.now() - state.last_failed_secs_ago * 1000;
             state.loaded = true;
