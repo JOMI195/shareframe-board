@@ -24,6 +24,10 @@ import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import ReleaseNotes from '@/common/components/releaseNotes';
 import Dialogs from './dialogs/dialogs';
 import { pollWhileVisible } from '@/common/utils/poll';
+import HistoryIcon from '@mui/icons-material/History';
+import { useNavigate } from 'react-router';
+import { getHomeUrl, getUpdateHistoryPageUrl } from '@/assets/endpoints/app/appEndpoints';
+import { showLoadingWall } from '@/store/loadingWall/loadingWall.Slice';
 import { updateFailure } from '@/common/utils/errors/boardErrors';
 
 const phaseLabel = (phase: string): string => {
@@ -38,6 +42,7 @@ const phaseLabel = (phase: string): string => {
 
 const Updates = () => {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
     const { latest_release, update_status, loading } = useAppSelector(selectUpdatesState);
     const { frameInfo } = useAppSelector(selectFrameInfoState);
     const { isConnected } = usePiConnection();
@@ -61,6 +66,14 @@ const Updates = () => {
         dispatch(removeLoadingSnackbar(snackbarId));
     };
 
+    // The page follows download and install; once the frame restarts it is gone until it is back.
+    const restarting = update_status?.phase === 'awaiting-reboot' || (updateActive && !isConnected);
+    useEffect(() => {
+        if (restarting) {
+            dispatch(showLoadingWall('Das Update ist installiert. Der Bilderrahmen startet jetzt mit der neuen Version neu. Die Seite lädt von selbst neu, sobald er wieder erreichbar ist.', 10 * 60 * 1000));
+        }
+    }, [restarting, dispatch]);
+
     // Poll the installer state; tighter while an update runs.
     useEffect(() => {
         return pollWhileVisible(() => dispatch(fetchUpdateStatus()), updateActive ? 3000 : 15000);
@@ -79,6 +92,11 @@ const Updates = () => {
                             content: frameInfo?.version
                         },
                     ]}
+                    actions={
+                        <Button startIcon={<HistoryIcon />} onClick={() => navigate(getHomeUrl() + getUpdateHistoryPageUrl())}>
+                            Update-Verlauf
+                        </Button>
+                    }
                 />
 
                 {updateActive && (
@@ -199,7 +217,7 @@ const Updates = () => {
                                 }
                             },
                             {
-                                content: `Version ${update_status.last_result.to_version} konnte nicht gestartet werden — die vorherige Version ${update_status.last_result.from_version} wurde automatisch wiederhergestellt. Details im Update-Verlauf (Verwaltung).`
+                                content: `Version ${update_status.last_result.to_version} konnte nicht gestartet werden — die vorherige Version ${update_status.last_result.from_version} wurde automatisch wiederhergestellt. Details im Update-Verlauf.`
                             }
                         ]}
                     />

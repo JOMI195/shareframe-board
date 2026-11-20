@@ -67,12 +67,24 @@ describe('updates', () => {
     expect(await screen.findByText('Neue Version verfügbar')).toBeInTheDocument();
     expect(screen.getByText('Neue Bildeffekte')).toBeInTheDocument();
 
+    server.use(...withUpdateStatus(makeUpdateStatus({ phase: 'downloading', progress: 10, target_version: '1.3.0' })));
     await user.click(screen.getByRole('button', { name: 'Jetzt installieren' }));
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Installieren' }));
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
-    expect(perform.calls).toHaveLength(1);
-    expect(store.getState().loadingWall.isLoadingWallVisible).toBe(true);
+    // The page follows the download and the install; only the restart hides it.
+    await waitFor(() => expect(perform.calls).toHaveLength(1));
+    expect(await screen.findByRole('progressbar', { name: 'Update-Fortschritt' })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/updates/');
+    expect(store.getState().loadingWall.isLoadingWallVisible).toBe(false);
+  });
+
+  it('covers the page while the frame restarts into the new version', async () => {
+    server.use(...withUpdateStatus(makeUpdateStatus({ phase: 'awaiting-reboot', target_version: '1.3.0' })));
+    const { store } = openUpdates();
+
+    await waitFor(() => expect(store.getState().loadingWall.isLoadingWallVisible).toBe(true));
+    expect(store.getState().loadingWall.message).toMatch(/startet jetzt mit der neuen Version neu/);
+    expect(store.getState().loadingWall.hideAfter! - Date.now()).toBeGreaterThan(5 * 60_000);
   });
 
   it('does not offer a release the board reports as not newer', async () => {
@@ -117,6 +129,14 @@ describe('updates', () => {
 
     expect(await screen.findByText(/^Das Update ist fehlgeschlagen\./)).toBeInTheDocument();
     expect(screen.getByText('Details: something new')).toBeInTheDocument();
+  });
+
+  it('leads to the update history from the overview', async () => {
+    const { user, router } = openUpdates();
+
+    await user.click(await screen.findByRole('button', { name: 'Update-Verlauf' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/update-history/'));
   });
 
   it('explains a rollback', async () => {

@@ -5,8 +5,6 @@ import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '@/s
 import { IServerResponse } from '@/types';
 import { fetchWithTimeout, SLOW_TIMEOUT_MS } from '@/common/utils/fetch';
 import { getLatestReleaseUrl, getPerformUpdateUrl, getUpdateStatusUrl, getUpdateHistoryUrl } from '@/assets/endpoints/api/frame';
-import { showLoadingWall } from '../loadingWall/loadingWall.Slice';
-import { getHomeUrl } from '@/assets/endpoints/app/appEndpoints';
 import { boardErrorMessage } from '@/common/utils/errors/boardErrors';
 
 interface Release {
@@ -77,7 +75,7 @@ export const fetchLatestRelease = createAsyncThunk(
 
 export const performUpdate = createAsyncThunk(
     'updates/performUpdate',
-    async (navigate: (path: string) => void, { dispatch, rejectWithValue }) => {
+    async (_, { dispatch, rejectWithValue }) => {
         const snackbarId = uuid();
         try {
             dispatch(addLoadingSnackbar(snackbarId, "Update wird gestartet"));
@@ -87,8 +85,7 @@ export const performUpdate = createAsyncThunk(
 
             if (payload.success) {
                 dispatch(addAlertSnackbar(uuid(), "Update gestartet", "success"));
-                navigate(getHomeUrl());
-                dispatch(showLoadingWall("Das Update wird installiert. Die Einstellungen sind solange nicht erreichbar und der Bilderrahmen startet danach neu. Lade diese Seite in ein paar Minuten neu."));
+                dispatch(fetchUpdateStatus());
             } else {
                 dispatch(addAlertSnackbar(uuid(), boardErrorMessage("Update konnte nicht gestartet werden", response, payload.message), "error"));
                 return rejectWithValue('Failed start update process');
