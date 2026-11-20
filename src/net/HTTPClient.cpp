@@ -22,6 +22,8 @@ static ix::HttpRequestArgsPtr makeArgs(
 {
     auto args = std::make_shared<ix::HttpRequestArgs>();
     args->connectTimeout = connectTimeout;
+    // Requests carry the frame's token: a redirect must not hand it to another host.
+    args->followRedirects = false;
     args->transferTimeout = transferTimeout;
     for (const auto& [k, v] : headers)
         args->extraHeaders[k] = v;

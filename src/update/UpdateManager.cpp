@@ -20,6 +20,16 @@ std::string readFirstLine(const std::string& path)
     std::getline(f, line);
     return line;
 }
+
+/// "/path?query" of an absolute or root-relative URL.
+std::string urlPath(const std::string& url)
+{
+    const auto scheme = url.find("://");
+    if (scheme == std::string::npos)
+        return url.starts_with('/') ? url : "/" + url;
+    const auto path = url.find('/', scheme + 3);
+    return path == std::string::npos ? "/" : url.substr(path);
+}
 } // namespace
 
 UpdateManager::UpdateManager(const AppConfig& cfg, HTTPClient& http, AuthTokenManager& authTokenManager,
@@ -178,12 +188,14 @@ void UpdateManager::_fail(const std::string& error, const std::string& toVersion
 void UpdateManager::_worker(nlohmann::json release)
 {
     const std::string version = release.value("version", "");
-    const std::string url = release.value("download_url", "");
-    if (url.empty())
+    const std::string announced = release.value("download_url", "");
+    if (announced.empty())
     {
         _fail("Release has no download_url", version);
         return;
     }
+    // Fetched with the frame's token: only the path is taken, the host is always the frame's own server.
+    const std::string url = cfg_.httpBaseUrl() + urlPath(announced);
 
     // staged meta: consumed by shareframe-update-history on commit/rollback
     std::error_code ec;
