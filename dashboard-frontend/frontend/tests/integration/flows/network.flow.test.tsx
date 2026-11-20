@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import * as api from '@/assets/endpoints/api/frame';
-import { card } from '@tests/helpers/card';
+import { card, findCard } from '@tests/helpers/card';
 import { renderRoute } from '@tests/helpers/renderRoute';
 import { signedInState } from '@tests/helpers/preloadedState';
 import { apiUrl, failsWith, ok, server, spyOnRequests, withConnectionMode, withNetworks } from '@tests/mocks';
@@ -28,6 +28,21 @@ describe('network', () => {
     const overview = card('WLAN');
     expect(within(overview).getAllByText('HomeNet')).toHaveLength(2);
     expect(within(overview).getByText('Office')).toBeInTheDocument();
+  });
+
+  it('marks the saved network the frame is on', async () => {
+    await openNetwork();
+
+    const saved = within(card('WLAN')).getAllByRole('listitem');
+    expect(within(saved[0]).getByText('Verbunden')).toBeInTheDocument();
+    expect(within(saved[1]).queryByText('Verbunden')).not.toBeInTheDocument();
+  });
+
+  it('says plainly that the frame is on no network while it hosts its hotspot', async () => {
+    server.use(...withNetworks('', ['HomeNet']), ...withConnectionMode({ mode: 'ap', internet: false, ssid: '' }));
+    renderRoute('/network/', { preloadedState: signedInState() });
+
+    expect(await within(await findCard('WLAN')).findByText('Keins, der Bilderrahmen stellt seinen Hotspot bereit')).toBeInTheDocument();
   });
 
   it('says so when no network is saved', async () => {

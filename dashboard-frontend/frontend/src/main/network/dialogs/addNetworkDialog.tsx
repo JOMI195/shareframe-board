@@ -114,8 +114,8 @@ const AddNetworkDialog = () => {
                     </List>
                 </>
             )}
+            {/* No autofocus: a phone's keyboard would cover the networks in reach. */}
             <TextField
-                autoFocus={inReach.length === 0}
                 margin="dense"
                 id="ssid"
                 label="Netzwerkname (SSID)"

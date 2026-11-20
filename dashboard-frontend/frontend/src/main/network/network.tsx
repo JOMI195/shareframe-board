@@ -5,6 +5,7 @@ import {
     Stack
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import WifiOffIcon from '@mui/icons-material/WifiOff';
 import WifiIcon from '@mui/icons-material/Wifi';
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -34,6 +35,7 @@ const Network = () => {
     const { isConnected } = usePiConnection();
     const { currentConnection, savedNetworks, loading } = useAppSelector(selectNetworkState);
     const { mode, ap_ssid, ap_password } = useAppSelector(selectConnectionMode);
+    const onNoNetwork = mode === 'ap' || !currentConnection;
     const [showApPassword, setShowApPassword] = useState(false);
 
     const isButtonsDisabled = loading || !isConnected;
@@ -73,9 +75,13 @@ const Network = () => {
                                 type: 'reactNode',
                                 value: (
                                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                        <WifiIcon sx={{ mr: 1, color: 'primary.main' }} />
+                                        {onNoNetwork
+                                            ? <WifiOffIcon sx={{ mr: 1, color: 'text.secondary' }} />
+                                            : <WifiIcon sx={{ mr: 1, color: 'primary.main' }} />}
                                         <Typography variant="body2">
-                                            {loading ? <CircularProgress size={12} /> : currentConnection}
+                                            {loading ? <CircularProgress size={12} />
+                                                : onNoNetwork ? (mode === 'ap' ? 'Keins, der Bilderrahmen stellt seinen Hotspot bereit' : 'Keins')
+                                                    : currentConnection}
                                         </Typography>
                                     </Box>
                                 )
@@ -120,7 +126,10 @@ const Network = () => {
                                                                 </IconButton>
                                                             }
                                                         >
-                                                            <ListItemText primary={<Typography variant="body2" noWrap>{network}</Typography>} />
+                                                            <ListItemText
+                                                                primary={<Typography variant="body2" noWrap>{network}</Typography>}
+                                                                secondary={network === currentConnection ? 'Verbunden' : undefined}
+                                                            />
                                                         </ListItem>
                                                     ))}
                                                 </List>
