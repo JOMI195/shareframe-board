@@ -17,12 +17,13 @@ test('shows the current and saved networks but never protected ones', async ({ p
 
 test('adding a network saves it on the board', async ({ page }) => {
   await page.getByRole('button', { name: 'WLAN hinzufügen' }).click();
-  const dialog = page.getByRole('dialog');
-  await dialog.getByLabel(/Netzwerkname/).fill('Garden');
-  await dialog.getByLabel(/^Passwort$/).fill('gardenpass');
-  await dialog.getByRole('button', { name: 'Hinzufügen' }).click();
+  const form = card(page, 'WLAN hinzufügen');
+  await form.getByLabel(/Netzwerkname/).fill('Garden');
+  await form.getByLabel(/^Passwort$/).fill('gardenpass');
+  await form.getByRole('button', { name: 'Hinzufügen' }).click();
 
   await expect(page.getByText('WLAN hinzugefügt')).toBeVisible();
+  await expect(page).toHaveURL(/\/network\/$/);
   await expectSavedNetwork('Garden', 'gardenpass');
   await expect(savedNetworks(page)).toContainText(['Garden']);
 });
@@ -30,12 +31,12 @@ test('adding a network saves it on the board', async ({ page }) => {
 test('an open network is saved without a password, and saving it again replaces it', async ({ page }) => {
   const add = async (secret?: string) => {
     await page.getByRole('button', { name: 'WLAN hinzufügen' }).click();
-    const dialog = page.getByRole('dialog', { name: 'WLAN hinzufügen' });
-    await dialog.getByLabel(/Netzwerkname/).fill('Cafe Open');
-    if (secret) await dialog.getByLabel(/^Passwort$/).fill(secret);
-    else await dialog.getByLabel('Offenes WLAN ohne Passwort').check();
-    await dialog.getByRole('button', { name: 'Hinzufügen' }).click();
-    await expect(dialog).toBeHidden();
+    const form = card(page, 'WLAN hinzufügen');
+    await form.getByLabel(/Netzwerkname/).fill('Cafe Open');
+    if (secret) await form.getByLabel(/^Passwort$/).fill(secret);
+    else await form.getByLabel('Offenes WLAN ohne Passwort').check();
+    await form.getByRole('button', { name: 'Hinzufügen' }).click();
+    await expect(page).toHaveURL(/\/network\/$/);
   };
   const copies = async () => (await savedWifiNetworks()).filter((s) => s === 'Cafe Open').length;
 
@@ -72,10 +73,10 @@ test('the hotspot password can be revealed and changed', async ({ page }) => {
   await expect(ap.getByText('hotspot123')).toBeVisible();
 
   await page.getByRole('button', { name: 'Hotspot-Passwort ändern' }).click();
-  const dialog = page.getByRole('dialog');
-  await dialog.getByLabel(/^Neues Hotspot-Passwort$/).fill('newhotspot');
-  await dialog.getByLabel(/Hotspot-Passwort bestätigen/).fill('newhotspot');
-  await dialog.getByRole('button', { name: 'Passwort ändern' }).click();
+  const form = page.getByRole('dialog');
+  await form.getByLabel(/^Neues Hotspot-Passwort$/).fill('newhotspot');
+  await form.getByLabel(/Hotspot-Passwort bestätigen/).fill('newhotspot');
+  await form.getByRole('button', { name: 'Passwort ändern' }).click();
 
   await expect(page.getByText('Hotspot-Passwort geändert')).toBeVisible();
   await expect.poll(apConf, { message: 'new password stored for the hotspot' }).toContain("AP_PASS='newhotspot'");
@@ -83,10 +84,10 @@ test('the hotspot password can be revealed and changed', async ({ page }) => {
 
 test('a network named with accents is shown and forgotten by that name', async ({ page }) => {
   await page.getByRole('button', { name: 'WLAN hinzufügen' }).click();
-  const dialog = page.getByRole('dialog');
-  await dialog.getByLabel(/Netzwerkname/).fill('Café Wi-Fi');
-  await dialog.getByLabel(/^Passwort$/).fill('cafepass1');
-  await dialog.getByRole('button', { name: 'Hinzufügen' }).click();
+  const form = card(page, 'WLAN hinzufügen');
+  await form.getByLabel(/Netzwerkname/).fill('Café Wi-Fi');
+  await form.getByLabel(/^Passwort$/).fill('cafepass1');
+  await form.getByRole('button', { name: 'Hinzufügen' }).click();
   await expectSavedNetwork('Café Wi-Fi', 'cafepass1');
   await expect(savedNetworks(page)).toContainText(['Café Wi-Fi']);
 

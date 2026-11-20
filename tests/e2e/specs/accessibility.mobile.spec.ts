@@ -12,8 +12,8 @@ const violationsOn = async (page: Page) => {
 };
 
 const appPages = [
-  '/', '/slideshow/', '/customization/', '/network/', '/updates/',
-  '/services/', '/services/display', '/general/', '/display-health/', '/update-history/', '/logs/',
+  '/', '/slideshow/', '/customization/', '/network/', '/network/add/', '/updates/',
+  '/services/', '/services/display', '/general/', '/general/factory-reset/', '/display-health/', '/update-history/', '/logs/',
 ];
 
 for (const colorScheme of ['light', 'dark'] as const) {
@@ -31,8 +31,13 @@ for (const colorScheme of ['light', 'dark'] as const) {
       expect(await violationsOn(page)).toEqual([]);
     });
 
+    test('the forgotten-password page passes WCAG AA', async ({ page }) => {
+      await page.goto('/auth/forgot-password');
+      await expect(page.getByRole('heading', { level: 1, name: 'Passwort vergessen?' })).toBeVisible();
+      expect(await violationsOn(page)).toEqual([]);
+    });
+
     test('every app page passes WCAG AA', async ({ page }) => {
-      // Every full load shows the 3 s start screen first.
       test.setTimeout(appPages.length * 12_000);
       await signIn(page);
       for (const path of appPages) {

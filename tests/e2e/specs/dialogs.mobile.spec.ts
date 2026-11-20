@@ -49,16 +49,14 @@ test('questions open as a compact dialog from the side menu', async ({ page }) =
   await expect(confirm).toBeHidden();
 });
 
-test('Enter on the keyboard submits a form dialog', async ({ page }) => {
+test('Enter on the keyboard submits a form page', async ({ page }) => {
   await signIn(page);
-  await page.goto('/network/');
-  await page.getByRole('button', { name: 'WLAN hinzufügen' }).click();
-  const dialog = page.getByRole('dialog', { name: 'WLAN hinzufügen' });
+  await page.goto('/network/add/');
 
-  await dialog.getByLabel(/Netzwerkname/).fill('Garden');
-  await dialog.getByLabel(/^Passwort$/).fill('gardenpass');
-  await dialog.getByLabel(/^Passwort$/).press('Enter');
+  await page.getByLabel(/Netzwerkname/).fill('Garden');
+  await page.getByLabel(/^Passwort$/).fill('gardenpass');
+  await page.getByLabel(/^Passwort$/).press('Enter');
 
   await expectSavedNetwork('Garden', 'gardenpass');
-  await expect(dialog).toBeHidden();
+  await expect(page).toHaveURL(/\/network\/$/);
 });

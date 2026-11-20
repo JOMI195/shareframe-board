@@ -31,7 +31,7 @@ test('on the hotspot a new network is saved and tried in one step', async ({ pag
   await signInOnHotspot(page);
 
   await page.getByRole('button', { name: 'WLAN hinzufügen' }).click();
-  const add = page.getByRole('dialog');
+  const add = card(page, 'WLAN hinzufügen');
   await expect(add.getByText('http://shareframe-board-0e2e.local')).toBeVisible();
   await add.getByLabel(/Netzwerkname/).fill('HomeNet');
   await add.getByLabel(/^Passwort$/).fill('homepass1');
@@ -100,25 +100,25 @@ test('a forgotten password resets the frame with the code from its panel', async
   expect(await factoryResetScheduled()).toBe(false);
 
   await page.goto('/auth/sign-in');
-  await page.getByRole('button', { name: 'Passwort vergessen?' }).click();
-  await page.getByRole('dialog', { name: 'Passwort vergessen?' }).getByRole('button', { name: 'Zurücksetzen' }).click();
+  await page.getByRole('link', { name: 'Passwort vergessen?' }).click();
+  await expect(page).toHaveURL(/\/auth\/forgot-password$/);
+  await page.getByRole('button', { name: 'Code auf dem Bilderrahmen anzeigen' }).click();
   const code = codeOn(await waitForPanel(showsStatus('reset_code'), 'reset code on the panel'));
 
-  const entry = page.getByRole('dialog', { name: 'Code vom Bilderrahmen eingeben' });
-  await entry.getByLabel('Code').fill(code);
-  await entry.getByRole('button', { name: 'Endgültig zurücksetzen' }).click();
+  await page.getByLabel('Code').fill(code);
+  await page.getByRole('button', { name: 'Endgültig zurücksetzen' }).click();
   await expect.poll(factoryResetScheduled, { message: 'wipe marked for the next boot' }).toBe(true);
   await waitForPanel(showsStatus('factory_reset'), 'factory reset status screen');
 });
 
 test('a reset code taken back leaves the panel to the photos', async ({ page }) => {
   await signIn(page);
-  await page.goto('/general/');
-  await page.getByRole('button', { name: 'Zurücksetzen' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Zurücksetzen' }).click();
+  await page.goto('/general/factory-reset/');
+  await page.getByRole('button', { name: 'Code auf dem Bilderrahmen anzeigen' }).click();
   await waitForPanel(showsStatus('reset_code'), 'reset code on the panel');
 
-  await page.getByRole('dialog', { name: 'Code vom Bilderrahmen eingeben' }).getByRole('button', { name: 'Schließen' }).click();
+  // Leaving the page any way takes the code back, here through the menu.
+  await page.goto('/');
   await waitForPanel(showsDefault, 'slideshow back after the code was taken back');
   expect(await factoryResetScheduled()).toBe(false);
 });

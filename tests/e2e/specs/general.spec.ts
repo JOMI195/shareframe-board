@@ -57,11 +57,11 @@ test('factory reset from the general page needs the code from the panel, also wh
   await signIn(page);
   await page.goto('/general/');
   await page.getByRole('button', { name: 'Zurücksetzen' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Zurücksetzen' }).click();
+  await expect(page).toHaveURL(/\/general\/factory-reset\/$/);
+  await page.getByRole('button', { name: 'Code auf dem Bilderrahmen anzeigen' }).click();
   const code = codeOn(await waitForPanel(showsStatus('reset_code'), 'reset code on the panel'));
-  const entry = page.getByRole('dialog', { name: 'Code vom Bilderrahmen eingeben' });
-  await entry.getByLabel('Code').fill(code);
-  await entry.getByRole('button', { name: 'Endgültig zurücksetzen' }).click();
+  await page.getByLabel('Code').fill(code);
+  await page.getByRole('button', { name: 'Endgültig zurücksetzen' }).click();
   await expect.poll(factoryResetScheduled, { message: 'wipe marked for the next boot' }).toBe(true);
   await expectShimCall('reboot');
 });
