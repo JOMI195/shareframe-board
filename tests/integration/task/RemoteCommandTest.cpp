@@ -150,6 +150,16 @@ TEST_F(RemoteCommandTest, RejectsCommandsOutsideTheAllowlist)
     EXPECT_EQ(calledTools().find("reboot \n"), std::string::npos);
 }
 
+TEST_F(RemoteCommandTest, AMalformedCommandIsDroppedAndTheNextOneStillRuns)
+{
+    bus.publish<Topic::REMOTE_COMMAND>({{"type", "command"}, {"id", "x"}, {"command", "reboot"}});
+    bus.publish<Topic::REMOTE_COMMAND>({{"type", "command"}, {"id", 1}, {"command", 5}});
+    bus.publish<Topic::REMOTE_COMMAND>({{"type", "command"}, {"id", 2}, {"command", "reboot"}, {"expires_at", "soon"}});
+    send("shell", "", 3);
+    ASSERT_TRUE(waitStatuses({"rejected:malformed command", "rejected:malformed command", "rejected:unknown command"}));
+    EXPECT_EQ(calledTools().find("reboot \n"), std::string::npos);
+}
+
 TEST_F(RemoteCommandTest, RejectsExpiredCommands)
 {
     send("reboot", "", 1, -1);

@@ -128,6 +128,9 @@ TEST_F(WebsocketClientTest, ServerMessagesAreRoutedByType)
     connect();
 
     server.sendToAll("not json");
+    server.sendToAll("[1,2]");
+    server.sendToAll("5");
+    server.sendToAll(R"({"type":7})");
     server.sendToAll(R"({"no_type":1})");
     server.sendToAll(R"({"type":"something_new"})");
     server.sendToAll(R"({"type":"picture","sent_image_id":1})");

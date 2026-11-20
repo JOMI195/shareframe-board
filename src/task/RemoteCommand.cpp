@@ -60,14 +60,26 @@ void RemoteCommand::_run(std::stop_token st)
 
 void RemoteCommand::_handle(const nlohmann::json& msg, const std::stop_token& st)
 {
-    const Request request{msg.value("id", int64_t{0}), msg.value("command", std::string{}),
-                          msg.value("arg", std::string{})};
+    Request request;
+    int64_t expiresAt = 0;
+    try
+    {
+        request = {msg.value("id", int64_t{0}), msg.value("command", std::string{}), msg.value("arg", std::string{})};
+        expiresAt = msg.value("expires_at", int64_t{0});
+    }
+    catch (const nlohmann::json::exception& e)
+    {
+        logger_->warn("Dropping malformed remote command: {}", e.what());
+        if (const auto id = msg.find("id"); id != msg.end() && id->is_number_integer())
+            _reject({id->get<int64_t>(), {}, {}}, "malformed command");
+        return;
+    }
     logger_->info("Remote command #{} {} {}", request.id, request.name, request.arg);
 
     const auto command = remote::commandFromString(request.name);
     const auto now = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
-    if (const auto reason = remote::refusal(command, request.id, request.arg, now, msg.value("expires_at", int64_t{0})))
+    if (const auto reason = remote::refusal(command, request.id, request.arg, now, expiresAt))
         return _reject(request, std::string(*reason));
     if (!_passesGates(request, *command, st))
         return;

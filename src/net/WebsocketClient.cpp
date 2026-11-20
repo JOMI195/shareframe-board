@@ -86,6 +86,11 @@ void WebsocketClient::_processMessage(const std::string& text) const
     {
         const auto json = nlohmann::json::parse(text);
         logger_->debug("WS recv: {}", logging::summarizePayloadForLog(text, "WS recv"));
+        if (!json.is_object())
+        {
+            logger_->warn("Received a message that is not an object: {}", logging::summarizePayloadForLog(text, "WS recv"));
+            return;
+        }
 
         auto type = json.value("type", "");
         if (type.empty())
@@ -123,6 +128,10 @@ void WebsocketClient::_processMessage(const std::string& text) const
     catch (const nlohmann::json::parse_error&)
     {
         logger_->warn("Received non-JSON message: {}", logging::summarizePayloadForLog(text, "non-JSON"));
+    }
+    catch (const nlohmann::json::exception& e)
+    {
+        logger_->warn("Received malformed message ({}): {}", e.what(), logging::summarizePayloadForLog(text, "WS recv"));
     }
 }
 
