@@ -6,7 +6,9 @@
 #include "support/TestDb.hpp"
 #include "support/TokenStore.hpp"
 #include "update/UpdateIpc.hpp"
+#include <chrono>
 #include <gtest/gtest.h>
+#include <thread>
 
 // Dashboard HTTP handler → nng → update service → Shareframe server, for every update route.
 namespace
@@ -35,7 +37,7 @@ protected:
     UpdateManager updates{cfg, http, auth, displayIpc};
     UpdateIpc updateIpc{updates};
     std::string url = "ipc://" + (db.dir() / "update.sock").string();
-    NngRepServer server{url, [this](const IpcMessage& m) { return updateIpc.handle(m); }};
+    NngRepServer server{url, [this](const IpcMessage& m) { return updateIpc.handle(m); }, 2};
     IpcClient ipc{url};
     UpdateHandlers handlers{ipc};
 };
@@ -109,4 +111,23 @@ TEST_F(DashboardUpdateTest, UnreachableUpdateServiceIsReported)
 {
     server.stop();
     EXPECT_EQ(result(handlers.handleStatus(httpRequest("GET", "/"))).status, 503);
+}
+
+// The dashboard polls the status every few seconds; a slow update server must not stall it.
+TEST_F(DashboardUpdateTest, StatusAnswersWhileAnInstallWaitsOnTheUpdateServer)
+{
+    using namespace std::chrono_literals;
+    backend.during(std::string("GET ") + kLatest, [] { std::this_thread::sleep_for(3s); });
+    backend.on(std::string("GET ") + kLatest, 200, R"({"version":"0.0.1"})");
+    IpcClient installer{url};
+    std::thread install([&] { installer.sendAndReceive({IpcMessageType::UpdatePerform, {}}, 10000ms); });
+    std::this_thread::sleep_for(500ms);
+
+    const auto start = std::chrono::steady_clock::now();
+    const auto [status, body] = result(handlers.handleStatus(httpRequest("GET", "/")));
+    const auto took = std::chrono::steady_clock::now() - start;
+    install.join();
+
+    EXPECT_EQ(status, 200) << body.dump();
+    EXPECT_LT(took, 1500ms);
 }

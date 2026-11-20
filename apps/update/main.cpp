@@ -33,7 +33,8 @@ int main(int argc, char* argv[])
 
     // REP server: dashboard proxies its /api/system/updates/* routes here.
     UpdateIpc updateIpc(updates);
-    NngRepServer repServer(cfg.ipc.updateRep, [&](const IpcMessage& msg) { return updateIpc.handle(msg); });
+    // Two workers: a release check waiting on the server leaves the other free for status and health.
+    NngRepServer repServer(cfg.ipc.updateRep, [&](const IpcMessage& msg) { return updateIpc.handle(msg); }, 2);
     repServer.start();
 
     int sig = waitForSignal();

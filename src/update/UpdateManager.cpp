@@ -142,19 +142,25 @@ std::string UpdateManager::_committedSlot() const
 
 bool UpdateManager::startUpdate(std::string& error)
 {
-    std::lock_guard lock(mutex_);
-    if (isBusy(phase_.state()))
     {
-        error = "Update already in progress";
-        return false;
-    }
-    if (!_pendingSlot().empty())
-    {
-        error = "Previous update awaits confirmation; reboot or wait first";
-        return false;
+        std::lock_guard lock(mutex_);
+        if (isBusy(phase_.state()) || starting_)
+        {
+            error = "Update already in progress";
+            return false;
+        }
+        if (!_pendingSlot().empty())
+        {
+            error = "Previous update awaits confirmation; reboot or wait first";
+            return false;
+        }
+        starting_ = true;
     }
 
+    // Unlocked: the status stays readable while the update server takes its time.
     auto release = _latestReleaseJson();
+    std::lock_guard lock(mutex_);
+    starting_ = false;
     if (!release)
     {
         error = "Failed to fetch latest release from server";
