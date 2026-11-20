@@ -87,15 +87,18 @@ export const displayCustomizationSlice = createSlice({
         builder.addCase(fetchDisplayCustomization.rejected, (state) => {
             state.isFetching = false;
         });
-        builder.addCase(updateShowSender.pending, (state) => {
+        // The switch follows the tap at once and goes back if the board refuses.
+        builder.addCase(updateShowSender.pending, (state, action) => {
             state.isUpdating = true;
+            state.showSender = action.meta.arg;
         });
         builder.addCase(updateShowSender.fulfilled, (state, action) => {
             state.isUpdating = false;
             state.showSender = action.payload;
         });
-        builder.addCase(updateShowSender.rejected, (state) => {
+        builder.addCase(updateShowSender.rejected, (state, action) => {
             state.isUpdating = false;
+            state.showSender = !action.meta.arg;
         });
     }
 });
