@@ -145,7 +145,8 @@ test('a frame nobody owns asks to be registered until the owner does', async ({ 
   await server.unregistered(true);
   await board.restartService('websocket');
 
-  await waitForPanel(showsRegistration, 'registration screen', 30_000);
+  const panel = await waitForPanel(showsRegistration, 'registration screen', 30_000);
+  expect(panel.text, 'the dashboard address for settings before claiming').toContain('Einstellungen: http://shareframe-board-0e2e.local');
   await attachPanel(testInfo, 'registration');
   const frame = await Frame.read();
   expect(frame.blackRatio(82, 44, 382, 436), 'QR code').toBeGreaterThan(0.2);

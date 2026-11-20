@@ -32,6 +32,12 @@ test('a one-time code is verified against the server', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 2, name: 'Diashow' })).toBeVisible();
 });
 
+test('"Öffnen" on shareframe.de signs in with the code in the link and leaves no code in the address', async ({ page }) => {
+  await page.goto('/auth/sign-in#otp=123456');
+  await expect(page.getByRole('heading', { level: 2, name: 'Diashow' })).toBeVisible();
+  expect(new URL(page.url()).hash).toBe('');
+});
+
 test('an invalid one-time code is rejected by the server', async ({ page }) => {
   await page.goto('/auth/sign-in');
   await page.getByRole('textbox', { name: 'Einmal-Code', exact: true }).fill('000000');

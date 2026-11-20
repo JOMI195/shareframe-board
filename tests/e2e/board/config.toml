@@ -30,6 +30,8 @@ interval_secs = 900
 min_refresh_secs = 1
 loading_image_path = "/usr/share/shareframe/assets/image/loading"
 default_images_path = "/usr/share/shareframe/assets/image/default"
+wifi_joined_path = "/data/wifi-joined"
+registered_once_path = "/data/registered-once"
 setup_font_path = "/usr/share/shareframe/assets/font/DejaVuSans.ttf"
 bold_font_path = "/usr/share/shareframe/assets/font/DejaVuSans-Bold.ttf"
 # The shims never reboot, so the status screen has to give way for the next test.
