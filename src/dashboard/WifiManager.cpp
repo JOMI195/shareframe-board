@@ -98,7 +98,7 @@ nlohmann::json WifiManager::connect(const std::string& ssid, const std::string& 
         return {{"error", "Failed to add WiFi network"}};
     }
 
-    logger_->info("Added WiFi network: {}", ssid);
+    logger_->info("Saved a WiFi network");
     return {{"message", "Saved " + ssid}};
 }
 
@@ -167,7 +167,7 @@ nlohmann::json WifiManager::forget(const std::string& ssid) const
         return {{"error", "Failed to delete network"}};
     }
 
-    logger_->info("Forgot WiFi: {}", ssid);
+    logger_->info("Forgot a WiFi network");
     return {{"message", "Connection deleted"}};
 }
 

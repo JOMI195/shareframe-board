@@ -55,7 +55,7 @@ void ApNetworkSetupScreen::_run(const std::stop_token st)
                                                                      !code.empty());
             shown = display_.displayBuffer(buffer, "ap-setup", st, policy, text);
             if (shown)
-                logger_->info("Showing Wi-Fi setup screen for AP {}", ssid);
+                logger_->info("Showing Wi-Fi setup screen");
             else if (!st.stop_requested())
                 logger_->error("Failed to show Wi-Fi setup screen");
         }
