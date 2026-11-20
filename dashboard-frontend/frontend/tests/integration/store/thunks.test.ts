@@ -52,7 +52,7 @@ describe('session check', () => {
 
   it('signs out when the board does not answer', async () => {
     server.use(...unreachable('get', api.getAuthStatusUrl()));
-    const store = boardStore({ auth: { isAuthenticated: true, isLoading: false, error: null } });
+    const store = boardStore({ auth: { isAuthenticated: true, passwordChangeNeedsCurrent: true, isLoading: false, error: null } });
 
     await store.dispatch(checkAuthStatusThunk());
 

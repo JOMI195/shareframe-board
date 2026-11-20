@@ -6,7 +6,7 @@ import FormDialog from '@/common/components/formDialog';
 import { usePiConnection } from '@/context/piConnection/piConnectionContextValue';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { closeGeneralChangePasswordDialog, getDialogs } from '@/store/dialogs/dialogs.Slice';
-import { changePasswordThunk } from '@/store/auth/auth.Slice';
+import { changePasswordThunk, selectAuth } from '@/store/auth/auth.Slice';
 
 const MIN_PASSWORD_LENGTH = 8;
 const MAX_PASSWORD_LENGTH = 63;
@@ -15,6 +15,8 @@ const ChangePasswordDialog: React.FC = () => {
     const dispatch = useAppDispatch();
     const { isConnected } = usePiConnection();
     const { open } = useAppSelector(getDialogs).general.changePassword;
+    // After the panel's setup code or a one-time code the owner is already proven: no old password asked.
+    const { passwordChangeNeedsCurrent: needsCurrent } = useAppSelector(selectAuth);
 
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -25,7 +27,7 @@ const ChangePasswordDialog: React.FC = () => {
     const newPasswordTooShort = newPassword.length > 0 && newPassword.length < MIN_PASSWORD_LENGTH;
     const newPasswordTooLong = newPassword.length > MAX_PASSWORD_LENGTH;
     const passwordsMismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
-    const canSubmit = currentPassword.length > 0
+    const canSubmit = (!needsCurrent || currentPassword.length > 0)
         && newPassword.length >= MIN_PASSWORD_LENGTH
         && newPassword.length <= MAX_PASSWORD_LENGTH
         && newPassword === confirmPassword
@@ -47,7 +49,7 @@ const ChangePasswordDialog: React.FC = () => {
     const handleSubmit = async (): Promise<void> => {
         setSubmitting(true);
         try {
-            await dispatch(changePasswordThunk({ currentPassword, newPassword })).unwrap();
+            await dispatch(changePasswordThunk(needsCurrent ? { currentPassword, newPassword } : { newPassword })).unwrap();
             dispatch(closeGeneralChangePasswordDialog());
             resetFields();
         } catch {
@@ -82,19 +84,23 @@ const ChangePasswordDialog: React.FC = () => {
         >
             <Typography variant="body2" sx={{ color: "text.secondary" }}>
                 Mit diesem Passwort meldest du dich auch ohne Internet in den Einstellungen an.
+                {!needsCurrent && " Du hast dich mit einem Code angemeldet, deshalb ist das bisherige Passwort nicht nötig."}
             </Typography>
+            {needsCurrent && (
+                <TextField
+                    autoFocus
+                    margin="dense"
+                    label="Aktuelles Passwort"
+                    type={showPasswords ? "text" : "password"}
+                    autoComplete="current-password"
+                    fullWidth
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    slotProps={{ input: { endAdornment: visibilityAdornment } }}
+                />
+            )}
             <TextField
-                autoFocus
-                margin="dense"
-                label="Aktuelles Passwort"
-                type={showPasswords ? "text" : "password"}
-                autoComplete="current-password"
-                fullWidth
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                slotProps={{ input: { endAdornment: visibilityAdornment } }}
-            />
-            <TextField
+                autoFocus={!needsCurrent}
                 margin="dense"
                 label="Neues Passwort"
                 type={showPasswords ? "text" : "password"}

@@ -124,7 +124,7 @@ describe('network status banner', () => {
     [{ mode: 'connecting' as const, ssid: 'HomeNet' }, 'Verbindet …', 'Verbindung zu „HomeNet“ wird hergestellt.'],
     [{ mode: 'connecting' as const, ssid: '' }, 'Verbindet …', 'Suche nach bekannten Netzwerken.'],
     [{ mode: 'connected' as const, internet: false }, 'Kein Internet', 'Mit „HomeNet“ verbunden, aber keine Internetverbindung.'],
-    [{ mode: 'ap' as const, ap_ssid: 'sf-1', ap_password: 'pw123456' }, 'Hotspot aktiv', /WLAN „sf-1“ · Passwort: pw123456\. Füge unter „Netzwerk“/],
+    [{ mode: 'ap' as const, ap_ssid: 'sf-1', ap_password: 'pw123456' }, 'Hotspot aktiv', /^Der Bilderrahmen stellt den Hotspot „sf-1“ bereit\. Füge unter „Netzwerk“/],
   ])('explains %o', async (mode, title, detail) => {
     server.use(...withConnectionMode(mode));
     renderRoute('/', { preloadedState: signedInState() });
@@ -158,6 +158,20 @@ describe('network status banner', () => {
     renderRoute('/', { preloadedState: signedInState() });
     await screen.findByRole('heading', { level: 2, name: 'Diashow' });
 
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+});
+
+describe('hotspot notice', () => {
+  it('keeps the hotspot password off the notice and leaves the network page to its own card', async () => {
+    server.use(...withConnectionMode({ mode: 'ap', internet: false, ap_ssid: 'sf-1', ap_password: 'pw123456' }));
+    const { router } = renderRoute('/', { preloadedState: signedInState() });
+
+    const notice = await screen.findByRole('status');
+    expect(notice).not.toHaveTextContent('pw123456');
+
+    await router.navigate('/network/');
+    await screen.findByRole('heading', { level: 2, name: 'WLAN einrichten' });
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 });

@@ -13,7 +13,7 @@ const HotspotCard = () => {
     const dispatch = useAppDispatch();
     const { isConnected } = usePiConnection();
     const { savedNetworks, loading, connectRequestedAt } = useAppSelector(selectNetworkState);
-    const { ap_ssid, last_failed_secs_ago, last_failed_at } = useAppSelector(selectConnectionMode);
+    const { ap_ssid, hostname, last_failed_secs_ago, last_failed_at } = useAppSelector(selectConnectionMode);
 
     const failedSinceRequest = connectRequestedAt !== null && last_failed_at !== null && last_failed_at >= connectRequestedAt;
     const connecting = connectRequestedAt !== null && !failedSinceRequest;
@@ -36,7 +36,7 @@ const HotspotCard = () => {
                                     <Alert severity="info">
                                         Der Rahmen verbindet sich. Der Hotspot ist dabei aus, diese Seite
                                         verliert die Verbindung. Danach erreichst du ihn in deinem WLAN unter{' '}
-                                        <b>{boardAddress(ap_ssid)}</b>. Klappt es nicht, ist der Hotspot nach
+                                        <b>{boardAddress(hostname, ap_ssid)}</b>. Klappt es nicht, ist der Hotspot nach
                                         etwa einer Minute wieder da.
                                     </Alert>
                                 ) : last_failed_secs_ago !== null && (

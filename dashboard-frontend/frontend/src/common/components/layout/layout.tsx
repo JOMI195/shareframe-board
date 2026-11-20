@@ -104,7 +104,6 @@ const MainLayout = () => {
             </Link>
             <NavigationProgress />
             <TopAppbar />
-            <NetworkStatusBanner />
             <Sidebar />
             <PowerDialogs />
             <Box
@@ -136,6 +135,7 @@ const MainLayout = () => {
                     }}
                 >
                     {pageTitle && <HiddenPageTitle>{pageTitle}</HiddenPageTitle>}
+                    <NetworkStatusBanner />
                     <Outlet />
                 </Container>
             </Box>

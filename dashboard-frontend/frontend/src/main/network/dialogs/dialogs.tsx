@@ -35,7 +35,7 @@ const Dialogs: React.FC = () => {
     const dispatch = useAppDispatch();
     const { isConnected } = usePiConnection();
     const { loading } = useAppSelector(selectNetworkState);
-    const { mode, ap_ssid } = useAppSelector(selectConnectionMode);
+    const { mode, ap_ssid, hostname } = useAppSelector(selectConnectionMode);
     const dialogs = useAppSelector(getDialogs).network;
 
     const [newNetwork, setNewNetwork] = useState<NetworkCredentials>({ ssid: '', password: '' });
@@ -197,7 +197,7 @@ const Dialogs: React.FC = () => {
                 </DialogContentText>
                 <DialogContentText variant="body2">
                     Klappt es, verbinde dein Gerät wieder mit deinem WLAN und öffne{' '}
-                    <b>{boardAddress(ap_ssid)}</b>. Klappt es nicht, erscheint der Hotspot wieder.
+                    <b>{boardAddress(hostname, ap_ssid)}</b>. Klappt es nicht, erscheint der Hotspot wieder.
                     Verbinde dich erneut damit und prüfe die Zugangsdaten.
                 </DialogContentText>
             </ConfirmDialog>

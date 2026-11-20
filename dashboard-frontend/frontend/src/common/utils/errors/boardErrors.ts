@@ -16,6 +16,13 @@ const KNOWN_MESSAGES: Record<string, string> = {
     'Picture file missing': 'Das Foto ist nicht mehr auf dem Bilderrahmen.',
     'Dashboard service unavailable': 'Der Bilderrahmen startet seine Einstellungen gerade neu. Versuche es gleich noch einmal.',
     'Dashboard service timed out': 'Der Bilderrahmen antwortet gerade nicht. Versuche es gleich noch einmal.',
+    'Setup code invalid': 'Der Einrichtungscode stimmt nicht. Er steht auf dem Bildschirm des Bilderrahmens.',
+    'An update is running': 'Während ein Update installiert wird, geht das nicht.',
+    'The new version is not confirmed yet': 'Der Bilderrahmen prüft gerade ein Update. Versuche es in ein paar Minuten erneut.',
+    'Screen unavailable': 'Der Bildschirm des Bilderrahmens ist gerade aus, deshalb kann dort kein Code erscheinen.',
+    'Too many reset codes': 'Zu viele Codes angefordert. Versuche es in einer Stunde erneut.',
+    'No reset code requested': 'Der Code ist abgelaufen. Fordere einen neuen an.',
+    'Cross-origin request refused': 'Diese Anfrage kam nicht von den Einstellungen des Bilderrahmens.',
 };
 
 export const OFFLINE_MESSAGE = 'Du bist offline. Prüfe die WLAN-Verbindung deines Geräts.';

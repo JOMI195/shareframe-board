@@ -14,6 +14,8 @@ export interface ConnectionModeState {
     internet: boolean;
     ap_ssid: string;
     ap_password: string;
+    // The board's mDNS name (shareframe-board-XXXX), how to find it on the home network.
+    hostname: string;
     // null while the board can't tell; server_last_contact_at is unix seconds, 0 = never connected.
     server_connected: boolean | null;
     server_offline_secs: number;
@@ -31,6 +33,7 @@ const initialState: ConnectionModeState = {
     internet: false,
     ap_ssid: '',
     ap_password: '',
+    hostname: '',
     server_connected: null,
     server_offline_secs: 0,
     server_last_contact_at: 0,
@@ -68,6 +71,7 @@ export const connectionModeSlice = createSlice({
             state.internet = !!d.internet;
             state.ap_ssid = d.ap_ssid ?? '';
             state.ap_password = d.ap_password ?? '';
+            state.hostname = d.hostname ?? '';
             state.server_connected = d.server_connected ?? null;
             state.server_offline_secs = d.server_offline_secs ?? 0;
             state.server_last_contact_at = d.server_last_contact_at ?? 0;

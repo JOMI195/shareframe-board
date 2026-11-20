@@ -4,7 +4,8 @@ import uuid from 'react-uuid';
 import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '@/store/snackbars/snackbars.Slice';
 import { IServerResponse } from '@/types';
 import { fetchWithTimeout } from '@/common/utils/fetch';
-import { getClearDisplayUrl, getFactoryResetUrl, getRestartPiUrl, getShutdownPiUrl, getSystemHealthUrl } from '@/assets/endpoints/api/frame';
+import { getClearDisplayUrl, getFactoryResetCancelUrl, getFactoryResetCodeUrl, getFactoryResetUrl, getRestartPiUrl, getShutdownPiUrl, getSystemHealthUrl } from '@/assets/endpoints/api/frame';
+import { boardErrorMessage, unreachableMessage } from '@/common/utils/errors/boardErrors';
 import { showLoadingWall } from '../loadingWall/loadingWall.Slice';
 import { getHomeUrl } from '@/assets/endpoints/app/appEndpoints';
 
@@ -128,17 +129,59 @@ export const shutdownPi = createAsyncThunk<void, (path: string) => void, { state
     }
 );
 
-export const factoryResetPi = createAsyncThunk<void, (path: string) => void, { state: RootState, dispatch: AppDispatch }>(
+export type ResetCodeShown = { expiresInSecs: number; showsInSecs: number };
+
+// The board paints a reset code on the frame; whoever reads it there may reset.
+export const requestResetCode = createAsyncThunk<ResetCodeShown, void, { dispatch: AppDispatch }>(
+    'piPower/requestResetCode',
+    async (_, { dispatch, rejectWithValue }) => {
+        try {
+            const response = await fetchWithTimeout(getFactoryResetCodeUrl(), { method: 'POST' }, 15000);
+            const payload: IServerResponse = await response.json();
+            if (payload.success) {
+                const data = (payload.data ?? {}) as { expires_in_secs?: number; shows_in_secs?: number };
+                return { expiresInSecs: data.expires_in_secs ?? 300, showsInSecs: data.shows_in_secs ?? 0 };
+            }
+            dispatch(addAlertSnackbar(uuid(), boardErrorMessage('Es kann gerade kein Code angezeigt werden', response, payload.message), 'error'));
+            return rejectWithValue(payload.message);
+        } catch {
+            dispatch(addAlertSnackbar(uuid(), unreachableMessage(), 'error'));
+            return rejectWithValue('unreachable');
+        }
+    }
+);
+
+// Takes the code back from the panel; keepalive so it still goes out while the page closes.
+export const cancelResetCode = () => {
+    fetchWithTimeout(getFactoryResetCancelUrl(), { method: 'POST', keepalive: true }, 5000).catch(() => undefined);
+};
+
+export type ResetRefusal = { triesLeft?: number };
+
+export const factoryResetPi = createAsyncThunk<void, { navigate: (path: string) => void; code: string }, { state: RootState, dispatch: AppDispatch, rejectValue: ResetRefusal }>(
     'piPower/factoryResetPi',
-    async (navigate, { dispatch, rejectWithValue }) => {
+    async ({ navigate, code }, { dispatch, rejectWithValue }) => {
         const snackbarId = uuid();
         try {
             dispatch(addLoadingSnackbar(snackbarId, "Bilderrahmen wird zurückgesetzt"));
 
-            const result = await sendPowerCommand(getFactoryResetUrl());
-            if (result === 'rejected') {
-                dispatch(addAlertSnackbar(uuid(), "Bilderrahmen konnte nicht zurückgesetzt werden", "error"));
-                return rejectWithValue('Zurücksetzen fehlgeschlagen');
+            try {
+                const response = await fetchWithTimeout(getFactoryResetUrl(), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code }),
+                }, 8000);
+                const payload: IServerResponse = await response.json();
+                if (!payload.success) {
+                    if (response.status === 403) {
+                        const data = (payload.data ?? {}) as { tries_left?: number };
+                        return rejectWithValue({ triesLeft: data.tries_left ?? 0 });
+                    }
+                    dispatch(addAlertSnackbar(uuid(), boardErrorMessage("Bilderrahmen konnte nicht zurückgesetzt werden", response, payload.message), "error"));
+                    return rejectWithValue({});
+                }
+            } catch {
+                // The reset tears the server down, so no answer is the happy path.
             }
 
             navigate(getHomeUrl());
@@ -148,10 +191,9 @@ export const factoryResetPi = createAsyncThunk<void, (path: string) => void, { s
             // back to this dashboard; don't wait for it.
             await pollHealth('down', { maxWaitMs: 120000, consecutive: 2 });
             dispatch(showLoadingWall("Der Bilderrahmen ist auf Werkseinstellungen zurückgesetzt und startet im Einrichtungsmodus. Verbinde dich mit seinem Hotspot, um ihn neu einzurichten."));
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        } catch {
             dispatch(addAlertSnackbar(uuid(), "Bilderrahmen konnte nicht zurückgesetzt werden", "error"));
-            return rejectWithValue(errorMessage);
+            return rejectWithValue({});
         } finally {
             dispatch(removeLoadingSnackbar(snackbarId));
         }

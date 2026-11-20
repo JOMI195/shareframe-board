@@ -49,7 +49,7 @@ describe('sign-in', () => {
     server.use(spy.handler);
     const { user, router } = await openSignIn();
 
-    await user.click(screen.getByRole('button', { name: 'Mit Passwort anmelden' }));
+    await user.click(screen.getByRole('button', { name: 'Mit Geräte-Passwort anmelden' }));
     await user.type(screen.getByLabelText(/^Passwort/, { selector: 'input' }), 'geheim123');
     await user.click(screen.getByRole('button', { name: 'Anmelden' }));
 

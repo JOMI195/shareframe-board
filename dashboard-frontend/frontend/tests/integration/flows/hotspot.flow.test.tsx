@@ -6,7 +6,8 @@ import { renderRoute } from '@tests/helpers/renderRoute';
 import { buildState, signedInState } from '@tests/helpers/preloadedState';
 import { apMode, failsWith, server, signedOut, spyOnRequests, withNetworks } from '@tests/mocks';
 
-const HOTSPOT = { ap_ssid: 'shareframe-board-1234', ap_password: 'hotspot123' };
+// Like the prod frames: the hotspot keeps the plain name, the board's own name has its suffix.
+const HOTSPOT = { ap_ssid: 'shareframe-board', ap_password: 'hotspot123', hostname: 'shareframe-board-1234' };
 
 const signedOutOnHotspot = () => server.use(...signedOut(), ...apMode(HOTSPOT));
 
@@ -18,40 +19,61 @@ const openNetworkOnHotspot = async (saved = ['HomeNet'], over = {}) => {
 };
 
 describe('signing in on the hotspot', () => {
-  it('sends a signed-out user to the password sign-in', async () => {
+  it('asks a signed-out user for the setup code from the panel', async () => {
     signedOutOnHotspot();
     const { router } = renderRoute('/network/', { preloadedState: buildState() });
 
-    expect(await screen.findByText(/stellt den Hotspot „shareframe-board-1234“ bereit/)).toBeInTheDocument();
+    expect(await screen.findByText(/stellt den Hotspot „shareframe-board“ bereit/)).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/auth/sign-in');
-    expect(screen.getByLabelText(/^Passwort/, { selector: 'input' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Mit OTP anmelden' })).not.toBeInTheDocument();
+    expect(screen.getByText(/Er steht auf dem Bildschirm des Bilderrahmens/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Einrichtungscode/, { selector: 'input' })).toHaveAttribute('type', 'text');
+    expect(screen.queryByRole('button', { name: 'Mit Einmal-Code anmelden' })).not.toBeInTheDocument();
   });
 
-  it('opens the network settings after signing in', async () => {
+  it('opens the network settings after signing in with the setup code', async () => {
     signedOutOnHotspot();
     const login = spyOnRequests('post', api.getLoginUrl());
     server.use(login.handler);
     const { user, router } = renderRoute('/auth/sign-in', { preloadedState: buildState() });
 
     await screen.findByText(/stellt den Hotspot/);
+    await user.type(screen.getByLabelText(/^Einrichtungscode/, { selector: 'input' }), '482 913');
+    await user.click(screen.getByRole('button', { name: 'Anmelden' }));
+
+    expect(await login.calls[0].json()).toEqual({ setup_code: '482913' });
+    await waitFor(() => expect(router.state.location.pathname).toBe('/network/'));
+  });
+
+  it('still takes the device password', async () => {
+    signedOutOnHotspot();
+    const login = spyOnRequests('post', api.getLoginUrl());
+    server.use(login.handler);
+    const { user } = renderRoute('/auth/sign-in', { preloadedState: buildState() });
+
+    await user.click(await screen.findByRole('button', { name: 'Mit Geräte-Passwort anmelden' }));
     await user.type(screen.getByLabelText(/^Passwort/, { selector: 'input' }), 'geheim123');
     await user.click(screen.getByRole('button', { name: 'Anmelden' }));
 
     expect(await login.calls[0].json()).toEqual({ password: 'geheim123' });
-    await waitFor(() => expect(router.state.location.pathname).toBe('/network/'));
   });
 
-  it('resets the frame to factory defaults without signing in', async () => {
+  it('resets a frame whose password is forgotten with the code from its panel', async () => {
     signedOutOnHotspot();
     const reset = spyOnRequests('post', api.getFactoryResetUrl());
     server.use(reset.handler);
     const { user, store } = renderRoute('/auth/sign-in', { preloadedState: buildState() });
 
-    await user.click(await screen.findByRole('button', { name: /Auf Werkseinstellungen zurücksetzen/ }));
-    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Zurücksetzen' }));
+    await user.click(await screen.findByRole('button', { name: 'Passwort vergessen?' }));
+    const forgot = await screen.findByRole('dialog', { name: 'Passwort vergessen?' });
+    expect(within(forgot).getByText(/mit dem Einrichtungscode .* So bleibt alles erhalten/)).toBeInTheDocument();
+    await user.click(within(forgot).getByRole('button', { name: 'Zurücksetzen' }));
+
+    const codeDialog = await screen.findByRole('dialog', { name: 'Code vom Bilderrahmen eingeben' });
+    await user.type(within(codeDialog).getByLabelText('Code'), '731 204');
+    await user.click(within(codeDialog).getByRole('button', { name: 'Endgültig zurücksetzen' }));
 
     await waitFor(() => expect(reset.calls).toHaveLength(1));
+    expect(await reset.calls[0].json()).toEqual({ code: '731204' });
     expect(store.getState().loadingWall.message).toMatch(/auf Werkseinstellungen zurückgesetzt …/);
   });
 });
@@ -83,6 +105,7 @@ describe('connecting from the hotspot', () => {
 
     await user.click(within(card('WLAN einrichten')).getByRole('button', { name: 'Jetzt verbinden' }));
     const dialog = await screen.findByRole('dialog');
+    // The board's own name, not the hotspot's: they differ on the prod frames.
     expect(within(dialog).getByText('http://shareframe-board-1234.local')).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: 'Verbinden' }));
 

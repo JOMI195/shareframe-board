@@ -82,6 +82,22 @@ describe('device password', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
+  it('asks no current password after a sign-in with a code', async () => {
+    const change = spyOnRequests('post', api.getChangePasswordUrl());
+    server.use(change.handler);
+    const { user } = renderRoute('/general/', { preloadedState: signedInState({ auth: { passwordChangeNeedsCurrent: false } }) });
+    await user.click(await screen.findByRole('button', { name: 'Passwort ändern' }));
+    const dialog = await screen.findByRole('dialog');
+
+    expect(within(dialog).queryByLabelText(/Aktuelles Passwort/)).not.toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText(/^Neues Passwort(?! bestätigen)/), 'newpassword');
+    await user.type(within(dialog).getByLabelText(/Neues Passwort bestätigen/), 'newpassword');
+    await user.click(within(dialog).getByRole('button', { name: 'Passwort ändern' }));
+
+    await waitFor(() => expect(change.calls).toHaveLength(1));
+    expect(await change.calls[0].json()).toEqual({ new_password: 'newpassword' });
+  });
+
   it('needs a matching confirmation', async () => {
     const { user, dialog } = await openDialog();
 
@@ -188,12 +204,21 @@ describe('power', () => {
     return { ...view, dialog: await screen.findByRole('dialog') };
   };
 
+  // Confirms, then types the code the frame shows.
+  const enterCode = async (user: ReturnType<typeof openGeneral>['user'], dialog: HTMLElement, code = '731204') => {
+    await user.click(within(dialog).getByRole('button', { name: 'Zurücksetzen' }));
+    const codeDialog = await screen.findByRole('dialog', { name: 'Code vom Bilderrahmen eingeben' });
+    await user.type(within(codeDialog).getByLabelText('Code'), code);
+    await user.click(within(codeDialog).getByRole('button', { name: 'Endgültig zurücksetzen' }));
+    return codeDialog;
+  };
+
   it('resets to factory defaults and explains how to set the frame up again', async () => {
     useBoardClock();
     const board = boardGoesDownOn(api.getFactoryResetUrl());
     const { user, router, store, dialog } = await openFactoryReset();
 
-    await user.click(within(dialog).getByRole('button', { name: 'Zurücksetzen' }));
+    await enterCode(user, dialog);
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
     expect(board.commands).toBe(1);
@@ -220,11 +245,61 @@ describe('power', () => {
     server.use(...failsWith('post', api.getFactoryResetUrl(), 500, 'Factory reset failed'));
     const { user, router, store, dialog } = await openFactoryReset();
 
-    await user.click(within(dialog).getByRole('button', { name: 'Zurücksetzen' }));
+    await enterCode(user, dialog);
 
     expect(await screen.findByText('Bilderrahmen konnte nicht zurückgesetzt werden')).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/general/');
     expect(store.getState().loadingWall.isLoadingWallVisible).toBe(false);
+  });
+});
+
+describe('factory reset by the code on the panel', () => {
+  const openCodeStep = async () => {
+    const view = openGeneral();
+    await view.user.click(await screen.findByRole('button', { name: 'Zurücksetzen' }));
+    await view.user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Zurücksetzen' }));
+    return { ...view, codeDialog: await screen.findByRole('dialog', { name: 'Code vom Bilderrahmen eingeben' }) };
+  };
+
+  it('says when the code will be on the frame', async () => {
+    server.use(http.post(apiUrl(api.getFactoryResetCodeUrl()), () => ok({ expires_in_secs: 300, shows_in_secs: 95 })));
+    const { codeDialog } = await openCodeStep();
+    expect(within(codeDialog).getByText(/erscheint in etwa 1:3\d auf dem Bildschirm/)).toBeInTheDocument();
+  });
+
+  it('keeps the dialog open with the tries left after a wrong code', async () => {
+    server.use(http.post(apiUrl(api.getFactoryResetUrl()), () =>
+      HttpResponse.json({ success: false, message: 'Wrong code', data: { tries_left: 3 } }, { status: 403 })));
+    const { user, codeDialog, router } = await openCodeStep();
+
+    await user.type(within(codeDialog).getByLabelText('Code'), '000000');
+    await user.click(within(codeDialog).getByRole('button', { name: 'Endgültig zurücksetzen' }));
+
+    expect(await within(codeDialog).findByText('Der Code stimmt nicht. Noch 3 Versuche.')).toBeInTheDocument();
+    expect(within(codeDialog).getByLabelText('Code')).toHaveValue('');
+    expect(router.state.location.pathname).toBe('/general/');
+  });
+
+  it('takes the code back from the frame when the dialog closes', async () => {
+    const cancel = spyOnRequests('post', api.getFactoryResetCancelUrl());
+    server.use(cancel.handler);
+    const { user, codeDialog } = await openCodeStep();
+    expect(within(codeDialog).getByText('Noch 5 Minuten gültig')).toBeInTheDocument();
+
+    await user.click(within(codeDialog).getByRole('button', { name: 'Schließen' }));
+
+    await waitFor(() => expect(cancel.calls).toHaveLength(1));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('explains why no code can appear', async () => {
+    server.use(...failsWith('post', api.getFactoryResetCodeUrl(), 409, 'An update is running'));
+    const { user } = openGeneral();
+    await user.click(await screen.findByRole('button', { name: 'Zurücksetzen' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Zurücksetzen' }));
+
+    expect(await screen.findByText('Während ein Update installiert wird, geht das nicht.')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Code vom Bilderrahmen eingeben' })).not.toBeInTheDocument();
   });
 });
 

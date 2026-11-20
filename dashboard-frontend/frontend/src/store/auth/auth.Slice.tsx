@@ -10,6 +10,8 @@ import { getAuthStatusUrl, getLoginUrl, getChangePasswordUrl, getLogoutUrl } fro
 // Types for Authentication State
 interface AuthState {
   isAuthenticated: boolean;
+  // A session from a one-time code or the panel's setup code may set a new password without the old one.
+  passwordChangeNeedsCurrent: boolean;
   isLoading: boolean;
   error: string | null;
 }
@@ -17,6 +19,7 @@ interface AuthState {
 // Initial State
 const initialState: AuthState = {
   isAuthenticated: false,
+  passwordChangeNeedsCurrent: true,
   isLoading: false,
   error: null,
 };
@@ -27,12 +30,16 @@ export const checkAuthStatusThunk = createAsyncThunk(
   async () => {
     const response = await fetchWithTimeout(getAuthStatusUrl());
     const payload = await response.json();
-    return payload?.data?.authenticated ?? false;
+    return {
+      authenticated: payload?.data?.authenticated ?? false,
+      passwordChangeNeedsCurrent: payload?.data?.password_change_needs_current ?? true,
+    };
   }
 );
 
-// Login works with the cloud-verified one-time code or, offline, the local device password.
-export type LoginCredentials = { otp: string } | { password: string };
+// Login works with the cloud-verified one-time code, offline with the local device password, and on
+// the frame's hotspot with the setup code its panel shows.
+export type LoginCredentials = { otp: string } | { password: string } | { setup_code: string };
 
 // Async Thunk for login
 export const loginThunk = createAsyncThunk(
@@ -87,7 +94,7 @@ export const loginThunk = createAsyncThunk(
 export const changePasswordThunk = createAsyncThunk(
   'auth/changePassword',
   async (
-    { currentPassword, newPassword }: { currentPassword: string; newPassword: string },
+    { currentPassword, newPassword }: { currentPassword?: string; newPassword: string },
     { dispatch, rejectWithValue }
   ) => {
     const snackbarId = uuid();
@@ -162,6 +169,7 @@ export const authSlice = createSlice({
   reducers: {
     resetAuthState: (state) => {
       state.isAuthenticated = false;
+      state.passwordChangeNeedsCurrent = true;
       state.isLoading = false;
       state.error = null;
     }
@@ -172,7 +180,8 @@ export const authSlice = createSlice({
       state.isLoading = true;
     });
     builder.addCase(checkAuthStatusThunk.fulfilled, (state, action) => {
-      state.isAuthenticated = action.payload;
+      state.isAuthenticated = action.payload.authenticated;
+      state.passwordChangeNeedsCurrent = action.payload.passwordChangeNeedsCurrent;
       state.isLoading = false;
       state.error = null;
     });
@@ -187,8 +196,9 @@ export const authSlice = createSlice({
       state.isLoading = true;
       state.error = null;
     });
-    builder.addCase(loginThunk.fulfilled, (state) => {
+    builder.addCase(loginThunk.fulfilled, (state, action) => {
       state.isAuthenticated = true;
+      state.passwordChangeNeedsCurrent = 'password' in action.meta.arg;
       state.isLoading = false;
       state.error = null;
     });

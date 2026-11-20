@@ -11,7 +11,7 @@ const ConnectionModeChip = ({ compact = false }: { compact?: boolean }) => {
     if (!loaded) return null;
 
     const [label, hint, color, Icon] =
-        mode === 'ap' ? ['Hotspot', `Rahmen stellt den Hotspot „${ap_ssid || 'shareframe-board'}“ bereit`, 'error' as const, WifiTetheringIcon]
+        mode === 'ap' ? ['Hotspot', `Rahmen stellt den Hotspot „${ap_ssid || 'shareframe-board'}“ bereit`, 'default' as const, WifiTetheringIcon]
         : mode === 'connecting' ? ['Verbinde …', 'Rahmen sucht ein gespeichertes WLAN', 'warning' as const, WifiFindIcon]
         : internet ? ['Online', ssid ? `Mit „${ssid}“ verbunden` : 'Mit dem Internet verbunden', 'success' as const, WifiIcon]
         : ['Kein Internet', ssid ? `Mit „${ssid}“ verbunden, aber ohne Internet` : 'Keine Internetverbindung', 'warning' as const, SignalWifiStatusbarConnectedNoInternet4Icon];
