@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
-    Alert, Checkbox, FormControlLabel, IconButton, InputAdornment, List, ListItemButton, ListItemIcon,
-    ListItemText, TextField, Typography
+    Alert, Button, Checkbox, FormControlLabel, IconButton, InputAdornment, List, ListItemButton, ListItemIcon,
+    ListItemText, Stack, TextField, Typography
 } from '@mui/material';
+import { useNavigate } from 'react-router';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import LockIcon from '@mui/icons-material/Lock';
@@ -10,10 +11,10 @@ import SignalWifi1BarIcon from '@mui/icons-material/SignalWifi1Bar';
 import SignalWifi2BarIcon from '@mui/icons-material/SignalWifi2Bar';
 import SignalWifi3BarIcon from '@mui/icons-material/SignalWifi3Bar';
 import SignalWifi4BarIcon from '@mui/icons-material/SignalWifi4Bar';
-import FormDialog from '@/common/components/formDialog';
+import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import { usePiConnection } from '@/context/piConnection/piConnectionContextValue';
 import { useAppDispatch, useAppSelector } from '@/store';
-import { closeNetworkAddNetworkDialog, getDialogs } from '@/store/dialogs/dialogs.Slice';
+import { getHomeUrl, getNetworkUrl } from '@/assets/endpoints/app/appEndpoints';
 import {
     addNetwork, connectToSavedNetworks, fetchNetworksInReach, NetworkInReach, selectNetworkState
 } from '@/store/network/network.Slice';
@@ -31,12 +32,13 @@ const SignalIcon = ({ signal }: { signal: number }) => {
     return <Icon fontSize="small" />;
 };
 
-const AddNetworkDialog = () => {
+// A page rather than a dialog: on the hotspot saving also ends this page's connection.
+const AddNetwork = () => {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
     const { isConnected } = usePiConnection();
     const { loading, inReach } = useAppSelector(selectNetworkState);
     const { mode, ap_ssid, hostname } = useAppSelector(selectConnectionMode);
-    const isOpen = useAppSelector(getDialogs).network.addNetwork.open;
     const [ssid, setSsid] = useState('');
     const [password, setPassword] = useState('');
     const [openNetwork, setOpenNetwork] = useState(false);
@@ -45,24 +47,14 @@ const AddNetworkDialog = () => {
     const onHotspot = mode === 'ap';
 
     useEffect(() => {
-        if (isOpen) dispatch(fetchNetworksInReach());
-    }, [isOpen, dispatch]);
+        dispatch(fetchNetworksInReach());
+    }, [dispatch]);
 
     const ssidTooLong = new TextEncoder().encode(ssid).length > SSID_MAX_BYTES;
     const passwordFits = password.length >= PASSWORD_MIN && password.length <= PASSWORD_MAX;
     const canSubmit = ssid.trim() !== '' && !ssidTooLong && (openNetwork || passwordFits) && !loading && isConnected;
 
-    const reset = () => {
-        setSsid('');
-        setPassword('');
-        setOpenNetwork(false);
-    };
-
-    const close = () => {
-        if (submitting) return;
-        dispatch(closeNetworkAddNetworkDialog());
-        reset();
-    };
+    const backToNetwork = () => navigate(getHomeUrl() + getNetworkUrl(), { replace: true });
 
     const pick = (network: NetworkInReach) => {
         setSsid(network.ssid);
@@ -70,14 +62,15 @@ const AddNetworkDialog = () => {
         setPassword('');
     };
 
-    const submit = async () => {
+    const submit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!canSubmit) return;
         setSubmitting(true);
         try {
             await dispatch(addNetwork({ ssid, password: openNetwork ? '' : password })).unwrap();
             // On the hotspot the new network is only useful once the frame switches over.
             if (onHotspot) await dispatch(connectToSavedNetworks()).unwrap();
-            dispatch(closeNetworkAddNetworkDialog());
-            reset();
+            backToNetwork();
         } catch {
             // The thunks report the failure; the input stays for another try.
         } finally {
@@ -85,16 +78,8 @@ const AddNetworkDialog = () => {
         }
     };
 
-    return (
-        <FormDialog
-            open={isOpen}
-            title="WLAN hinzufügen"
-            submitLabel={onHotspot ? 'Speichern & verbinden' : 'Hinzufügen'}
-            onSubmit={submit}
-            onClose={close}
-            submitDisabled={!canSubmit}
-            loading={submitting}
-        >
+    const form = (
+        <Stack component="form" spacing={2} onSubmit={submit} noValidate>
             {inReach.length > 0 && (
                 <>
                     <Typography variant="subtitle2" component="h3">In der Nähe</Typography>
@@ -116,7 +101,6 @@ const AddNetworkDialog = () => {
             )}
             {/* No autofocus: a phone's keyboard would cover the networks in reach. */}
             <TextField
-                margin="dense"
                 id="ssid"
                 label="Netzwerkname (SSID)"
                 type="text"
@@ -135,7 +119,6 @@ const AddNetworkDialog = () => {
             />
             {!openNetwork && (
                 <TextField
-                    margin="dense"
                     id="password"
                     label="Passwort"
                     type={showPassword ? 'text' : 'password'}
@@ -170,8 +153,26 @@ const AddNetworkDialog = () => {
                     Hotspot nach etwa einer Minute wieder da.
                 </Alert>
             )}
-        </FormDialog>
+            {/* Stacked on a phone, on the right in a wide card. */}
+            <Stack
+                direction={{ xs: 'column', sm: 'row-reverse' }}
+                sx={{ gap: 1, '& > .MuiButton-root': { width: { xs: '100%', sm: 'auto' } } }}
+            >
+                <Button type="submit" variant="contained" loading={submitting} disabled={!canSubmit}>
+                    {onHotspot ? 'Speichern & verbinden' : 'Hinzufügen'}
+                </Button>
+                <Button onClick={backToNetwork} disabled={submitting}>Abbrechen</Button>
+            </Stack>
+        </Stack>
+    );
+
+    return (
+        <ShareframeInfoCard
+            title="WLAN hinzufügen"
+            sx={{ width: '100%' }}
+            sections={[{ content: { type: 'reactNode', value: form } }]}
+        />
     );
 };
 
-export default AddNetworkDialog;
+export default AddNetwork;

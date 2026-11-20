@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import * as api from '@/assets/endpoints/api/frame';
-import { card } from '@tests/helpers/card';
+import { card, findCard } from '@tests/helpers/card';
 import { renderRoute } from '@tests/helpers/renderRoute';
 import { buildState, signedInState } from '@tests/helpers/preloadedState';
 import { apMode, failsWith, server, signedOut, spyOnRequests, withNetworks } from '@tests/mocks';
@@ -63,14 +63,13 @@ describe('signing in on the hotspot', () => {
     server.use(reset.handler);
     const { user, store } = renderRoute('/auth/sign-in', { preloadedState: buildState() });
 
-    await user.click(await screen.findByRole('button', { name: 'Passwort vergessen?' }));
-    const forgot = await screen.findByRole('dialog', { name: 'Passwort vergessen?' });
-    expect(within(forgot).getByText(/mit dem Einrichtungscode .* So bleibt alles erhalten/)).toBeInTheDocument();
-    await user.click(within(forgot).getByRole('button', { name: 'Zurücksetzen' }));
+    await user.click(await screen.findByRole('link', { name: 'Passwort vergessen?' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Passwort vergessen?' })).toBeInTheDocument();
+    expect(screen.getByText(/mit dem Einrichtungscode .* So bleibt alles erhalten/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Code auf dem Bilderrahmen anzeigen' }));
 
-    const codeDialog = await screen.findByRole('dialog', { name: 'Code vom Bilderrahmen eingeben' });
-    await user.type(within(codeDialog).getByLabelText('Code'), '731 204');
-    await user.click(within(codeDialog).getByRole('button', { name: 'Endgültig zurücksetzen' }));
+    await user.type(await screen.findByLabelText('Code'), '731 204');
+    await user.click(screen.getByRole('button', { name: 'Endgültig zurücksetzen' }));
 
     await waitFor(() => expect(reset.calls).toHaveLength(1));
     expect(await reset.calls[0].json()).toEqual({ code: '731204' });
@@ -90,10 +89,10 @@ describe('connecting from the hotspot', () => {
     const connect = spyOnRequests('post', api.getConnectionConnectUrl());
     const apply = spyOnRequests('post', api.getConnectionApplyUrl());
     server.use(connect.handler, apply.handler);
-    const { user } = await openNetworkOnHotspot([]);
+    const { user, router } = await openNetworkOnHotspot([]);
 
     await user.click(screen.getByRole('button', { name: 'WLAN hinzufügen' }));
-    const dialog = await screen.findByRole('dialog');
+    const dialog = await findCard('WLAN hinzufügen');
     expect(within(dialog).getByText(/http:\/\/shareframe-board-1234\.local/)).toBeInTheDocument();
     await user.type(within(dialog).getByLabelText(/Netzwerkname/), 'Garden');
     await user.type(within(dialog).getByLabelText(/^Passwort$/), 'gardenpass');
@@ -101,8 +100,8 @@ describe('connecting from the hotspot', () => {
 
     await waitFor(() => expect(apply.calls).toHaveLength(1));
     expect(connect.calls).toHaveLength(1);
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    expect(await within(card('WLAN einrichten')).findByText(/Der Rahmen verbindet sich/)).toBeInTheDocument();
+    await waitFor(() => expect(router.state.location.pathname).toBe('/network/'));
+    expect(await within(await findCard('WLAN einrichten')).findByText(/Der Rahmen verbindet sich/)).toBeInTheDocument();
   });
 
   it('asks the board to try the saved networks and explains where to find it', async () => {

@@ -52,13 +52,13 @@ describe('network', () => {
     expect(await screen.findByText(/Noch keine WLANs gespeichert/)).toBeInTheDocument();
   });
 
-  it('adds a network and reloads the list', async () => {
+  it('adds a network on its own page and is back at the list after', async () => {
     const connect = spyOnRequests('post', api.getConnectionConnectUrl());
     server.use(connect.handler);
-    const { user } = await openNetwork();
+    const { user, router } = await openNetwork();
 
     await user.click(screen.getByRole('button', { name: 'WLAN hinzufügen' }));
-    const dialog = await screen.findByRole('dialog');
+    const dialog = await findCard('WLAN hinzufügen');
     await user.type(within(dialog).getByLabelText(/Netzwerkname/), 'Garden');
     await user.type(within(dialog).getByLabelText(/^Passwort$/), 'gardenpass');
     server.use(...withNetworks('HomeNet', ['HomeNet', 'Office', 'Garden']));
@@ -66,29 +66,44 @@ describe('network', () => {
 
     expect(await screen.findByText('WLAN hinzugefügt')).toBeInTheDocument();
     expect(await connect.calls[0].json()).toEqual({ ssid: 'Garden', password: 'gardenpass' });
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    expect(await within(card('WLAN')).findByText('Garden')).toBeInTheDocument();
+    await waitFor(() => expect(router.state.location.pathname).toBe('/network/'));
+    expect(await within(await findCard('WLAN')).findByText('Garden')).toBeInTheDocument();
   });
 
-  it('keeps the dialog open when adding fails', async () => {
+  it('stays on the page with the input when adding fails', async () => {
     server.use(...failsWith('post', api.getConnectionConnectUrl()));
-    const { user } = await openNetwork();
+    const { user, router } = await openNetwork();
 
     await user.click(screen.getByRole('button', { name: 'WLAN hinzufügen' }));
-    const dialog = await screen.findByRole('dialog');
+    const dialog = await findCard('WLAN hinzufügen');
     await user.type(within(dialog).getByLabelText(/Netzwerkname/), 'Garden');
     await user.type(within(dialog).getByLabelText(/^Passwort$/), 'gardenpass');
     await user.click(within(dialog).getByRole('button', { name: 'Hinzufügen' }));
 
     expect(await screen.findByText('WLAN konnte nicht hinzugefügt werden')).toBeInTheDocument();
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/network/add/');
+    expect(within(dialog).getByLabelText(/Netzwerkname/)).toHaveValue('Garden');
+  });
+
+  it('goes back to the list without saving', async () => {
+    const connect = spyOnRequests('post', api.getConnectionConnectUrl());
+    server.use(connect.handler);
+    const { user, router } = await openNetwork();
+
+    await user.click(screen.getByRole('button', { name: 'WLAN hinzufügen' }));
+    expect(router.state.location.pathname).toBe('/network/add/');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await user.click(within(await findCard('WLAN hinzufügen')).getByRole('button', { name: 'Abbrechen' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/network/'));
+    expect(connect.calls).toHaveLength(0);
   });
 
   it('takes a password only of the length a Wi-Fi accepts', async () => {
     const { user } = await openNetwork();
 
     await user.click(screen.getByRole('button', { name: 'WLAN hinzufügen' }));
-    const dialog = await screen.findByRole('dialog');
+    const dialog = await findCard('WLAN hinzufügen');
     await user.type(within(dialog).getByLabelText(/Netzwerkname/), 'Garden');
     expect(within(dialog).getByRole('button', { name: 'Hinzufügen' })).toBeDisabled();
     await user.type(within(dialog).getByLabelText(/^Passwort$/), 'short');
@@ -103,7 +118,7 @@ describe('network', () => {
     const { user } = await openNetwork();
 
     await user.click(screen.getByRole('button', { name: 'WLAN hinzufügen' }));
-    const dialog = await screen.findByRole('dialog');
+    const dialog = await findCard('WLAN hinzufügen');
     await user.click(await within(dialog).findByRole('button', { name: /^Garden/ }));
     expect(within(dialog).getByLabelText(/Netzwerkname/)).toHaveValue('Garden');
     await user.type(within(dialog).getByLabelText(/^Passwort$/), 'gardenpass');
@@ -119,7 +134,7 @@ describe('network', () => {
     const { user } = await openNetwork();
 
     await user.click(screen.getByRole('button', { name: 'WLAN hinzufügen' }));
-    const dialog = await screen.findByRole('dialog');
+    const dialog = await findCard('WLAN hinzufügen');
     await user.click(await within(dialog).findByRole('button', { name: /^Café/ }));
     expect(within(dialog).queryByLabelText(/^Passwort$/)).not.toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: 'Hinzufügen' }));

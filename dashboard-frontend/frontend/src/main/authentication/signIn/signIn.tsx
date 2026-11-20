@@ -12,10 +12,9 @@ import { loginThunk, selectAuth } from '@/store/auth/auth.Slice';
 import { isServerDown, selectConnectionMode } from '@/store/connectionMode/connectionMode.Slice';
 import { removeAllSnackbars } from '@/store/snackbars/snackbars.Slice';
 import { usePiConnection } from '@/context/piConnection/piConnectionContextValue';
-import { useLocation, useNavigate } from 'react-router';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router';
 import { getHomeUrl, getNetworkUrl } from '@/assets/endpoints/app/appEndpoints';
-import { openGeneralFactoryResetDialog } from '@/store/dialogs/dialogs.Slice';
-import FactoryResetDialog from '@/common/components/factoryResetDialog';
+import { getAuthenticationUrl, getForgotPasswordUrl } from '@/assets/endpoints/app/authEndpoints';
 
 type LoginMethod = 'otp' | 'password' | 'setup';
 
@@ -207,13 +206,11 @@ const SignIn = () => {
           <Link component="button" type="button" variant="body2" onClick={handleToggleMethod}>
             {otherMethod}
           </Link>
-          <Link component="button" type="button" variant="body2"
-            onClick={() => dispatch(openGeneralFactoryResetDialog())}>
+          <Link component={RouterLink} to={getAuthenticationUrl() + getForgotPasswordUrl()} variant="body2">
             {"Passwort vergessen?"}
           </Link>
         </Stack>
       </Box>
-      <FactoryResetDialog variant="forgot" />
     </Box>
   );
 }

@@ -20,7 +20,6 @@ import {
     selectNetworkState
 } from '@/store/network/network.Slice';
 import {
-    openNetworkAddNetworkDialog,
     openNetworkChangeApPasswordDialog,
     openNetworkForgetNetworkDialog
 } from '@/store/dialogs/dialogs.Slice';
@@ -29,9 +28,12 @@ import { selectConnectionMode } from '@/store/connectionMode/connectionMode.Slic
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import Dialogs from './dialogs/dialogs';
 import HotspotCard from './hotspotCard';
+import { useNavigate } from 'react-router';
+import { getAddNetworkUrl, getHomeUrl } from '@/assets/endpoints/app/appEndpoints';
 
 const Network = () => {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
     const { isConnected } = usePiConnection();
     const { currentConnection, savedNetworks, loading } = useAppSelector(selectNetworkState);
     const { mode, ap_ssid, ap_password } = useAppSelector(selectConnectionMode);
@@ -44,8 +46,8 @@ const Network = () => {
         dispatch(openNetworkForgetNetworkDialog(ssid));
     };
 
-    const handleAddNetworkDialogOpen = (): void => {
-        dispatch(openNetworkAddNetworkDialog());
+    const openAddNetwork = (): void => {
+        navigate(getHomeUrl() + getAddNetworkUrl());
     };
 
     const handleRefreshNetworks = async (): Promise<void> => {
@@ -155,7 +157,7 @@ const Network = () => {
                                 variant="contained"
                                 color="primary"
                                 startIcon={<AddIcon />}
-                                onClick={handleAddNetworkDialogOpen}
+                                onClick={openAddNetwork}
                                 disabled={isButtonsDisabled}
                             >
                                 WLAN hinzufügen

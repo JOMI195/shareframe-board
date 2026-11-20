@@ -22,7 +22,6 @@ import {
 } from '@/store/network/network.Slice';
 import { selectConnectionMode } from '@/store/connectionMode/connectionMode.Slice';
 import { boardAddress } from '@/common/utils/boardAddress';
-import AddNetworkDialog from './addNetworkDialog';
 
 const AP_PASSWORD_MIN = 8;
 const AP_PASSWORD_MAX = 63;
@@ -112,8 +111,6 @@ const Dialogs: React.FC = () => {
 
     return (
         <>
-            <AddNetworkDialog />
-
             <ConfirmDialog
                 open={dialogs.forgetNetwork.open}
                 title={`„${dialogs.forgetNetwork.ssid}“ entfernen?`}

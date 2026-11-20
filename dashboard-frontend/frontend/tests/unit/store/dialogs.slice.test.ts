@@ -10,7 +10,6 @@ describe('dialogs slice', () => {
     ['restart', dialogs.openRestartDialog, dialogs.closeRestartDialog, (s: ReturnType<typeof initial>) => s.general.restart.open],
     ['change password', dialogs.openGeneralChangePasswordDialog, dialogs.closeGeneralChangePasswordDialog, (s: ReturnType<typeof initial>) => s.general.changePassword.open],
     ['confirm update', dialogs.openUpdatesConfirmUpdateDialog, dialogs.closeUpdatesConfirmUpdateDialog, (s: ReturnType<typeof initial>) => s.updates.confirmUpdate.open],
-    ['add network', dialogs.openNetworkAddNetworkDialog, dialogs.closeNetworkAddNetworkDialog, (s: ReturnType<typeof initial>) => s.network.addNetwork.open],
     ['AP password', dialogs.openNetworkChangeApPasswordDialog, dialogs.closeNetworkChangeApPasswordDialog, (s: ReturnType<typeof initial>) => s.network.changeApPassword.open],
   ])('opens and closes the %s dialog', (_name, open, close, isOpen) => {
     const opened = reducer(initial(), open());

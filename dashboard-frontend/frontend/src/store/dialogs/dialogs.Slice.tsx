@@ -7,13 +7,11 @@ type SliceState = {
         shutdown: { open: boolean };
         restart: { open: boolean };
         changePassword: { open: boolean };
-        factoryReset: { open: boolean };
     },
     updates: {
         confirmUpdate: { open: boolean };
     },
     network: {
-        addNetwork: { open: boolean };
         forgetNetwork: { open: boolean; ssid: string };
         changeApPassword: { open: boolean };
         connect: { open: boolean };
@@ -25,13 +23,11 @@ const initialState: SliceState = {
         shutdown: { open: false },
         restart: { open: false },
         changePassword: { open: false },
-        factoryReset: { open: false }
     },
     updates: {
         confirmUpdate: { open: false }
     },
     network: {
-        addNetwork: { open: false },
         forgetNetwork: { open: false, ssid: '' },
         changeApPassword: { open: false },
         connect: { open: false }
@@ -60,12 +56,6 @@ const dialogsSlice = createSlice({
         updatesConfirmUpdateDialogClosed: (state) => {
             state.updates.confirmUpdate.open = false;
         },
-        networkAddNetworkDialogOpened: (state) => {
-            state.network.addNetwork.open = true;
-        },
-        networkAddNetworkDialogClosed: (state) => {
-            state.network.addNetwork.open = false;
-        },
         networkForgetNetworkDialogOpened: (state, action) => {
             state.network.forgetNetwork.open = true;
             state.network.forgetNetwork.ssid = action.payload.ssid;
@@ -79,12 +69,6 @@ const dialogsSlice = createSlice({
         },
         generalChangePasswordDialogClosed: (state) => {
             state.general.changePassword.open = false;
-        },
-        generalFactoryResetDialogOpened: (state) => {
-            state.general.factoryReset.open = true;
-        },
-        generalFactoryResetDialogClosed: (state) => {
-            state.general.factoryReset.open = false;
         },
         networkChangeApPasswordDialogOpened: (state) => {
             state.network.changeApPassword.open = true;
@@ -129,14 +113,6 @@ export const closeUpdatesConfirmUpdateDialog = () => ({
     type: dialogsSlice.actions.updatesConfirmUpdateDialogClosed.type,
 });
 
-export const openNetworkAddNetworkDialog = () => ({
-    type: dialogsSlice.actions.networkAddNetworkDialogOpened.type,
-});
-
-export const closeNetworkAddNetworkDialog = () => ({
-    type: dialogsSlice.actions.networkAddNetworkDialogClosed.type,
-});
-
 export const openNetworkForgetNetworkDialog = (ssid: string) => ({
     type: dialogsSlice.actions.networkForgetNetworkDialogOpened.type,
     payload: { ssid },
@@ -152,14 +128,6 @@ export const openGeneralChangePasswordDialog = () => ({
 
 export const closeGeneralChangePasswordDialog = () => ({
     type: dialogsSlice.actions.generalChangePasswordDialogClosed.type,
-});
-
-export const openGeneralFactoryResetDialog = () => ({
-    type: dialogsSlice.actions.generalFactoryResetDialogOpened.type,
-});
-
-export const closeGeneralFactoryResetDialog = () => ({
-    type: dialogsSlice.actions.generalFactoryResetDialogClosed.type,
 });
 
 export const openNetworkChangeApPasswordDialog = () => ({
@@ -185,14 +153,10 @@ export const {
     restartDialogClosed,
     updatesConfirmUpdateDialogOpened,
     updatesConfirmUpdateDialogClosed,
-    networkAddNetworkDialogOpened,
-    networkAddNetworkDialogClosed,
     networkForgetNetworkDialogOpened,
     networkForgetNetworkDialogClosed,
     generalChangePasswordDialogOpened,
     generalChangePasswordDialogClosed,
-    generalFactoryResetDialogOpened,
-    generalFactoryResetDialogClosed,
     networkChangeApPasswordDialogOpened,
     networkChangeApPasswordDialogClosed,
     networkConnectDialogOpened,
