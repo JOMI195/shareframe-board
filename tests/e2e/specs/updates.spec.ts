@@ -52,11 +52,13 @@ test('installing from the dashboard downloads, verifies and hands over to rauc',
   await page.goto('/updates/');
   await page.getByRole('button', { name: 'Jetzt installieren' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Installieren' }).click();
+  await expect(page).toHaveURL(/\/updates\/$/);
 
   await expectShimCall('rauc install /data/cache/shareframe-9.9.2.raucb');
   await expect.poll(pendingSlot, { message: 'the tryboot backend staged the other slot' }).toBe('B');
   await expectShimCall('s6-linux-init-shutdown -r now');
   await waitForPanel(showsStatus('update'), 'update status screen');
   expect((await board.get('/api/system/updates/status')).phase).toBe('awaiting-reboot');
+  await expect(page.getByText(/startet jetzt mit der neuen Version neu/)).toBeVisible();
   await board.restartService('update');
 });
