@@ -38,6 +38,7 @@ struct Response
     nlohmann::json body;
     std::string setCookie;
     std::string connection;
+    std::string cacheControl;
 };
 
 class DashboardServerTest : public ::testing::Test
@@ -89,6 +90,8 @@ protected:
             out.setCookie = it->second;
         if (const auto it = r->headers.find("Connection"); it != r->headers.end())
             out.connection = it->second;
+        if (const auto it = r->headers.find("Cache-Control"); it != r->headers.end())
+            out.cacheControl = it->second;
         return out;
     }
 
@@ -373,4 +376,12 @@ TEST_F(DashboardServerTest, AFailedSafeModeExitSaysWhy)
     const auto r = request("POST", "/api/system/safe-mode/exit", "{}", session());
     EXPECT_EQ(r.status, 500);
     EXPECT_EQ(r.body["data"]["reason"], "display service missing");
+}
+
+// Answers carry sessions, codes and the hotspot password: no browser or proxy keeps them.
+TEST_F(DashboardServerTest, JsonAnswersAreNeverCached)
+{
+    EXPECT_EQ(request("GET", "/api/connection/mode").cacheControl, "no-store");
+    EXPECT_EQ(request("GET", "/api/system/info").cacheControl, "no-store") << "the 401";
+    EXPECT_EQ(login("wrong").cacheControl, "no-store");
 }

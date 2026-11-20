@@ -12,6 +12,7 @@ inline ix::HttpResponsePtr jsonResponse(int status, const std::string& statusTex
 {
     ix::WebSocketHttpHeaders headers;
     headers["Content-Type"] = "application/json";
+    headers["Cache-Control"] = "no-store";
     const nlohmann::json body = {
         {"success", status >= 200 && status < 300},
         {"message", message},
@@ -26,6 +27,7 @@ inline ix::HttpResponsePtr errorResponse(int status, const std::string& statusTe
 {
     ix::WebSocketHttpHeaders headers;
     headers["Content-Type"] = "application/json";
+    headers["Cache-Control"] = "no-store";
     const nlohmann::json body = {
         {"success", false},
         {"message", message},
