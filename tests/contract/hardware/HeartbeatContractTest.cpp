@@ -58,7 +58,7 @@ TEST(HeartbeatContract, EventsAreParsedFromTheEventLog)
     EXPECT_EQ(events[1].at("message"), "ap fallback (no address from home)");
     EXPECT_EQ(events[2].at("seq"), 3);
 
-    // wifi-mode-manager reads the mark as unix seconds on one line.
+    // wifi-mode-manager reads the mark as unix seconds on one line: until when the contact counts.
     std::ifstream f(cfg.heartbeat.backendOkPath);
     const std::string mark((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
     EXPECT_TRUE(std::regex_match(mark, std::regex("[0-9]+\n"))) << mark;

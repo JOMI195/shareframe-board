@@ -148,11 +148,12 @@ void Heartbeat::execute()
 void Heartbeat::_markBackendReached()
 {
     backendReached_ = true;
-    // The time, so the Wi-Fi daemon can tell a recent contact; renamed in, so it never reads half a line.
+    // Until when the contact counts, two beats from now: the Wi-Fi daemon takes it as internet
+    // until then. Renamed in, so it never reads half a line.
     const auto& path = cfg_.heartbeat.backendOkPath;
     const auto tmp = path + ".tmp";
     std::error_code ec;
-    if (std::ofstream f{tmp}; !(f << std::time(nullptr) << '\n'))
+    if (std::ofstream f{tmp}; !(f << std::time(nullptr) + 2 * cfg_.heartbeat.intervalSecs << '\n'))
         ec = std::make_error_code(std::errc::io_error);
     else
         std::filesystem::rename(tmp, path, ec);
