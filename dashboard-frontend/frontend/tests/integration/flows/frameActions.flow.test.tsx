@@ -1,17 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { HttpResponse } from 'msw';
 import * as api from '@/assets/endpoints/api/frame';
 import { card } from '@tests/helpers/card';
 import { renderRoute } from '@tests/helpers/renderRoute';
 import { signedInState } from '@tests/helpers/preloadedState';
-import { advance, INITIAL_LOAD_LOCK_MS, useBoardClock } from '@tests/helpers/time';
+import { advance, useBoardClock } from '@tests/helpers/time';
 import { failsWith, server, setBoard, spyOnRequests, withSlideshowStatus } from '@tests/mocks';
+
+const WAITING = 'Einen Moment, der Status der Diashow wird abgefragt.';
+// What the board says after a repaint: the panel rests this long before the next one.
+const resting = (secs: number) => withSlideshowStatus({ refresh_ready_in_secs: secs });
 
 const openHome = async () => {
   const view = renderRoute('/', { preloadedState: signedInState() });
   await screen.findByRole('heading', { level: 2, name: 'Diashow' });
-  await advance(INITIAL_LOAD_LOCK_MS);
+  await waitFor(() => expect(screen.queryByText(WAITING)).not.toBeInTheDocument());
   return view;
 };
 
@@ -54,29 +58,39 @@ describe('frame actions', () => {
     expect(within(shown).queryByRole('img')).not.toBeInTheDocument();
   });
 
-  it('locks the actions until the initial status is known', async () => {
+  it('frees the actions as soon as the board reports its status', async () => {
     renderRoute('/', { preloadedState: signedInState() });
 
-    expect(
-      await screen.findByText('Einen Moment, der Status der Diashow wird abgefragt.'),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Stoppen' })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: 'Stoppen' })).toBeEnabled();
+    expect(screen.queryByText(WAITING)).not.toBeInTheDocument();
+  });
 
-    await advance(INITIAL_LOAD_LOCK_MS);
+  // The board refuses a repaint during the rest anyway; the page says how long instead of failing.
+  it('holds the actions back while the panel rests, also after a reload', async () => {
+    server.use(...resting(90));
+    await openHome();
 
-    expect(screen.getByRole('button', { name: 'Stoppen' })).toBeEnabled();
+    expect(screen.getByText('Um das Display zu schonen, ist die nächste Aktion in 1:30 möglich.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Foto überspringen' })).toBeDisabled();
+
+    server.use(...resting(0));
+    await advance(91_000);
+
+    expect(screen.getByRole('button', { name: 'Foto überspringen' })).toBeEnabled();
+    expect(screen.queryByText(/nächste Aktion in/)).not.toBeInTheDocument();
   });
 
   it('stops the slideshow, clears the panel and locks the actions', async () => {
     const clear = spyOnRequests('post', api.getClearDisplayUrl());
     server.use(clear.handler);
+    setBoard({ restAfterPaintSecs: 170 });
     const { user } = await openHome();
 
     await user.click(screen.getByRole('button', { name: 'Stoppen' }));
 
     expect(await screen.findByText('Diashow gestoppt')).toBeInTheDocument();
     expect(clear.calls).toHaveLength(1);
-    expect(screen.getByText(/nächste Aktion erst wieder in 0[23]:\d\dmin möglich/)).toBeInTheDocument();
+    expect(await screen.findByText(/nächste Aktion in 2:[45]\d möglich/)).toBeInTheDocument();
 
     await advance(5_000);
     expect(within(card('Diashow')).getByText('Gestoppt')).toBeInTheDocument();
@@ -155,6 +169,24 @@ describe('frame actions', () => {
     expect(await interval.calls[0].json()).toEqual({ interval_seconds: 1800 });
   });
 
+  it('shows the stored interval in whole hours when it is some', async () => {
+    server.use(...withSlideshowStatus({ interval_seconds: 7200 }));
+    await openHome();
+
+    const intervalCard = card('Wechselintervall');
+    await waitFor(() => expect(within(intervalCard).getByLabelText('Intervall')).toHaveValue(2));
+    expect(within(intervalCard).getByRole('combobox', { name: 'Einheit' })).toHaveTextContent('Stunden');
+  });
+
+  // Changing the interval paints nothing, so the panel's rest does not hold it back.
+  it('takes a new interval while the panel rests', async () => {
+    server.use(...resting(90));
+    await openHome();
+
+    expect(within(card('Wechselintervall')).getByLabelText('Intervall')).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Foto überspringen' })).toBeDisabled();
+  });
+
   it('rejects an interval below five minutes', async () => {
     const { user } = await openHome();
 
@@ -202,15 +234,16 @@ describe('frame actions', () => {
     await user.click(screen.getByRole('button', { name: 'Nachtmodus speichern' }));
 
     expect(await screen.findByText('Nachtmodus von 2:00 bis 5:00 Uhr mit 60 Minuten Intervall gespeichert')).toBeInTheDocument();
-    expect(screen.queryByText(/nächste Aktion erst wieder/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/nächste Aktion in/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Foto überspringen' })).toBeEnabled();
   });
 
   it('keeps night mode editable while the display actions are locked', async () => {
     const { user } = await openHome();
 
+    setBoard({ restAfterPaintSecs: 170 });
     await user.click(screen.getByRole('button', { name: 'Foto überspringen' }));
-    expect(await screen.findByText(/nächste Aktion erst wieder/)).toBeInTheDocument();
+    expect(await screen.findByText(/nächste Aktion in/)).toBeInTheDocument();
 
     await user.click(screen.getByLabelText('Nachtmodus aktivieren'));
     await user.click(screen.getByRole('button', { name: 'Nachtmodus speichern' }));
@@ -218,13 +251,9 @@ describe('frame actions', () => {
     expect(await screen.findByText('Nachtmodus von 2:00 bis 5:00 Uhr mit 60 Minuten Intervall gespeichert')).toBeInTheDocument();
   });
 
-  it('keeps night mode editable during the initial status lock', async () => {
-    renderRoute('/', { preloadedState: signedInState() });
-
-    expect(
-      await screen.findByText('Einen Moment, der Status der Diashow wird abgefragt.'),
-    ).toBeInTheDocument();
-    await advance(5_000);
+  it('keeps night mode editable while the panel rests', async () => {
+    server.use(...resting(90));
+    await openHome();
 
     expect(screen.getByRole('button', { name: 'Stoppen' })).toBeDisabled();
     expect(screen.getByLabelText('Nachtmodus aktivieren')).toBeEnabled();

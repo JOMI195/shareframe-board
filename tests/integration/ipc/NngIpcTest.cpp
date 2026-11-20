@@ -172,3 +172,17 @@ TEST(NngIpc, ARequestToAServerThatStoppedTimesOut)
     EXPECT_FALSE(client.sendAndReceive({IpcMessageType::GetHealth, {}}, 500ms));
     EXPECT_LT(std::chrono::steady_clock::now() - start, 3s);
 }
+
+// The sockets live in /run/shareframe, which may not exist yet when the first service starts.
+TEST(NngIpc, ServersCreateTheFolderOfTheirSocket)
+{
+    TempDir dir;
+    const auto repUrl = endpoint(dir, "run/shareframe/rep.sock");
+    NngRepServer server(repUrl, [](const IpcMessage&) -> nlohmann::json { return {{"ok", true}}; });
+    server.start();
+    IpcClient client(repUrl);
+    EXPECT_TRUE(client.sendAndReceive({IpcMessageType::GetHealth, {}}).has_value());
+
+    EventPublisher pub(endpoint(dir, "other/run/pub.sock"));
+    EXPECT_TRUE(pub.start());
+}

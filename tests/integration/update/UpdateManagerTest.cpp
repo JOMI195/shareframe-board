@@ -187,6 +187,30 @@ TEST_F(UpdateManagerTest, ABundleWithTheAnnouncedChecksumIsInstalled)
     EXPECT_TRUE(waitFor([&] { return phase() == "awaiting-reboot"; }, 10000ms)) << "stuck in " << phase();
 }
 
+// The bundle is fetched with the frame's token, so it may only come from the frame's own server.
+TEST_F(UpdateManagerTest, ABundleUrlOnAnotherHostIsFetchedFromTheFramesOwnServer)
+{
+    FakeHttpServer elsewhere;
+    elsewhere.on("GET /bundle.raucb", 200, "bundle");
+    offer(backend, {{"version", "9.9.9"}, {"criticality", "Low"},
+                    {"download_url", "http://" + elsewhere.baseUrl() + "/bundle.raucb"}});
+    std::string error;
+    ASSERT_TRUE(updates.startUpdate(error)) << error;
+    ASSERT_TRUE(waitFor([&] { return backend.requests("/bundle.raucb").size() == 1; }, 10000ms));
+    EXPECT_TRUE(elsewhere.requests().empty());
+}
+
+TEST_F(UpdateManagerTest, ARedirectAwayFromTheFramesServerIsNotFollowed)
+{
+    FakeHttpServer elsewhere;
+    elsewhere.on("GET /bundle.raucb", 200, "bundle");
+    backend.redirect("GET /bundle.raucb", "http://" + elsewhere.baseUrl() + "/bundle.raucb");
+    std::string error;
+    ASSERT_TRUE(updates.startUpdate(error)) << error;
+    ASSERT_TRUE(waitFor([&] { return phase() == "failed"; }, 10000ms)) << phase();
+    EXPECT_TRUE(elsewhere.requests().empty());
+}
+
 TEST_F(UpdateManagerTest, AReleaseWithoutDownloadUrlFailsWithoutDownloading)
 {
     offer(backend, {{"version", "9.9.9"}, {"criticality", "Low"}});

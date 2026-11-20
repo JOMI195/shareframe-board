@@ -17,6 +17,7 @@ export const getConnectionConnectUrl = () => `${getConnectionBaseUrl()}/connect`
 export const getConnectionForgetUrl = () => `${getConnectionBaseUrl()}/forget`;
 export const getConnectionApplyUrl = () => `${getConnectionBaseUrl()}/apply`;
 export const getConnectionModeUrl = () => `${getConnectionBaseUrl()}/mode`;
+export const getConnectionScanUrl = () => `${getConnectionBaseUrl()}/scan`;
 export const getApPasswordUrl = () => `${getConnectionBaseUrl()}/ap-password`;
 
 // Frame / slideshow
@@ -43,7 +44,10 @@ export const getSystemInfoUrl = () => `${systemBaseUrl()}/info`;
 export const getSystemHealthUrl = () => `${systemBaseUrl()}/health`;
 export const getRestartPiUrl = () => `${systemBaseUrl()}/restart`;
 export const getShutdownPiUrl = () => `${systemBaseUrl()}/shutdown`;
+export const getExitSafeModeUrl = () => `${systemBaseUrl()}/safe-mode/exit`;
 export const getFactoryResetUrl = () => `${systemBaseUrl()}/factory-reset`;
+export const getFactoryResetCodeUrl = () => `${systemBaseUrl()}/factory-reset/code`;
+export const getFactoryResetCancelUrl = () => `${systemBaseUrl()}/factory-reset/cancel`;
 export const getFrameLogsUrl = () => `${systemBaseUrl()}/logs`;
 export const getSendDiagnosticsUrl = () => `${systemBaseUrl()}/diagnostics`;
 export const getLatestReleaseUrl = () => `${systemBaseUrl()}/updates/latest`;

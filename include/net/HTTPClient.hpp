@@ -17,7 +17,8 @@ class HTTPClient
 public:
     using Headers = std::map<std::string, std::string>;
 
-    explicit HTTPClient(int connectTimeoutSecs = 60, int transferTimeoutSecs = 60);
+    /// `retries`: how often a request that reached no server is sent again (with backoff).
+    explicit HTTPClient(int connectTimeoutSecs = 60, int transferTimeoutSecs = 60, int retries = 3);
 
     [[nodiscard]] HttpResponse get(const std::string& url, const Headers& headers = {}) const;
     [[nodiscard]] HttpResponse post(const std::string& url, const std::string& body, const Headers& headers = {}) const;
@@ -39,4 +40,5 @@ private:
 
     int _connectTimeout;
     int _transferTimeout;
+    int _retries;
 };

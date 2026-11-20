@@ -13,8 +13,8 @@ class StatusScreen : public Task
 public:
     StatusScreen(EventBus& bus, const AppConfig& cfg, DisplayManager& display);
 
-    /// Call while stopped.
-    void set(StatusScreenKind kind, const std::string& version);
+    /// Call while stopped. `code` is the reset code a ResetCode screen shows.
+    void set(StatusScreenKind kind, const std::string& version, const std::string& code = "");
 
     /// After stop(): the shutdown refresh paints the screen if it never made it
     /// to the panel, so it stays up through the reboot.
@@ -27,6 +27,7 @@ private:
     const AppConfig& cfg_;
     DisplayManager& display_;
     std::vector<uint8_t> buffer_;
+    std::vector<std::string> text_;
     std::string source_;
     bool shown_ = false;
 };

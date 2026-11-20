@@ -1,5 +1,7 @@
 #include "image/ImageManager.hpp"
+#include "image/PictureLimits.hpp"
 #include <openssl/evp.h>
+#include <stb_image.h>
 #include <spdlog/spdlog.h>
 #include <cctype>
 #include <ctime>
@@ -46,6 +48,7 @@ std::optional<Image> ImageManager::saveImage(
     const std::string& base64Data,
     int64_t expiresAt) const
 {
+    std::filesystem::path filepath;
     try
     {
         auto decoded = decodeBase64(base64Data);
@@ -54,21 +57,27 @@ std::optional<Image> ImageManager::saveImage(
             spdlog::error("Failed to decode base64 image data for sent_image_id={}", sentImageId);
             return std::nullopt;
         }
+        if (!_acceptable(sentImageId, decoded))
+            return std::nullopt;
 
         const int64_t receivedAt = std::time(nullptr);
-        auto filename = fmt::format("{}_{}_{}_{}.jpg",
-                                    safeFilePart(sender), receivedAt, expiresAt, sentImageId);
-        auto filepath = _savePath / filename;
+        filepath = _savePath / fmt::format("{}_{}_{}_{}.jpg", safeFilePart(sender), receivedAt, expiresAt, sentImageId);
 
-        std::ofstream file(filepath, std::ios::binary);
-        if (!file)
+        // Written aside and renamed, so a failed write never leaves a truncated picture.
+        const auto part = std::filesystem::path(filepath.string() + ".part");
         {
-            spdlog::error("Failed to open file for writing: {}", filepath.string());
-            return std::nullopt;
+            std::ofstream file(part, std::ios::binary);
+            file.write(reinterpret_cast<const char*>(decoded.data()), static_cast<std::streamsize>(decoded.size()));
+            file.close();
+            if (!file)
+            {
+                std::error_code ec;
+                std::filesystem::remove(part, ec);
+                spdlog::error("Failed to write {} (disk full?)", part.string());
+                return std::nullopt;
+            }
         }
-        file.write(reinterpret_cast<const char*>(decoded.data()),
-                   static_cast<std::streamsize>(decoded.size()));
-        file.close();
+        std::filesystem::rename(part, filepath);
 
         Image image{sentImageId, sender, filepath, expiresAt, receivedAt};
         _repo.save(image);
@@ -78,8 +87,43 @@ std::optional<Image> ImageManager::saveImage(
     catch (const std::exception& e)
     {
         spdlog::error("Error saving image sent_image_id={}: {}", sentImageId, e.what());
+        if (!filepath.empty())
+        {
+            std::error_code ec;
+            std::filesystem::remove(filepath, ec);
+        }
         return std::nullopt;
     }
+}
+
+bool ImageManager::_acceptable(int64_t sentImageId, const std::vector<uint8_t>& bytes) const
+{
+    if (bytes.size() > picture::kMaxFileBytes)
+    {
+        spdlog::error("Picture {} refused: {} bytes is over the limit", sentImageId, bytes.size());
+        return false;
+    }
+    int width = 0, height = 0, comp = 0;
+    if (!stbi_info_from_memory(bytes.data(), static_cast<int>(bytes.size()), &width, &height, &comp))
+    {
+        spdlog::error("Picture {} refused: not a JPEG or PNG ({})", sentImageId, stbi_failure_reason());
+        return false;
+    }
+    if (int64_t{width} * height > picture::kMaxPixels)
+    {
+        spdlog::error("Picture {} refused: {}x{} is over the pixel limit", sentImageId, width, height);
+        return false;
+    }
+    std::error_code ec;
+    const auto space = std::filesystem::space(_savePath, ec);
+    const auto reserve = static_cast<std::uintmax_t>(_cfg.image.minFreeMb) * 1024 * 1024;
+    if (!ec && space.available < bytes.size() + reserve)
+    {
+        spdlog::error("Picture {} refused: only {} MB free on the picture storage", sentImageId,
+                      space.available / (1024 * 1024));
+        return false;
+    }
+    return true;
 }
 
 void ImageManager::removeImages(const std::vector<int64_t>& ids) const
@@ -105,7 +149,7 @@ std::vector<int64_t> ImageManager::removeExpired() const
 
     for (const auto& img : allImages)
     {
-        if (img.expiresAt < now)
+        if (img.expiresAt != Image::kNeverExpires && img.expiresAt < now)
         {
             std::error_code ec;
             std::filesystem::remove(img.imagePath, ec);

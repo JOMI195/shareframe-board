@@ -1,4 +1,5 @@
 #include "task/Heartbeat.hpp"
+#include <ctime>
 #include "auth/AuthTokenManager.hpp"
 #include "auth/TokenAuth.hpp"
 #include "logging/LogSanitizer.hpp"
@@ -139,8 +140,7 @@ void Heartbeat::execute()
         return;
     }
     logger_->debug("Heartbeat acknowledged ({})", res.statusCode);
-    if (!backendReached_)
-        _markBackendReached();
+    _markBackendReached();
     if (!events.empty())
         _saveEventCursor(events.back()["seq"].get<int64_t>());
 }
@@ -148,8 +148,17 @@ void Heartbeat::execute()
 void Heartbeat::_markBackendReached()
 {
     backendReached_ = true;
-    if (!std::ofstream{cfg_.heartbeat.backendOkPath})
-        logger_->warn("Could not write {}", cfg_.heartbeat.backendOkPath);
+    // Until when the contact counts, two beats from now: the Wi-Fi daemon takes it as internet
+    // until then. Renamed in, so it never reads half a line.
+    const auto& path = cfg_.heartbeat.backendOkPath;
+    const auto tmp = path + ".tmp";
+    std::error_code ec;
+    if (std::ofstream f{tmp}; !(f << std::time(nullptr) + 2 * cfg_.heartbeat.intervalSecs << '\n'))
+        ec = std::make_error_code(std::errc::io_error);
+    else
+        std::filesystem::rename(tmp, path, ec);
+    if (ec)
+        logger_->warn("Could not write {}: {}", path, ec.message());
 }
 
 nlohmann::json Heartbeat::_getNewEvents() const

@@ -1,4 +1,5 @@
 #pragma once
+#include <cctype>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -35,6 +36,21 @@ parseUri(const std::string& uri)
     }
 
     return {path, params};
+}
+
+/// The host of an Origin ("http://Host:8090") or Host ("host:8090") header, lower-cased, without the port.
+inline std::string hostOf(std::string value)
+{
+    if (const auto scheme = value.find("://"); scheme != std::string::npos)
+        value.erase(0, scheme + 3);
+    value = value.substr(0, value.find('/'));
+    if (value.starts_with('['))
+        value = value.substr(0, value.find(']') + 1);
+    else if (const auto colon = value.find(':'); colon != std::string::npos)
+        value.erase(colon);
+    for (auto& c : value)
+        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return value;
 }
 
 } // namespace HttpUtil

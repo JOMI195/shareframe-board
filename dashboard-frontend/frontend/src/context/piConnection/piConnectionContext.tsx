@@ -2,6 +2,7 @@ import { fetchWithTimeout } from '@/common/utils/fetch';
 import { getSystemHealthUrl } from '@/assets/endpoints/api/frame';
 import React, { useState, useEffect, useCallback } from 'react';
 import { PiConnectionContext } from './piConnectionContextValue';
+import { pollWhileVisible } from '@/common/utils/poll';
 
 export const PiConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [isConnected, setIsConnected] = useState<boolean>(false);
@@ -18,11 +19,7 @@ export const PiConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     // Periodically check connection
     useEffect(() => {
-        checkPiConnection();
-
-        const intervalId = setInterval(checkPiConnection, 30000);
-
-        return () => clearInterval(intervalId);
+        return pollWhileVisible(checkPiConnection, 30000);
     }, [checkPiConnection]);
 
     return (

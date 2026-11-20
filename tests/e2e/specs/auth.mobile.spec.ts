@@ -17,7 +17,7 @@ test('signs in with a one-time code on a phone', async ({ page }) => {
 
 test('a wrong password clears the field for another try', async ({ page }) => {
   await page.goto('/auth/sign-in');
-  await page.getByRole('button', { name: 'Mit Passwort anmelden' }).click();
+  await page.getByRole('button', { name: 'Mit Geräte-Passwort anmelden' }).click();
   const password = page.getByRole('textbox', { name: 'Passwort', exact: true });
   await password.fill('wrong-password');
   // Slow enough for the loading snackbar to show.
@@ -45,7 +45,7 @@ test('a wrong password clears the field for another try', async ({ page }) => {
 
 test('signs out through the side menu', async ({ page }) => {
   await page.goto('/auth/sign-in');
-  await page.getByRole('button', { name: 'Mit Passwort anmelden' }).click();
+  await page.getByRole('button', { name: 'Mit Geräte-Passwort anmelden' }).click();
   await page.getByRole('textbox', { name: 'Passwort', exact: true }).fill(DASHBOARD_PASSWORD);
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);

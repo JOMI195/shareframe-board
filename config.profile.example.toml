@@ -17,3 +17,12 @@ image_save_path = "images"
 mock_display = true
 mock_output_dir = "panel"
 wifi_mode_path = "wifi-mode.dev.json"
+
+# On a dev machine /run/shareframe is not writable; the board uses it.
+[ipc]
+ws_rep = "ipc:///tmp/shareframe-ws.rep.sock"
+ws_pub = "ipc:///tmp/shareframe-ws.pub.sock"
+display_rep = "ipc:///tmp/shareframe-display.rep.sock"
+dashboard_rep = "ipc:///tmp/shareframe-dashboard.rep.sock"
+heartbeat_rep = "ipc:///tmp/shareframe-heartbeat.rep.sock"
+update_rep = "ipc:///tmp/shareframe-update.rep.sock"

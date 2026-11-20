@@ -58,10 +58,12 @@ public:
 
     /// Paint a ready 1-bit panel buffer (init → display → sleep cycle); `source`
     /// names the content for logs and the mock panel. A stop request cancels a
-    /// paint still waiting for the min refresh interval.
+    /// paint still waiting for the min refresh interval. `text` is what the screen
+    /// says: only the mock panel records it, so tests read it like a person would.
     [[nodiscard]] bool displayBuffer(const std::vector<uint8_t>& buffer, const std::string& source,
                                      std::stop_token st = {},
-                                     RefreshPolicy policy = RefreshPolicy::RespectMinInterval);
+                                     RefreshPolicy policy = RefreshPolicy::RespectMinInterval,
+                                     const std::vector<std::string>& text = {});
 
     [[nodiscard]] bool isCleared() const { return _content.load() == PanelContent::Blank; }
 
@@ -91,8 +93,10 @@ private:
     void _hwSleep();
     void _waitMinRefresh(const std::stop_token& st = {}) const;
     void _clearHw();
-    [[nodiscard]] bool _sendBufferHw(const std::vector<uint8_t>& buffer, const std::string& source);
-    void _writeMockPanel(const std::vector<uint8_t>& buffer, PanelContent content, const std::string& source);
+    [[nodiscard]] bool _sendBufferHw(const std::vector<uint8_t>& buffer, const std::string& source,
+                                     const std::vector<std::string>& text = {});
+    void _writeMockPanel(const std::vector<uint8_t>& buffer, PanelContent content, const std::string& source,
+                         const std::vector<std::string>& text = {});
     /// Call after a refresh that succeeded.
     void _recordScreen(PanelContent content, const std::string& source);
 

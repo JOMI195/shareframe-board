@@ -86,6 +86,11 @@ void WebsocketClient::_processMessage(const std::string& text) const
     {
         const auto json = nlohmann::json::parse(text);
         logger_->debug("WS recv: {}", logging::summarizePayloadForLog(text, "WS recv"));
+        if (!json.is_object())
+        {
+            logger_->warn("Received a message that is not an object: {}", logging::summarizePayloadForLog(text, "WS recv"));
+            return;
+        }
 
         auto type = json.value("type", "");
         if (type.empty())
@@ -123,6 +128,10 @@ void WebsocketClient::_processMessage(const std::string& text) const
     catch (const nlohmann::json::parse_error&)
     {
         logger_->warn("Received non-JSON message: {}", logging::summarizePayloadForLog(text, "non-JSON"));
+    }
+    catch (const nlohmann::json::exception& e)
+    {
+        logger_->warn("Received malformed message ({}): {}", e.what(), logging::summarizePayloadForLog(text, "WS recv"));
     }
 }
 
@@ -168,6 +177,7 @@ void WebsocketClient::_reportIfUnregistered()
         return;
     link_.moveTo(next);
     ws_.setMaxWaitBetweenReconnectionRetries(ws::maxReconnectWaitMs(next));
+    contact_.setUnregistered(true);
     bus_.publish<Topic::FRAME_REGISTRATION>({false, authMgr_.claimCode()});
 }
 
@@ -175,10 +185,14 @@ void WebsocketClient::_onOpened()
 {
     const bool wasUnregistered = link_.state() == ws::Link::Unregistered;
     link_.moveTo(ws::onOpened(link_.state()));
-    if (!wasUnregistered)
-        return;
-    ws_.setMaxWaitBetweenReconnectionRetries(ws::maxReconnectWaitMs(link_.state()));
-    bus_.publish<Topic::FRAME_REGISTRATION>({true});
+    if (wasUnregistered)
+    {
+        ws_.setMaxWaitBetweenReconnectionRetries(ws::maxReconnectWaitMs(link_.state()));
+        contact_.setUnregistered(false);
+    }
+    const bool firstOpen = !announcedRegistered_.exchange(true);
+    if (wasUnregistered || firstOpen)
+        bus_.publish<Topic::FRAME_REGISTRATION>({true});
 }
 
 // ------- SEND QUEUE

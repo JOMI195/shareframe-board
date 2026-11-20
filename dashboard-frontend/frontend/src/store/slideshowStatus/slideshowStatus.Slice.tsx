@@ -3,6 +3,7 @@ import { AppDispatch, RootState } from '..';
 import { fetchWithTimeout } from '@/common/utils/fetch';
 import { getSlideshowStatusUrl } from '@/assets/endpoints/api/frame';
 import { INowShowing } from '@/types';
+import { pollWhileVisible } from '@/common/utils/poll';
 
 
 // Types for Slideshow Status State
@@ -16,6 +17,8 @@ interface SlideshowStatusState {
     isLoading: boolean;
     error: string | null;
     lastCheckedAt: number | null;
+    // When the board lets the panel paint again (ms); null = it may now.
+    refreshReadyAt: number | null;
 }
 
 // Initial State
@@ -29,6 +32,7 @@ const initialState: SlideshowStatusState = {
     isLoading: false,
     error: null,
     lastCheckedAt: null,
+    refreshReadyAt: null,
 };
 
 // Async Thunk for checking slideshow status
@@ -44,6 +48,7 @@ export const checkSlideshowStatusThunk = createAsyncThunk(
             }
 
             const raw = payload.data.seconds_until_next;
+            const rest = payload.data.refresh_ready_in_secs;
             const rawCount = payload.data.image_count;
             const shown = payload.data.now_showing;
             return {
@@ -58,6 +63,7 @@ export const checkSlideshowStatusThunk = createAsyncThunk(
                 isRefreshing: payload.data.refreshing === true,
                 imageCount: (typeof rawCount === 'number' && rawCount >= 0) ? rawCount : null,
                 secondsUntilNext: (typeof raw === 'number' && raw >= 0) ? raw : null,
+                refreshReadyInSecs: (typeof rest === 'number' && rest > 0) ? rest : 0,
             };
         } catch (error) {
             return rejectWithValue(
@@ -73,18 +79,7 @@ export const startContinuousStatusCheck = () => (dispatch: AppDispatch) => {
         dispatch(checkSlideshowStatusThunk());
     };
 
-    // Initial immediate check
-    performCheck();
-
-    // Set up continuous interval
-    const intervalId = setInterval(performCheck, 5000); // Check every 5 seconds
-
-    // Return a function to stop the interval
-    return () => {
-        if (intervalId) {
-            clearInterval(intervalId);
-        }
-    };
+    return pollWhileVisible(performCheck, 5000);
 };
 
 // Slice
@@ -102,6 +97,7 @@ export const slideshowStatusSlice = createSlice({
             state.isLoading = false;
             state.error = null;
             state.lastCheckedAt = null;
+            state.refreshReadyAt = null;
         }
     },
     extraReducers: (builder) => {
@@ -119,6 +115,8 @@ export const slideshowStatusSlice = createSlice({
                 state.isLoading = false;
                 state.error = null;
                 state.lastCheckedAt = Date.now();
+                state.refreshReadyAt = action.payload.refreshReadyInSecs > 0
+                    ? Date.now() + action.payload.refreshReadyInSecs * 1000 : null;
             })
             .addCase(checkSlideshowStatusThunk.rejected, (state, action) => {
                 state.isLoading = false;

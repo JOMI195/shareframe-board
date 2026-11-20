@@ -51,4 +51,21 @@ TEST(WifiModeContract, HotspotCredentialsArriveVerbatim)
     EXPECT_EQ(mode.at("ap_ssid"), "frame \"one\"");
     EXPECT_EQ(mode.at("ap_password"), "pa\"ss\\word's");
     EXPECT_GT(mode.at("last_failed_at").get<int64_t>(), 0);
+    EXPECT_EQ(mode.at("last_failed_reason"), "wrong_password");
+}
+
+// The networks the dashboard offers to pick, by their real names.
+TEST(WifiScanContract, NetworksInReachArriveDecodedStrongestFirst)
+{
+    TempDir dir;
+    std::filesystem::copy_file(golden::hardware("wifi-scan.json"), dir.path() / "wifi-scan.json");
+    const WifiManager wifi{(dir.path() / "wifi-mode.json").string()};
+
+    const auto scan = wifi.getScan();
+    EXPECT_EQ(scan.at("networks"), (nlohmann::json{
+        {{"ssid", "home"}, {"signal", -48}, {"secured", true}},
+        {{"ssid", "Café \"Gast\""}, {"signal", -61}, {"secured", false}},
+        {{"ssid", "back\\slash"}, {"signal", -75}, {"secured", true}},
+    }));
+    EXPECT_GE(scan.at("age_secs").get<int64_t>(), 0);
 }

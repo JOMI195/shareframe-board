@@ -11,7 +11,6 @@
 // retry, only when the server can't be reached.
 constexpr int kMinWaitMs = 1000;
 constexpr int kMaxWaitMs = 180000;
-constexpr int kMaxRetries = 3;
 // Bounds the requests of one download so a crawling link stays inside the server's quota.
 constexpr int kMaxDownloadAttempts = 30;
 
@@ -23,6 +22,8 @@ static ix::HttpRequestArgsPtr makeArgs(
     auto args = std::make_shared<ix::HttpRequestArgs>();
     args->connectTimeout = connectTimeout;
     args->transferTimeout = transferTimeout;
+    // Requests carry the frame's token: a redirect must not hand it to another host.
+    args->followRedirects = false;
     for (const auto& [k, v] : headers)
         args->extraHeaders[k] = v;
     return args;
@@ -53,18 +54,19 @@ HttpResponse HTTPClient::_withRetry(Fn&& doRequest) const
     for (int attempt = 0;; ++attempt)
     {
         resp = doRequest();
-        if (resp.statusCode != 0 || attempt >= kMaxRetries)
+        if (resp.statusCode != 0 || attempt >= _retries)
             return resp;
         const int delayMs = std::min(kMinWaitMs << attempt, kMaxWaitMs);
         spdlog::warn("HTTP could not reach server (attempt {}/{}), retrying in {}ms",
-                     attempt + 1, kMaxRetries, delayMs);
+                     attempt + 1, _retries, delayMs);
         std::this_thread::sleep_for(std::chrono::milliseconds(delayMs));
     }
 }
 
-HTTPClient::HTTPClient(const int connectTimeoutSecs, const int transferTimeoutSecs)
+HTTPClient::HTTPClient(const int connectTimeoutSecs, const int transferTimeoutSecs, const int retries)
     : _connectTimeout(connectTimeoutSecs)
       , _transferTimeout(transferTimeoutSecs)
+      , _retries(retries)
 {
 }
 
@@ -158,7 +160,7 @@ HttpResponse HTTPClient::downloadToFile(const std::string& url, const std::strin
         // Lost connection: keep what arrived and resume; only rounds without
         // progress count toward the retry limit.
         failures = appended && received > 0 ? 0 : failures + 1;
-        if (failures > kMaxRetries || attempt >= kMaxDownloadAttempts)
+        if (failures > _retries || attempt >= kMaxDownloadAttempts)
             return resp;
         const int delayMs = std::min(kMinWaitMs << std::max(failures - 1, 0), kMaxWaitMs);
         spdlog::warn("HTTP download interrupted at {} bytes (attempt {}/{}), resuming in {}ms",

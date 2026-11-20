@@ -11,6 +11,7 @@
 #include <mutex>
 #include <optional>
 #include <random>
+#include <unordered_set>
 #include <vector>
 
 class RuntimeSettings;
@@ -98,6 +99,9 @@ private:
     DisplayManager& display_;
     RuntimeSettings& settings_;
     std::atomic<int64_t> currentImageId_{0};
+    // Pictures the decoder could not read; left out until the next restart. Loop thread only.
+    std::unordered_set<int64_t> unreadable_;
+    bool lastPaintUnreadable_ = false;
     mutable std::mutex shuffleMtx_;
     playback::ShuffleBag shuffle_;
     slideshow::Requests requests_;

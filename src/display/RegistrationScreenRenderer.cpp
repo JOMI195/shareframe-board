@@ -20,20 +20,28 @@ std::string RegistrationScreenRenderer::formatClaimCode(const std::string& claim
     return grouped;
 }
 
-std::vector<uint8_t> RegistrationScreenRenderer::render(const std::string& url, const std::string& host,
-                                                        const std::string& serial, const std::string& claimCode,
-                                                        const std::string& fontPath)
+std::vector<std::string> RegistrationScreenRenderer::paragraphs(const std::string& host, const std::string& serial,
+                                                                const std::string& claimCode,
+                                                                const std::string& hostname)
 {
-    panel_text::Canvas canvas;
-    qr_layout::drawQr(canvas, url);
-
-    std::vector<std::string> paragraphs{
+    std::vector<std::string> text{
         "Rahmen hinzufügen",
         "1. QR-Code scannen und bei ShareFrame anmelden",
         "2. Oder auf " + host + " unter Bilderrahmen hinzufügen diesen Code eingeben:",
         claimCode.empty() ? "Code wird geladen …" : formatClaimCode(claimCode),
-        "Seriennummer: " + serial,
     };
+    if (!hostname.empty())
+        text.push_back("Einstellungen: http://" + hostname + ".local");
+    text.push_back("Seriennummer: " + serial);
+    return text;
+}
+
+std::vector<uint8_t> RegistrationScreenRenderer::render(const std::string& url,
+                                                        const std::vector<std::string>& paragraphs,
+                                                        const std::string& fontPath)
+{
+    panel_text::Canvas canvas;
+    qr_layout::drawQr(canvas, url);
 
     if (panel_text::Font font; font.load(fontPath))
         qr_layout::drawText(canvas, font, paragraphs);

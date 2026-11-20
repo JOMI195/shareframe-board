@@ -126,6 +126,8 @@ std::vector<Image> DisplayImageLoop::_showablePictures() const
     auto pictures = repo_.getAll();
     std::erase_if(pictures, [this](const Image& image)
     {
+        if (unreadable_.contains(image.id))
+            return true;
         if (std::filesystem::exists(image.imagePath))
             return false;
         logger_->warn("Image file missing: {}, skipping", image.imagePath.string());
@@ -252,6 +254,13 @@ void DisplayImageLoop::_showPicture(const std::stop_token& st, const std::vector
     }
     else if (st.stop_requested())
         return;
+    else if (lastPaintUnreadable_)
+    {
+        // Moving on at once: holding it would leave the last picture up for a whole interval.
+        logger_->warn("Image {} cannot be read, leaving it out until the next restart", nextId);
+        unreadable_.insert(nextId);
+        return;
+    }
     else
         logger_->error("Failed to display image {}", nextId);
 
@@ -277,6 +286,9 @@ bool DisplayImageLoop::_paint(const Frame& frame, const std::stop_token& st)
 {
     const bool sample = frame.content == Content::Sample;
     auto buffer = PhotoRenderer::render(frame.path);
+    lastPaintUnreadable_ = buffer.empty();
+    if (lastPaintUnreadable_)
+        return false;
     const bool nightHold = settings_.nightState() == NightState::Hold;
     if (!buffer.empty() && nightHold)
     {

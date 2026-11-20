@@ -46,6 +46,7 @@ struct WebsocketConfig
 struct ImageConfig
 {
     std::string imageSavePath = "images";
+    int minFreeMb = 64;
 };
 
 struct DisplayConfig
@@ -66,6 +67,12 @@ struct DisplayConfig
     int nightIntervalSecs = 3600;
     std::string nightStyle = "hold";
     std::string wifiModePath = "/run/shareframe/wifi-mode.json";
+    std::string setupCodePath = "/run/shareframe/setup-code";
+    // Left by the image's scripts and the display: a frame set up or owned before gets the short windows.
+    std::string wifiJoinedPath = "/data/shareframe/wifi-joined";
+    std::string registeredOncePath = "/data/shareframe/registered-once";
+    // Holds the reason while the image's scripts keep the display down.
+    std::string safeModePath = "/run/shareframe/safe-mode";
     // The setup QR only shows this long after boot, before the first connection.
     int apSetupBootWindowSecs = 600;
     std::string setupUrl = "http://192.168.4.1";
@@ -112,12 +119,12 @@ struct DisplayApplicationConfig
 // may override to /run/shareframe.
 struct IpcConfig
 {
-    std::string wsRep        = "ipc:///tmp/shareframe-ws.rep.sock";
-    std::string wsPub        = "ipc:///tmp/shareframe-ws.pub.sock";
-    std::string displayRep   = "ipc:///tmp/shareframe-display.rep.sock";
-    std::string dashboardRep = "ipc:///tmp/shareframe-dashboard.rep.sock";
-    std::string heartbeatRep = "ipc:///tmp/shareframe-heartbeat.rep.sock";
-    std::string updateRep    = "ipc:///tmp/shareframe-update.rep.sock";
+    std::string wsRep        = "ipc:///run/shareframe/ws.rep.sock";
+    std::string wsPub        = "ipc:///run/shareframe/ws.pub.sock";
+    std::string displayRep   = "ipc:///run/shareframe/display.rep.sock";
+    std::string dashboardRep = "ipc:///run/shareframe/dashboard.rep.sock";
+    std::string heartbeatRep = "ipc:///run/shareframe/heartbeat.rep.sock";
+    std::string updateRep    = "ipc:///run/shareframe/update.rep.sock";
 };
 
 struct HeartbeatApplicationConfig

@@ -1,21 +1,27 @@
 #include "dashboard/WifiHandlers.hpp"
+#include <fstream>
 #include "dashboard/ResponseUtil.hpp"
 #include "dashboard/Validation.hpp"
 #include "net/ServerConnection.hpp"
 #include <algorithm>
 #include <ctime>
+#include <unistd.h>
 
 using namespace dashboard;
 
-WifiHandlers::WifiHandlers(WifiManager& wifi, IpcClient& wsIpc)
-    : wifi_(wifi), wsIpc_(wsIpc), logger_(spdlog::default_logger()->clone("WifiHandlers"))
+WifiHandlers::WifiHandlers(WifiManager& wifi, IpcClient& wsIpc, std::string safeModePath)
+    : wifi_(wifi), wsIpc_(wsIpc), safeModePath_(std::move(safeModePath)), logger_(spdlog::default_logger()->clone("WifiHandlers"))
 {
 }
 
 static ix::HttpResponsePtr wifiResult(const nlohmann::json& result)
 {
     if (result.contains("error"))
-        return errorResponse(500, "Internal Server Error", result["error"].get<std::string>());
+    {
+        const int status = result.value("status", 500);
+        return errorResponse(status, status == 409 ? "Conflict" : "Internal Server Error",
+                             result["error"].get<std::string>());
+    }
     return jsonResponse(200, "OK", result);
 }
 
@@ -28,8 +34,12 @@ nlohmann::json WifiHandlers::connectionMode() const
 {
     auto mode = wifi_.getWifiMode();
     mode.erase("known_ssids");
+    // The name the dashboard tells the owner to open once the frame is on the home network.
+    char host[256] = {};
+    mode["hostname"] = gethostname(host, sizeof host - 1) == 0 ? std::string(host) : std::string{};
     const auto server = queryServerConnection(wsIpc_);
     mode["server_connected"] = server ? nlohmann::json(server->connected) : nlohmann::json();
+    mode["registered"] = server ? nlohmann::json(!server->unregistered) : nlohmann::json();
     mode["server_offline_secs"] = server && !server->connected && server->since > 0
         ? std::max<int64_t>(0, std::time(nullptr) - server->since) : 0;
     mode["server_last_contact_at"] = server ? server->lastContactAt : 0;
@@ -37,7 +47,16 @@ nlohmann::json WifiHandlers::connectionMode() const
     mode.erase("last_failed_at");
     mode["last_failed_secs_ago"] = failedAt > 0
         ? nlohmann::json(std::max<int64_t>(0, std::time(nullptr) - failedAt)) : nlohmann::json();
+    std::string safeMode;
+    if (std::ifstream f(safeModePath_); f)
+        std::getline(f, safeMode);
+    mode["safe_mode"] = safeMode;
     return mode;
+}
+
+ix::HttpResponsePtr WifiHandlers::handleScan(const ix::HttpRequestPtr& /*req*/) const
+{
+    return jsonResponse(200, "OK", wifi_.getScan());
 }
 
 ix::HttpResponsePtr WifiHandlers::handleSavedNetworks(const ix::HttpRequestPtr& /*req*/) const
@@ -57,7 +76,8 @@ ix::HttpResponsePtr WifiHandlers::handleConnect(const ix::HttpRequestPtr& req) c
     if (!Validation::isValidSsid(ssid))
         return errorResponse(400, "Bad Request", "Invalid SSID (max 32 bytes, no control chars)");
 
-    if (!Validation::isValidPassword(password))
+    // An empty password saves an open network.
+    if (!password.empty() && !Validation::isValidPassword(password))
         return errorResponse(400, "Bad Request", "Invalid password (8-63 chars, no control chars)");
 
     return wifiResult(wifi_.connect(ssid, password));

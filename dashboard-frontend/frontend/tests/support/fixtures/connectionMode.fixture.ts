@@ -8,9 +8,13 @@ export const makeConnectionMode = (over: Partial<ConnectionModePayload> = {}): C
   internet: true,
   ap_ssid: 'shareframe-board',
   ap_password: '',
+  hostname: 'shareframe-board-1a2b',
   server_connected: true,
+  registered: true,
+  safe_mode: '',
   server_offline_secs: 0,
   server_last_contact_at: 1_760_000_000,
   last_failed_secs_ago: null,
+  last_failed_reason: '',
   ...over,
 });

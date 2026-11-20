@@ -12,12 +12,15 @@ struct ServerConnection
     // Unix seconds the current online or offline period began; 0 = never connected.
     int64_t since = 0;
     int64_t lastContactAt = 0;
+    // The server refused the frame because nobody owns it.
+    bool unregistered = false;
     bool operator==(const ServerConnection&) const = default;
 };
 
 inline nlohmann::json toJson(const ServerConnection& c)
 {
-    return {{"connected", c.connected}, {"since", c.since}, {"last_contact_at", c.lastContactAt}};
+    return {{"connected", c.connected}, {"since", c.since}, {"last_contact_at", c.lastContactAt},
+            {"unregistered", c.unregistered}};
 }
 
 inline std::optional<ServerConnection> serverConnectionFromJson(const nlohmann::json& j)
@@ -27,7 +30,7 @@ inline std::optional<ServerConnection> serverConnectionFromJson(const nlohmann::
     try
     {
         return ServerConnection{j.at("connected").get<bool>(), j.value("since", int64_t{0}),
-                                j.value("last_contact_at", int64_t{0})};
+                                j.value("last_contact_at", int64_t{0}), j.value("unregistered", false)};
     }
     catch (...)
     {

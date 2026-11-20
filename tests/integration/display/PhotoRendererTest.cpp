@@ -1,5 +1,6 @@
 #include "display/DisplayManager.hpp"
 #include "display/PhotoRenderer.hpp"
+#include "support/PngWriter.hpp"
 #include "support/TempDir.hpp"
 #include <fstream>
 #include <functional>
@@ -16,12 +17,8 @@ protected:
     std::filesystem::path writeImage(const std::function<uint8_t(int x)>& shade,
                                      const int width = W, const int height = H) const
     {
-        const auto path = dir / "image.pgm";
-        std::ofstream f(path, std::ios::binary);
-        f << "P5\n" << width << " " << height << "\n255\n";
-        for (int y = 0; y < height; ++y)
-            for (int x = 0; x < width; ++x)
-                f.put(static_cast<char>(shade(x)));
+        const auto path = dir / "image.png";
+        writeGreyPng(path, width, height, [&](const int x, int) { return shade(x); });
         return path;
     }
 

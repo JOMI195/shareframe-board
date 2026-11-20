@@ -1,6 +1,7 @@
 #include "display/DisplayManager.hpp"
 #include "display/PanelText.hpp"
 #include "display/RegistrationScreenRenderer.hpp"
+#include <algorithm>
 #include <gtest/gtest.h>
 
 namespace
@@ -18,11 +19,24 @@ int blackIn(const std::vector<uint8_t>& buffer, const panel_text::Rect& r)
 }
 }
 
-TEST(RegistrationScreenRenderer, QrSerialAndCodeStayInsideTheVisibleArea)
+TEST(RegistrationScreenRenderer, NamesTheDashboardAddressNextToTheCode)
 {
+    const auto text = RegistrationScreenRenderer::paragraphs("www.shareframe.de", "EOJ8-WXBV-Y86U-3LL3", "K7M2QX9P",
+                                                             "shareframe-board-1a2b");
+    EXPECT_NE(std::find(text.begin(), text.end(), "K7M2-QX9P"), text.end());
+    EXPECT_NE(std::find(text.begin(), text.end(), "Einstellungen: http://shareframe-board-1a2b.local"), text.end());
+
+    const auto noName = RegistrationScreenRenderer::paragraphs("www.shareframe.de", "EOJ8-WXBV-Y86U-3LL3", "K7M2QX9P", "");
+    EXPECT_EQ(noName.size(), text.size() - 1) << "an address line without a name";
+}
+
+TEST(RegistrationScreenRenderer, QrSerialCodeAndAddressStayInsideTheVisibleArea)
+{
+    const auto text = RegistrationScreenRenderer::paragraphs("www.shareframe.de", "EOJ8-WXBV-Y86U-3LL3", "K7M2QX9P",
+                                                             "shareframe-board-1a2b");
     const auto buffer = RegistrationScreenRenderer::render(
-        "https://www.shareframe.de/bilderrahmen?code=K7M2QX9P", "www.shareframe.de",
-        "EOJ8-WXBV-Y86U-3LL3", "K7M2QX9P", std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans.ttf");
+        "https://www.shareframe.de/bilderrahmen?code=K7M2QX9P", text,
+        std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans.ttf");
     ASSERT_EQ(buffer.size(), DisplayManager::BUFFER_SIZE);
 
     constexpr auto safe = panel_text::SAFE_AREA;
@@ -31,4 +45,5 @@ TEST(RegistrationScreenRenderer, QrSerialAndCodeStayInsideTheVisibleArea)
     const int middle = (safe.x0 + safe.x1) / 2;
     EXPECT_GT(blackIn(buffer, {safe.x0, safe.y0, middle - 50, safe.y1}), 0) << "no QR code";
     EXPECT_GT(blackIn(buffer, {middle + 50, safe.y0, safe.x1, safe.y1}), 0) << "no text";
+    EXPECT_EQ(blackIn(buffer, {middle + 50, safe.y1 - 10, safe.x1, safe.y1}), 0) << "text runs to the bottom edge, likely cut off";
 }

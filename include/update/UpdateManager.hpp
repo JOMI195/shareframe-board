@@ -69,6 +69,8 @@ private:
     std::shared_ptr<spdlog::logger> logger_;
 
     mutable std::mutex mutex_;
+    // Between the start request and the release check's answer; another start is refused meanwhile.
+    bool starting_ = false;
     /// Moved under the lock only.
     fsm::Machine<UpdatePhase> phase_;
     std::string error_;

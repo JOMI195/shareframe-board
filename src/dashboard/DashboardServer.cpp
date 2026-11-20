@@ -4,8 +4,8 @@
 #include "dashboard/ResponseUtil.hpp"
 #include "dashboard/Validation.hpp"
 #include "util/HttpUtil.hpp"
-#include <chrono>
-#include <thread>
+#include "util/PanelCode.hpp"
+#include "util/Subprocess.hpp"
 
 using dashboard::errorResponse;
 using dashboard::jsonResponse;
@@ -28,12 +28,13 @@ DashboardServer::DashboardServer(AppConfig& cfg, IpcClient& ipc,
       server_(cfg.dashboardApplication.port, cfg.dashboardApplication.host),
       logger_(spdlog::default_logger()->clone("DashboardServer")),
       diagnostics_(cfg, http, authTokenManager),
-      wifiHandlers_(wifi, wsIpc),
+      wifiHandlers_(wifi, wsIpc, cfg.display.safeModePath),
       frameHandlers_(ipc, cfg),
       slideshowImageHandlers_(ipc, images),
       systemHandlers_(cfg, wifi, diagnostics_, ipc),
       serviceHandlers_(cfg),
-      updateHandlers_(updateIpc)
+      updateHandlers_(updateIpc),
+      factoryResetHandlers_(ipc, updateIpc)
 {
     _initRoutes();
 }
@@ -77,6 +78,10 @@ void DashboardServer::_initRoutes()
         {"GET",  "/api/system/health",   [this](auto& req, auto&) { return systemHandlers_.handleHealth(req); }},
         // Public so the SPA can route to AP-setup before any login.
         {"GET",  "/api/connection/mode", [this](auto& req, auto&) { return _handleConnectionMode(req); }},
+        // A code on the panel proves presence, so these need no session (and a session alone is not enough).
+        {"POST", "/api/system/factory-reset/code",   [this](auto& req, auto&) { return factoryResetHandlers_.handleRequestCode(req); }},
+        {"POST", "/api/system/factory-reset",        [this](auto& req, auto&) { return factoryResetHandlers_.handleReset(req); }},
+        {"POST", "/api/system/factory-reset/cancel", [this](auto& req, auto&) { return factoryResetHandlers_.handleCancel(req); }},
     };
 
     protectedRoutes_ = {
@@ -101,6 +106,7 @@ void DashboardServer::_initRoutes()
         // WiFi / Connection
         {"GET",  "/api/connection/status",         [this](auto& req, auto&) { return wifiHandlers_.handleStatus(req); }},
         {"GET",  "/api/connection/saved-networks", [this](auto& req, auto&) { return wifiHandlers_.handleSavedNetworks(req); }},
+        {"GET",  "/api/connection/scan",           [this](auto& req, auto&) { return wifiHandlers_.handleScan(req); }},
         {"POST", "/api/connection/connect",        [this](auto& req, auto&) { return wifiHandlers_.handleConnect(req); }},
         {"POST", "/api/connection/forget",         [this](auto& req, auto&) { return wifiHandlers_.handleForget(req); }},
         {"POST", "/api/connection/apply",          [this](auto& req, auto&) { return wifiHandlers_.handleApply(req); }},
@@ -110,7 +116,7 @@ void DashboardServer::_initRoutes()
         {"GET",  "/api/system/info",             [this](auto& req, auto&) { return systemHandlers_.handleInfo(req); }},
         {"POST", "/api/system/restart",          [this](auto& req, auto&) { return systemHandlers_.handleRestart(req); }},
         {"POST", "/api/system/shutdown",         [this](auto& req, auto&) { return systemHandlers_.handleShutdown(req); }},
-        {"POST", "/api/system/factory-reset",    [this](auto& req, auto&) { return systemHandlers_.handleFactoryReset(req); }},
+        {"POST", "/api/system/safe-mode/exit",   [this](auto& req, auto&) { return systemHandlers_.handleExitSafeMode(req); }},
         {"GET",  "/api/system/logs",             [this](auto& req, auto& qp) { return systemHandlers_.handleLogs(req, qp); }},
         {"POST", "/api/system/diagnostics",      [this](auto& req, auto&) { return systemHandlers_.handleSendDiagnostics(req); }},
 
@@ -129,25 +135,43 @@ void DashboardServer::_initRoutes()
 ix::HttpResponsePtr DashboardServer::_handleRequest(
     const ix::HttpRequestPtr& req, const std::shared_ptr<ix::ConnectionState>& connState) const
 {
-    auto [path, queryParams] = HttpUtil::parseUri(req->uri);
-
-    logger_->debug("{} {} from {}:{}", req->method, path,
+    logger_->debug("{} {} from {}:{}", req->method, req->uri,
                    connState->getRemoteIp(), connState->getRemotePort());
 
-    // Public routes (no auth required)
+    // An exception escaping here would end the whole process.
+    try
+    {
+        return _dispatch(req);
+    }
+    catch (const nlohmann::json::exception& e)
+    {
+        logger_->warn("Rejected {} {}: {}", req->method, req->uri, e.what());
+        return errorResponse(400, "Bad Request", "Invalid request body");
+    }
+    catch (const std::exception& e)
+    {
+        logger_->error("{} {} failed: {}", req->method, req->uri, e.what());
+        return errorResponse(500, "Internal Server Error", "Internal error");
+    }
+}
+
+ix::HttpResponsePtr DashboardServer::_dispatch(const ix::HttpRequestPtr& req) const
+{
+    auto [path, queryParams] = HttpUtil::parseUri(req->uri);
+
+    if (req->method != "GET" && !_sameOrigin(req))
+    {
+        logger_->warn("Refused cross-origin {} {} from {}", req->method, path, req->headers.at("origin"));
+        return errorResponse(403, "Forbidden", "Cross-origin request refused");
+    }
+
     for (const auto& [method, routePath, handler] : publicRoutes_)
         if (req->method == method && path == routePath)
             return handler(req, queryParams);
 
-    // On the AP, factory reset is the way out of a forgotten device password.
-    const bool apBypass = path == "/api/system/factory-reset" && wifiHandlers_.isApMode();
+    if (auto denied = _loginRequired(req))
+        return denied;
 
-    // All remaining routes require auth
-    if (!apBypass)
-        if (auto denied = _loginRequired(req))
-            return denied;
-
-    // Protected routes
     for (const auto& [method, routePath, handler] : protectedRoutes_)
         if (req->method == method && path == routePath)
             return handler(req, queryParams);
@@ -159,69 +183,78 @@ ix::HttpResponsePtr DashboardServer::_handleRequest(
 
 ix::HttpResponsePtr DashboardServer::_handleLogin(const ix::HttpRequestPtr& req) const
 {
-    nlohmann::json body;
-    try
-    {
-        body = nlohmann::json::parse(req->body);
-    }
-    catch (...)
-    {
+    const auto body = nlohmann::json::parse(req->body, nullptr, false);
+    if (!body.is_object())
         return errorResponse(400, "Bad Request", "Invalid JSON");
-    }
 
-    auto otpIt = body.find("otp");
-    if (otpIt == body.end() || !otpIt->is_string())
-    {
-        // Offline fallback: local password instead of the upstream OTP.
-        if (auto pwIt = body.find("password"); pwIt != body.end() && pwIt->is_string())
-            return _handlePasswordLogin(pwIt->get<std::string>());
-        return errorResponse(400, "Bad Request", "Missing otp or password field");
-    }
+    if (const auto it = body.find("setup_code"); it != body.end() && it->is_string())
+        return _handleSetupCodeLogin(req, it->get<std::string>());
+    if (const auto it = body.find("otp"); it != body.end() && it->is_string())
+        return _handleOtpLogin(req, it->get<std::string>());
+    // Offline fallback: local password instead of the upstream OTP.
+    if (const auto it = body.find("password"); it != body.end() && it->is_string())
+        return _handlePasswordLogin(req, it->get<std::string>());
+    return errorResponse(400, "Bad Request", "Missing otp or password field");
+}
 
-    auto otp = otpIt->get<std::string>();
+ix::HttpResponsePtr DashboardServer::_handleOtpLogin(const ix::HttpRequestPtr& req, const std::string& otp) const
+{
+    const auto attempt = throttle_.begin(_client(req));
+    if (!attempt.admitted())
+        return _throttled(attempt);
 
-    // Authenticate the board→server request with the access token
-    auto authHeaders = TokenAuth::buildTokenAuthHeaders(authTokenManager_);
-
-    // POST to server's OTP verification endpoint
-    nlohmann::json otpPayload = {{"otp", otp}};
     HTTPClient::Headers headers;
-    for (auto& [k, v] : authHeaders)
+    for (auto& [k, v] : TokenAuth::buildTokenAuthHeaders(authTokenManager_))
         headers[k] = v;
     headers["Content-Type"] = "application/json";
 
-    std::string url = cfg_.httpBaseUrl() + cfg_.dashboardApplication.httpVerifyOtpUrl;
-    auto resp = http_.post(url, otpPayload.dump(), headers);
-
+    const std::string url = cfg_.httpBaseUrl() + cfg_.dashboardApplication.httpVerifyOtpUrl;
+    const auto resp = otpHttp_.post(url, nlohmann::json{{"otp", otp}}.dump(), headers);
     if (!resp.ok())
     {
+        // A wrong code comes back as 401 with "error"; a rejected frame token as 401 with "detail".
+        if (const auto refusal = nlohmann::json::parse(resp.body, nullptr, false);
+            resp.statusCode == 401 && refusal.is_object() && refusal.contains("error"))
+            return errorResponse(401, "Unauthorized", "OTP invalid");
         logger_->warn("OTP verification request failed: {} {}", resp.statusCode, resp.errorMsg);
         return errorResponse(401, "Unauthorized", "OTP verification failed");
     }
 
-    // Parse server response and read the plain valid flag
-    nlohmann::json serverResp;
-    try
-    {
-        serverResp = nlohmann::json::parse(resp.body);
-    }
-    catch (...)
-    {
-        logger_->error("Failed to parse OTP server response");
-        return errorResponse(500, "Internal Server Error", "Internal error");
-    }
-
-    if (!serverResp.value("valid", false))
-    {
+    const auto serverResp = nlohmann::json::parse(resp.body, nullptr, false);
+    if (!serverResp.is_object() || !serverResp.value("valid", false))
         return errorResponse(401, "Unauthorized", "OTP invalid");
-    }
 
-    return _sessionLoginResponse();
+    attempt.succeeded();
+    return _sessionLoginResponse(SessionOrigin::OneTimeCode);
 }
 
-ix::HttpResponsePtr DashboardServer::_sessionLoginResponse() const
+ix::HttpResponsePtr DashboardServer::_handleSetupCodeLogin(const ix::HttpRequestPtr& req, const std::string& code) const
 {
-    std::string sessionId = sessions_.createSession();
+    if (!wifi_.isApMode())
+        return errorResponse(409, "Conflict", "Not in access point mode");
+
+    const auto attempt = throttle_.begin(_client(req));
+    if (!attempt.admitted())
+        return _throttled(attempt);
+
+    const auto expected = panel_code::read(cfg_.display.setupCodePath);
+    if (expected.empty() || !PasswordHash::constantTimeEquals(code, expected))
+        return errorResponse(401, "Unauthorized", "Setup code invalid");
+
+    attempt.succeeded();
+    logger_->info("Signed in with the setup code from the panel");
+    Subprocess::run({"shareframe-event", "dashboard", "signed in with the setup code"}, 5);
+    return _sessionLoginResponse(SessionOrigin::SetupCode);
+}
+
+ix::HttpResponsePtr DashboardServer::_sessionLoginResponse(const SessionOrigin origin) const
+{
+    const std::string sessionId = sessions_.createSession(origin);
+    if (sessionId.empty())
+    {
+        logger_->error("No randomness for a session id");
+        return errorResponse(500, "Internal Server Error", "Internal error");
+    }
     logger_->info("Login successful, created session");
 
     ix::WebSocketHttpHeaders respHeaders;
@@ -259,71 +292,60 @@ bool DashboardServer::_isPasswordLoginConfigured() const
     return !cfg_.secrets.dashboardInitialPassword.empty();
 }
 
-ix::HttpResponsePtr DashboardServer::_handlePasswordLogin(const std::string& password) const
+ix::HttpResponsePtr DashboardServer::_handlePasswordLogin(const ix::HttpRequestPtr& req,
+                                                          const std::string& password) const
 {
-    if (int wait = throttle_.retryAfterSecs(); wait > 0)
-        return errorResponse(429, "Too Many Requests",
-                             "Zu viele Fehlversuche. Bitte warte kurz und versuche es erneut.");
-
     if (!_isPasswordLoginConfigured())
         return errorResponse(403, "Forbidden", kNotConfiguredMsg);
 
+    const auto attempt = throttle_.begin(_client(req));
+    if (!attempt.admitted())
+        return _throttled(attempt);
     if (!_verifyDashboardPassword(password))
-    {
-        throttle_.recordFailure();
-        // Flat-rate failed attempts; each connection has its own thread.
-        std::this_thread::sleep_for(std::chrono::milliseconds(250));
         return errorResponse(401, "Unauthorized", "Passwort ungültig");
-    }
 
-    throttle_.recordSuccess();
-    return _sessionLoginResponse();
+    attempt.succeeded();
+    return _sessionLoginResponse(SessionOrigin::Password);
 }
 
 ix::HttpResponsePtr DashboardServer::_handleChangePassword(const ix::HttpRequestPtr& req) const
 {
-    nlohmann::json body;
-    try
-    {
-        body = nlohmann::json::parse(req->body);
-    }
-    catch (...)
-    {
+    const auto body = nlohmann::json::parse(req->body, nullptr, false);
+    if (!body.is_object())
         return errorResponse(400, "Bad Request", "Invalid JSON");
-    }
 
-    const std::string currentPassword = body.value("current_password", "");
     const std::string newPassword = body.value("new_password", "");
-
-    if (int wait = throttle_.retryAfterSecs(); wait > 0)
-        return errorResponse(429, "Too Many Requests",
-                             "Zu viele Fehlversuche. Bitte warte kurz und versuche es erneut.");
-
-    if (!_isPasswordLoginConfigured())
-        return errorResponse(403, "Forbidden", kNotConfiguredMsg);
-
     if (!dashboard::Validation::isValidPassword(newPassword))
         return errorResponse(400, "Bad Request",
                              "Neues Passwort ungültig (8–63 Zeichen, keine Steuerzeichen)");
 
-    if (!_verifyDashboardPassword(currentPassword))
+    const auto sessionId = _extractSessionId(req);
+    if (_needsCurrentPassword(sessionId))
     {
-        throttle_.recordFailure();
-        std::this_thread::sleep_for(std::chrono::milliseconds(250));
-        return errorResponse(401, "Unauthorized", "Aktuelles Passwort ungültig");
+        if (!_isPasswordLoginConfigured())
+            return errorResponse(403, "Forbidden", kNotConfiguredMsg);
+        const auto attempt = throttle_.begin(_client(req));
+        if (!attempt.admitted())
+            return _throttled(attempt);
+        if (!_verifyDashboardPassword(body.value("current_password", "")))
+            return errorResponse(401, "Unauthorized", "Aktuelles Passwort ungültig");
+        attempt.succeeded();
     }
 
-    throttle_.recordSuccess();
     settings_.set(kPasswordHashKey, PasswordHash::hash(newPassword));
+    // Whoever knew the old password is signed out everywhere else.
+    sessions_.removeAllExcept(sessionId);
     logger_->info("Dashboard password changed");
     return jsonResponse(200, "OK", nlohmann::json::object(), "Passwort geändert");
 }
 
 ix::HttpResponsePtr DashboardServer::_handleCheckAuth(const ix::HttpRequestPtr& req) const
 {
-    const std::string sessionId = _extractSessionId(req);
-    bool authenticated = !sessionId.empty() && sessions_.isValid(sessionId);
-    return jsonResponse(200, "OK", {{"authenticated", authenticated}});
+    const bool authenticated = _hasValidSession(req);
+    return jsonResponse(200, "OK", {
+        {"authenticated", authenticated},
+        {"password_change_needs_current", !authenticated || _needsCurrentPassword(_extractSessionId(req))},
+    });
 }
 
 ix::HttpResponsePtr DashboardServer::_handleLogout(const ix::HttpRequestPtr& req) const
@@ -356,7 +378,44 @@ ix::HttpResponsePtr DashboardServer::_loginRequired(const ix::HttpRequestPtr& re
 bool DashboardServer::_hasValidSession(const ix::HttpRequestPtr& req) const
 {
     const std::string sessionId = _extractSessionId(req);
-    return !sessionId.empty() && sessions_.isValid(sessionId);
+    if (sessionId.empty())
+        return false;
+    const auto origin = sessions_.origin(sessionId);
+    // The setup code only stands for presence while the frame hosts its hotspot.
+    if (origin == SessionOrigin::SetupCode && wifi_.getWifiMode().value("mode", "") == "connected")
+    {
+        sessions_.removeOrigin(SessionOrigin::SetupCode);
+        return false;
+    }
+    return origin.has_value();
+}
+
+bool DashboardServer::_needsCurrentPassword(const std::string& sessionId) const
+{
+    // The server (one-time code) or the panel (setup code) already proved the owner.
+    return sessions_.origin(sessionId).value_or(SessionOrigin::Password) == SessionOrigin::Password;
+}
+
+bool DashboardServer::_sameOrigin(const ix::HttpRequestPtr& req)
+{
+    const auto origin = req->headers.find("origin");
+    if (origin == req->headers.end())
+        return true;
+    const auto host = req->headers.find("host");
+    return host != req->headers.end() && HttpUtil::hostOf(origin->second) == HttpUtil::hostOf(host->second);
+}
+
+std::string DashboardServer::_client(const ix::HttpRequestPtr& req)
+{
+    // nginx in front sets it; the backend only listens on loopback.
+    const auto it = req->headers.find("x-real-ip");
+    return it == req->headers.end() ? std::string{} : it->second;
+}
+
+ix::HttpResponsePtr DashboardServer::_throttled(const LoginThrottle::Attempt& attempt)
+{
+    return jsonResponse(429, "Too Many Requests", {{"retry_after_secs", attempt.retryAfterSecs()}},
+                        "Zu viele Fehlversuche. Bitte warte kurz und versuche es erneut.");
 }
 
 std::string DashboardServer::_extractSessionId(const ix::HttpRequestPtr& req)

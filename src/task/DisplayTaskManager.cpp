@@ -3,6 +3,9 @@
 #include "settings/RuntimeSettings.hpp"
 #include "Version.hpp"
 #include <algorithm>
+#include <ctime>
+#include <filesystem>
+#include <fstream>
 #include <utility>
 
 namespace
@@ -49,10 +52,14 @@ void DisplayTaskManager::subscribe()
     {
         if (!evt.claimCode.empty())
             registration_.setClaimCode(evt.claimCode);
+        std::error_code ec;
+        const bool ownedBefore = std::filesystem::exists(cfg_.display.registeredOncePath, ec);
+        if (evt.registered && !ownedBefore)
+            _rememberOwned();
         {
             std::lock_guard lk(mtx_);
             registrationWindow_.report(evt.registered, steadyMs(),
-                                       int64_t{cfg_.display.registrationScreenWindowSecs} * 1000);
+                                       int64_t{cfg_.display.registrationScreenWindowSecs} * 1000, ownedBefore);
             changed_ = true;
         }
         cv_.notify_one();
@@ -164,7 +171,8 @@ void DisplayTaskManager::_carryOut(const ScreenDecision& decision, const Wishes&
     if (decision.action == ScreenAction::Keep)
     {
         if (decision.target == Screen::ApSetup)
-            apSetup_.setCredentials(wishes.apSetup.ssid, wishes.apSetup.password);
+            apSetup_.setCredentials(wishes.apSetup.ssid, wishes.apSetup.password, wishes.apSetup.code,
+                                    wishes.apSetup.failure);
         return;
     }
 
@@ -181,11 +189,12 @@ void DisplayTaskManager::_prepare(const Screen target, const Wishes& wishes)
 {
     if (target == Screen::Status)
     {
-        status_.set(*wishes.status.kind, wishes.status.version);
+        status_.set(*wishes.status.kind, wishes.status.version, wishes.status.code);
         shownStatus_ = wishes.status;
     }
     else if (target == Screen::ApSetup)
-        apSetup_.setCredentials(wishes.apSetup.ssid, wishes.apSetup.password);
+        apSetup_.setCredentials(wishes.apSetup.ssid, wishes.apSetup.password, wishes.apSetup.code,
+                                    wishes.apSetup.failure);
     else if (target == Screen::NightBlank)
     {
         shownNightEnd_ = settings_.getNightEndHour();
@@ -212,4 +221,20 @@ void DisplayTaskManager::_stopActive()
 {
     if (Task* active = _task(screen_.state()))
         active->stop();
+}
+
+void DisplayTaskManager::_rememberOwned() const
+{
+    const std::filesystem::path flag(cfg_.display.registeredOncePath);
+    std::error_code ec;
+    std::filesystem::create_directories(flag.parent_path(), ec);
+    const auto tmp = flag.string() + ".tmp";
+    if (std::ofstream f(tmp); !(f << std::time(nullptr) << '\n'))
+    {
+        logger_->warn("Cannot write {}, a later registration screen will not time out", tmp);
+        return;
+    }
+    std::filesystem::rename(tmp, flag, ec);
+    if (ec)
+        logger_->warn("Cannot write {}: {}", flag.string(), ec.message());
 }

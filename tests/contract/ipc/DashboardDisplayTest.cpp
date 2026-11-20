@@ -1,4 +1,5 @@
 #include "auth/AuthTokenManager.hpp"
+#include "dashboard/FactoryResetHandlers.hpp"
 #include "dashboard/FrameHandlers.hpp"
 #include "dashboard/SlideshowImageHandlers.hpp"
 #include "dashboard/SystemHandlers.hpp"
@@ -9,6 +10,7 @@
 #include "support/ImageFixture.hpp"
 #include "support/PathShim.hpp"
 #include "support/Wait.hpp"
+#include <atomic>
 #include <gtest/gtest.h>
 
 using namespace std::chrono_literals;
@@ -51,7 +53,8 @@ protected:
     Recorder<Topic::STATUS_SCREEN> statusScreens{bus};
     Recorder<Topic::UPDATE_CUSTOMIZATION> customizations{bus};
 
-    NngRepServer server{url, [this](const IpcMessage& m) { return displayIpc.handle(m); }};
+    std::atomic<int> requests{0};
+    NngRepServer server{url, [this](const IpcMessage& m) { ++requests; return displayIpc.handle(m); }};
     IpcClient ipc{url};
     FrameHandlers frame{ipc, cfg};
     SlideshowImageHandlers slideshowImages{ipc, repo};
@@ -197,6 +200,27 @@ TEST_F(DashboardDisplayTest, StatusAggregatesTheDisplayState)
     EXPECT_EQ(d["night_mode"]["style"], "slower");
 }
 
+// The dashboard holds back repainting actions until then, instead of guessing.
+TEST_F(DashboardDisplayTest, StatusSaysWhenThePanelMayPaintAgain)
+{
+    cfg.display.minRefreshSecs = 120;
+    cfg.display.mockOutputDir = (db.dir() / "panel").string();
+    const auto readyIn = [&] { return result(frame.handleStatus(httpRequest("GET", "/"))).body["data"]["refresh_ready_in_secs"]; };
+    EXPECT_EQ(readyIn(), 0);
+
+    std::stop_source stop;
+    ASSERT_TRUE(display.displayBuffer(std::vector<uint8_t>(DisplayManager::BUFFER_SIZE, 0xFF), "test", stop.get_token()));
+    EXPECT_NEAR(readyIn().get<int>(), 120, 3);
+}
+
+// The home page polls the status every few seconds; each answer is one round trip to the display.
+TEST_F(DashboardDisplayTest, StatusAsksTheDisplayOnce)
+{
+    requests = 0;
+    ASSERT_EQ(result(frame.handleStatus(httpRequest("GET", "/"))).status, 200);
+    EXPECT_EQ(requests, 1);
+}
+
 TEST_F(DashboardDisplayTest, DisplayStatsDeriveWearFromRefreshCount)
 {
     metrics.set("epd_refresh_total", 250'000);
@@ -291,12 +315,31 @@ TEST_F(DashboardDisplayTest, RebootShowsTheStatusScreen)
     EXPECT_EQ(statusScreens.get()[0].kind, StatusScreenKind::Reboot);
 }
 
-TEST_F(DashboardDisplayTest, FailedFactoryResetHidesTheStatusScreenAgain)
+// The code the dashboard makes up is the one the panel shows, for as long as the dashboard accepts it.
+TEST_F(DashboardDisplayTest, TheResetCodeReachesThePanelAndAFailedResetTakesItsScreenBack)
 {
     PathShim shims;
+    shims.add("shareframe-remote-gate", "exit 0");
     shims.add("shareframe-factory-reset", "exit 1");
-    EXPECT_EQ(result(system.handleFactoryReset(httpRequest("POST", "/"))).status, 500);
-    ASSERT_TRUE(waitFor([&] { return statusScreens.size() == 2; }));
-    EXPECT_EQ(statusScreens.get()[0].kind, StatusScreenKind::FactoryReset);
-    EXPECT_FALSE(statusScreens.get()[1].kind);
+    NngRepServer updates{"ipc://" + (db.dir() / "update.sock").string(), [](const IpcMessage&) -> nlohmann::json
+    {
+        return {{"ok", true}, {"status", {{"phase", "idle"}}}};
+    }};
+    updates.start();
+    IpcClient updateIpc{"ipc://" + (db.dir() / "update.sock").string()};
+    FactoryResetHandlers reset{ipc, updateIpc};
+
+    const auto requested = result(reset.handleRequestCode(httpRequest("POST", "/")));
+    ASSERT_EQ(requested.status, 200);
+    EXPECT_EQ(requested.body["data"]["expires_in_secs"], 300);
+    ASSERT_TRUE(waitFor([&] { return statusScreens.size() == 1; }));
+    const auto shown = statusScreens.get()[0];
+    EXPECT_EQ(shown.kind, StatusScreenKind::ResetCode);
+    EXPECT_EQ(shown.timeoutSecs, 300);
+    ASSERT_EQ(shown.code.size(), 6u);
+
+    EXPECT_EQ(result(reset.handleReset(httpRequest("POST", "/", {{"code", shown.code}}))).status, 500);
+    ASSERT_TRUE(waitFor([&] { return statusScreens.size() == 3; }));
+    EXPECT_EQ(statusScreens.get()[1].kind, StatusScreenKind::FactoryReset);
+    EXPECT_FALSE(statusScreens.get()[2].kind);
 }

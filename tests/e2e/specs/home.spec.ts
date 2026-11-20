@@ -1,5 +1,5 @@
 import { attachPanel, isCleared, readPanel, showsDefault, showsImage, waitForPanel } from '../support/board';
-import { card, expect, signIn, skipActionLock, test } from '../support/fixtures';
+import { card, expect, signIn, test } from '../support/fixtures';
 
 // The home page ("Steuerung"): slideshow status, controls and settings.
 
@@ -52,7 +52,6 @@ test('stopping clears the panel and starting shows pictures again', async ({ pag
   expect((await board.slideshowStatus()).active).toBe(false);
   await expect(page.getByText('Gestoppt', { exact: true })).toBeVisible();
 
-  await skipActionLock(page);
   await page.getByRole('button', { name: 'Starten' }).click();
   await expect(page.getByText('Diashow gestartet')).toBeVisible();
   await waitForPanel(showsDefault, 'default image after start');

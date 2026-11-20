@@ -22,22 +22,29 @@ describe('auth slice', () => {
     const pending = auth(undefined, checkAuthStatusThunk.pending('req'));
     expect(pending.isLoading).toBe(true);
 
-    expect(auth(pending, checkAuthStatusThunk.fulfilled(true, 'req'))).toEqual({ isAuthenticated: true, isLoading: false, error: null });
+    expect(auth(pending, checkAuthStatusThunk.fulfilled({ authenticated: true, passwordChangeNeedsCurrent: false }, 'req')))
+      .toEqual({ isAuthenticated: true, passwordChangeNeedsCurrent: false, isLoading: false, error: null });
   });
 
   it('signs out when the status check fails', () => {
-    const signedIn = auth(undefined, checkAuthStatusThunk.fulfilled(true, 'req'));
+    const signedIn = auth(undefined, checkAuthStatusThunk.fulfilled({ authenticated: true, passwordChangeNeedsCurrent: true }, 'req'));
 
     const state = auth(signedIn, checkAuthStatusThunk.rejected(new Error('offline'), 'req'));
 
-    expect(state).toEqual({ isAuthenticated: false, isLoading: false, error: 'offline' });
+    expect(state).toEqual({ isAuthenticated: false, passwordChangeNeedsCurrent: true, isLoading: false, error: 'offline' });
   });
 
   it('signs in on a successful login and keeps the reason of a failed one', () => {
     expect(auth(undefined, loginThunk.fulfilled(true, 'req', { otp: '123' })).isAuthenticated).toBe(true);
 
     const failed = auth(undefined, loginThunk.rejected(null, 'req', { password: 'x' }, 'Passwort ungültig'));
-    expect(failed).toEqual({ isAuthenticated: false, isLoading: false, error: 'Passwort ungültig' });
+    expect(failed).toEqual({ isAuthenticated: false, passwordChangeNeedsCurrent: true, isLoading: false, error: 'Passwort ungültig' });
+  });
+
+  it('asks for the current password only after a password sign-in', () => {
+    expect(auth(undefined, loginThunk.fulfilled(true, 'req', { password: 'x' })).passwordChangeNeedsCurrent).toBe(true);
+    expect(auth(undefined, loginThunk.fulfilled(true, 'req', { otp: '1' })).passwordChangeNeedsCurrent).toBe(false);
+    expect(auth(undefined, loginThunk.fulfilled(true, 'req', { setup_code: '1' })).passwordChangeNeedsCurrent).toBe(false);
   });
 
   it('signs out on logout, but stays signed in when logout fails', () => {
@@ -77,9 +84,9 @@ describe('connectionMode slice', () => {
     const state = connectionMode(undefined, fetchConnectionMode.fulfilled({ mode: 'ap' }, 'req'));
 
     expect(state).toEqual({
-      mode: 'ap', ssid: '', internet: false, ap_ssid: '', ap_password: '',
-      server_connected: null, server_offline_secs: 0, server_last_contact_at: 0,
-      last_failed_secs_ago: null, last_failed_at: null, loaded: true,
+      mode: 'ap', ssid: '', internet: false, ap_ssid: '', ap_password: '', hostname: '',
+      server_connected: null, registered: null, safe_mode: '', server_offline_secs: 0, server_last_contact_at: 0,
+      last_failed_secs_ago: null, last_failed_reason: '', last_failed_at: null, loaded: true,
     });
   });
 

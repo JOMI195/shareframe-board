@@ -46,8 +46,7 @@ import {
 } from '@/store/slideshowOperation/slideshowOperation.Slice';
 import { selectSlideshowStatus } from '@/store/slideshowStatus/slideshowStatus.Slice';
 import { usePiConnection } from '@/context/piConnection/piConnectionContextValue';
-import { useTimer } from '@/hooks/useTimer';
-import { syncSpecificTimer } from '@/store/timers/timers.Slice';
+import { formatRest, usePanelRest } from '@/hooks/usePanelRest';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import NowShowingCard from './nowShowingCard';
 
@@ -68,8 +67,19 @@ const FrameActions: React.FC = () => {
     const { isActive, loopStarted, isRefreshing, imageCount, lastCheckedAt, secondsUntilNext, nowShowing } = useAppSelector(selectSlideshowStatus);
 
     // Interval form state
-    const [intervalValue, setIntervalValue] = useState<number>(useAppSelector(selectDisplayRefreshInterval));
-    const [intervalUnit, setIntervalUnit] = useState<'minutes' | 'hours'>('minutes');
+    // Re-seeded whenever the stored interval arrives; whole hours show as hours.
+    const storedInterval = useAppSelector(selectDisplayRefreshInterval);
+    const asForm = (mins: number) => (mins >= 60 && mins % 60 === 0
+        ? { value: mins / 60, unit: 'hours' as const }
+        : { value: mins, unit: 'minutes' as const });
+    const [intervalValue, setIntervalValue] = useState<number>(asForm(storedInterval).value);
+    const [intervalUnit, setIntervalUnit] = useState<'minutes' | 'hours'>(asForm(storedInterval).unit);
+    const [seededInterval, setSeededInterval] = useState(storedInterval);
+    if (storedInterval !== seededInterval) {
+        setSeededInterval(storedInterval);
+        setIntervalValue(asForm(storedInterval).value);
+        setIntervalUnit(asForm(storedInterval).unit);
+    }
 
     // Night mode form state, re-seeded whenever the stored values arrive
     const storedNightEnabled = useAppSelector(selectNightModeEnabled);
@@ -118,33 +128,7 @@ const FrameActions: React.FC = () => {
                 : isRefreshing ? 'Wird aktualisiert…'
                 : remaining != null ? formatCountdown(remaining) : '—';
 
-    const {
-        isActive: isAppIntialLoadTimerActive,
-    } = useTimer({
-        id: 'app-initial-load-timer',
-        shouldCreate: false
-    });
-
-    const {
-        isActive: isSlideshowActionsTimerActive,
-        formattedTime: slideshowActionsTimerTime
-    } = useTimer({
-        id: 'slideshow-actions-timer',
-    });
-
-    useEffect(() => {
-        dispatch(syncSpecificTimer('app-initial-load-timer'));
-        dispatch(syncSpecificTimer('slideshow-actions-timer'));
-
-        const syncInterval = setInterval(() => {
-            if (isAppIntialLoadTimerActive || isSlideshowActionsTimerActive) {
-                dispatch(syncSpecificTimer('app-initial-load-timer'));
-                dispatch(syncSpecificTimer('slideshow-actions-timer'));
-            }
-        }, 1000);
-
-        return () => clearInterval(syncInterval);
-    }, [dispatch, isAppIntialLoadTimerActive, isSlideshowActionsTimerActive]);
+    const panelRest = usePanelRest();
 
     const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -190,9 +174,10 @@ const FrameActions: React.FC = () => {
         || nightInterval > NIGHT_MAX_MINS;
 
     const isLoopLoading = isActive && !loopStarted && isConnected && lastCheckedAt !== null;
-    const isTimerRunning = isSlideshowActionsTimerActive || isAppIntialLoadTimerActive;
-    const isButtonsDisabled = isTimerRunning || isLoopLoading || isToggling || isClearingDisplay || isSkippingImage || isRefreshing || !isConnected || lastCheckedAt === null;
+    const isWaitingForStatus = isConnected && lastCheckedAt === null;
+    const isButtonsDisabled = panelRest > 0 || isLoopLoading || isToggling || isClearingDisplay || isSkippingImage || isRefreshing || !isConnected || lastCheckedAt === null;
     const isNightModeDisabled = !isConnected || lastCheckedAt === null || isUpdatingNightMode;
+    const isIntervalDisabled = !isConnected || lastCheckedAt === null || isUpdatingInterval;
 
     return (
         <>
@@ -260,7 +245,7 @@ const FrameActions: React.FC = () => {
                     <NowShowingCard nowShowing={nowShowing} />
                 </Grid>
 
-                {!isSlideshowActionsTimerActive && isAppIntialLoadTimerActive && (
+                {isWaitingForStatus && (
                     <Grid size={12}>
                         <Alert severity="info" sx={{ display: 'flex', alignItems: 'center' }}>
                             Einen Moment, der Status der Diashow wird abgefragt.
@@ -268,7 +253,7 @@ const FrameActions: React.FC = () => {
                     </Grid>
                 )}
 
-                {!isTimerRunning && isLoopLoading && (
+                {panelRest === 0 && isLoopLoading && (
                     <Grid size={12}>
                         <Alert severity="info" sx={{ display: 'flex', alignItems: 'center' }}>
                             Der Bilderrahmen startet noch. Einen Moment bitte.
@@ -276,10 +261,10 @@ const FrameActions: React.FC = () => {
                     </Grid>
                 )}
 
-                {isSlideshowActionsTimerActive && (
+                {panelRest > 0 && (
                     <Grid size={12}>
                         <Alert severity="info" sx={{ display: 'flex', alignItems: 'center' }}>
-                            Um das Display zu schonen ist die nächste Aktion erst wieder in {slideshowActionsTimerTime}min möglich
+                            {`Um das Display zu schonen, ist die nächste Aktion in ${formatRest(panelRest)} möglich.`}
                         </Alert>
                     </Grid>
                 )}
@@ -393,7 +378,7 @@ const FrameActions: React.FC = () => {
                                                     value={intervalValue}
                                                     onChange={(e) => setIntervalValue(Number(e.target.value))}
                                                     sx={{ flex: 1 }}
-                                                    disabled={isButtonsDisabled || isUpdatingInterval}
+                                                    disabled={isIntervalDisabled}
                                                     slotProps={{
                                                         htmlInput: {
                                                             min,
@@ -409,7 +394,7 @@ const FrameActions: React.FC = () => {
                                                         value={intervalUnit}
                                                         label="Einheit"
                                                         onChange={(e) => setIntervalUnit(e.target.value as 'minutes' | 'hours')}
-                                                        disabled={isButtonsDisabled || isUpdatingInterval}
+                                                        disabled={isIntervalDisabled}
                                                     >
                                                         <MenuItem value="minutes">Minuten</MenuItem>
                                                         <MenuItem value="hours">Stunden</MenuItem>
@@ -427,7 +412,7 @@ const FrameActions: React.FC = () => {
                                 startIcon={<SaveOutlined />}
                                 onClick={handleUpdateInterval}
                                 fullWidth
-                                disabled={isButtonsDisabled || isUpdatingInterval || isFetchingInterval || intervalValue < min || intervalValue > max}
+                                disabled={isIntervalDisabled || isFetchingInterval || intervalValue < min || intervalValue > max}
                             >
                                 Intervall speichern
                             </Button>

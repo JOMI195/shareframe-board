@@ -18,7 +18,8 @@ TEST(BoardFilesContract, ProfilesAreTheOnesTheImageBuildAccepts)
     golden::expectBoard("profiles.txt", names);
 }
 
-// Flags the apps leave for the image's scripts: wifi-mode-manager and rauc-mark-good watch these.
+// Flags shared with the image's scripts: wifi-mode-manager and rauc-mark-good watch the first ones,
+// shareframe-safe-mode, wifi-mode-manager and a system migration leave the others for the apps.
 TEST(BoardFilesContract, FlagsLandWhereTheScriptsLook)
 {
     const AppConfig cfg;
@@ -32,5 +33,8 @@ TEST(BoardFilesContract, FlagsLandWhereTheScriptsLook)
     const auto runDir = std::filesystem::path(cfg.display.wifiModePath).parent_path();
     golden::expectBoard("run-flags.txt", "wifi_mode=" + cfg.display.wifiModePath + "\n" +
                                              "wifi_retry_requested=" + (runDir / retryName).string() + "\n" +
-                                             "backend_ok=" + cfg.heartbeat.backendOkPath + "\n");
+                                             "backend_ok=" + cfg.heartbeat.backendOkPath + "\n" +
+                                             "safe_mode=" + cfg.display.safeModePath + "\n" +
+                                             "wifi_joined=" + cfg.display.wifiJoinedPath + "\n" +
+                                             "registered_once=" + cfg.display.registeredOncePath + "\n");
 }

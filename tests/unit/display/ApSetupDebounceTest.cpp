@@ -34,3 +34,12 @@ TEST(ApSetupDebounce, OutageAfterConnectingKeepsPhotos)
     EXPECT_FALSE(debounce.update("ap", 200)) << "even inside the boot window";
     EXPECT_FALSE(debounce.update("ap", 5000));
 }
+
+TEST(ApSetupDebounce, AFrameThatNeverJoinedAWifiKeepsTheSetupScreenPastTheWindow)
+{
+    ApSetupDebounce debounce(kWindow);
+    EXPECT_TRUE(debounce.update("ap", 60, false));
+    EXPECT_TRUE(debounce.update("connecting", kWindow + 10, false)) << "a station retry later on";
+    EXPECT_TRUE(debounce.update("ap", 50000, false)) << "an unboxed frame left alone for hours";
+    EXPECT_FALSE(debounce.update("connected", 50010, false));
+}

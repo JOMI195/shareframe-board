@@ -1,4 +1,4 @@
-import { DASHBOARD_PASSWORD, expectShimCall, factoryResetScheduled, isCleared, showsStatus, waitForPanel } from '../support/board';
+import { codeOn, DASHBOARD_PASSWORD, expectShimCall, factoryResetScheduled, isCleared, showsStatus, waitForPanel } from '../support/board';
 import { card, expect, signIn, test } from '../support/fixtures';
 
 test('device info shows the identity the server knows and live system metrics', async ({ page, server }) => {
@@ -29,6 +29,8 @@ test('a changed password replaces the initial one', async ({ page, board, reques
     expect(await login('changed-e2e')).toBe(200);
     expect(await login(DASHBOARD_PASSWORD)).toBe(401);
   } finally {
+    // A changed password ends every other session, the fixture's too: sign in again to put it back.
+    await board.login('changed-e2e');
     await board.postRaw('/api/auth/change-password', { current_password: 'changed-e2e', new_password: DASHBOARD_PASSWORD });
   }
 });
@@ -51,11 +53,15 @@ test('shutting down blanks the panel before powering off', async ({ page }) => {
   await expectShimCall('shutdown');
 });
 
-test('factory reset from the general page schedules the wipe', async ({ page }) => {
+test('factory reset from the general page needs the code from the panel, also when signed in', async ({ page }) => {
   await signIn(page);
   await page.goto('/general/');
   await page.getByRole('button', { name: 'Zurücksetzen' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Zurücksetzen' }).click();
+  await expect(page).toHaveURL(/\/general\/factory-reset\/$/);
+  await page.getByRole('button', { name: 'Code auf dem Bilderrahmen anzeigen' }).click();
+  const code = codeOn(await waitForPanel(showsStatus('reset_code'), 'reset code on the panel'));
+  await page.getByLabel('Code').fill(code);
+  await page.getByRole('button', { name: 'Endgültig zurücksetzen' }).click();
   await expect.poll(factoryResetScheduled, { message: 'wipe marked for the next boot' }).toBe(true);
   await expectShimCall('reboot');
 });

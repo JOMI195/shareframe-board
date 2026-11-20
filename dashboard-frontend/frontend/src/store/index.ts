@@ -13,7 +13,7 @@ import {
 import storage from 'redux-persist/es/storage';
 import rootReducer from './rootReducer';
 import autoMergeLevel2 from 'redux-persist/es/stateReconciler/autoMergeLevel2';
-import migrations from './migrations';
+import migrations, { PERSISTED } from './migrations';
 import { serializableCheckOptions } from './setupStore';
 
 type NavigationState = ReturnType<typeof rootReducer>['navigation'];
@@ -27,11 +27,11 @@ const closePhoneMenu = createTransform<NavigationState, NavigationState>(
 
 const persistConfig: PersistConfig<ReturnType<typeof rootReducer>> = {
   key: 'shareframe-dashboard-data',
-  version: 4,
+  version: 5,
   storage,
   stateReconciler: autoMergeLevel2,
   transforms: [closePhoneMenu],
-  blacklist: ['slideshowImages', 'dialogs', 'displayCustomization'],
+  whitelist: [...PERSISTED],
   migrate: createMigrate(migrations, { debug: import.meta.env.VITE_APP_PRODUCTION === "False" ? true : false }),
 };
 

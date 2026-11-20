@@ -1,5 +1,6 @@
 #pragma once
 #include "config/AppConfig.hpp"
+#include "dashboard/FactoryResetHandlers.hpp"
 #include "dashboard/FrameHandlers.hpp"
 #include "dashboard/SlideshowImageHandlers.hpp"
 #include "dashboard/LoginThrottle.hpp"
@@ -47,10 +48,13 @@ private:
 
     ix::HttpResponsePtr _handleRequest(const ix::HttpRequestPtr& req,
                                        const std::shared_ptr<ix::ConnectionState>& connState) const;
+    ix::HttpResponsePtr _dispatch(const ix::HttpRequestPtr& req) const;
 
     // Auth endpoints
     ix::HttpResponsePtr _handleLogin(const ix::HttpRequestPtr& req) const;
-    ix::HttpResponsePtr _handlePasswordLogin(const std::string& password) const;
+    ix::HttpResponsePtr _handleOtpLogin(const ix::HttpRequestPtr& req, const std::string& otp) const;
+    ix::HttpResponsePtr _handleSetupCodeLogin(const ix::HttpRequestPtr& req, const std::string& code) const;
+    ix::HttpResponsePtr _handlePasswordLogin(const ix::HttpRequestPtr& req, const std::string& password) const;
     ix::HttpResponsePtr _handleChangePassword(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr _handleCheckAuth(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr _handleLogout(const ix::HttpRequestPtr& req) const;
@@ -60,7 +64,13 @@ private:
 
     // Helpers
     ix::HttpResponsePtr _loginRequired(const ix::HttpRequestPtr& req) const;
-    ix::HttpResponsePtr _sessionLoginResponse() const;
+    ix::HttpResponsePtr _sessionLoginResponse(SessionOrigin origin) const;
+    // Password sessions confirm the current password before changing it.
+    bool _needsCurrentPassword(const std::string& sessionId) const;
+    // A browser's cross-site request names another origin than the host it was sent to.
+    static bool _sameOrigin(const ix::HttpRequestPtr& req);
+    static std::string _client(const ix::HttpRequestPtr& req);
+    static ix::HttpResponsePtr _throttled(const LoginThrottle::Attempt& attempt);
     // True when the password matches the stored hash, or the initial password if none set.
     bool _verifyDashboardPassword(const std::string& password) const;
     bool _isPasswordLoginConfigured() const;
@@ -74,6 +84,8 @@ private:
     SettingsRepository& settings_;
     WifiManager& wifi_;
     mutable LoginThrottle throttle_;
+    // Sign-in waits on this call: no retries, so it gives up long before nginx does.
+    HTTPClient otpHttp_{5, 8, 0};
     ix::HttpServer server_;
     std::shared_ptr<spdlog::logger> logger_;
 
@@ -86,6 +98,7 @@ private:
     SystemHandlers systemHandlers_;
     ServiceHandlers serviceHandlers_;
     UpdateHandlers updateHandlers_;
+    FactoryResetHandlers factoryResetHandlers_;
 
     // Routing tables
     std::vector<Route> publicRoutes_;

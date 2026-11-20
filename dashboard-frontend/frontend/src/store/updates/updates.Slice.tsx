@@ -3,10 +3,9 @@ import { RootState } from '@/store';
 import uuid from 'react-uuid';
 import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '@/store/snackbars/snackbars.Slice';
 import { IServerResponse } from '@/types';
-import { fetchWithTimeout } from '@/common/utils/fetch';
+import { fetchWithTimeout, SLOW_TIMEOUT_MS } from '@/common/utils/fetch';
 import { getLatestReleaseUrl, getPerformUpdateUrl, getUpdateStatusUrl, getUpdateHistoryUrl } from '@/assets/endpoints/api/frame';
-import { showLoadingWall } from '../loadingWall/loadingWall.Slice';
-import { getHomeUrl } from '@/assets/endpoints/app/appEndpoints';
+import { boardErrorMessage } from '@/common/utils/errors/boardErrors';
 
 interface Release {
     version: string;
@@ -57,7 +56,7 @@ export const fetchLatestRelease = createAsyncThunk(
     'updates/fetchLatestRelease',
     async (_, { dispatch, rejectWithValue }) => {
         try {
-            const response = await fetchWithTimeout(getLatestReleaseUrl());
+            const response = await fetchWithTimeout(getLatestReleaseUrl(), {}, SLOW_TIMEOUT_MS);
             const payload: IServerResponse & { data: Release | null } = await response.json();
 
             if (payload.success) {
@@ -76,20 +75,19 @@ export const fetchLatestRelease = createAsyncThunk(
 
 export const performUpdate = createAsyncThunk(
     'updates/performUpdate',
-    async (navigate: (path: string) => void, { dispatch, rejectWithValue }) => {
+    async (_, { dispatch, rejectWithValue }) => {
         const snackbarId = uuid();
         try {
             dispatch(addLoadingSnackbar(snackbarId, "Update wird gestartet"));
 
-            const response = await fetchWithTimeout(getPerformUpdateUrl(), { method: 'POST', });
+            const response = await fetchWithTimeout(getPerformUpdateUrl(), { method: 'POST' }, SLOW_TIMEOUT_MS);
             const payload: IServerResponse = await response.json();
 
             if (payload.success) {
                 dispatch(addAlertSnackbar(uuid(), "Update gestartet", "success"));
-                navigate(getHomeUrl());
-                dispatch(showLoadingWall("Das Update wird installiert. Die Einstellungen sind solange nicht erreichbar und der Bilderrahmen startet danach neu. Lade diese Seite in ein paar Minuten neu."));
+                dispatch(fetchUpdateStatus());
             } else {
-                dispatch(addAlertSnackbar(uuid(), "Update konnte nicht gestartet werden", "error"));
+                dispatch(addAlertSnackbar(uuid(), boardErrorMessage("Update konnte nicht gestartet werden", response, payload.message), "error"));
                 return rejectWithValue('Failed start update process');
             }
         } catch (error) {

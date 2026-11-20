@@ -7,7 +7,8 @@ enum class StatusScreenKind
 {
     Update,
     Reboot,
-    FactoryReset
+    FactoryReset,
+    ResetCode
 };
 
 inline std::string toString(const StatusScreenKind kind)
@@ -17,6 +18,7 @@ inline std::string toString(const StatusScreenKind kind)
     case StatusScreenKind::Update: return "update";
     case StatusScreenKind::Reboot: return "reboot";
     case StatusScreenKind::FactoryReset: return "factory_reset";
+    case StatusScreenKind::ResetCode: return "reset_code";
     }
     return "unknown";
 }
@@ -26,5 +28,6 @@ inline std::optional<StatusScreenKind> statusScreenKindFromString(const std::str
     if (s == "update") return StatusScreenKind::Update;
     if (s == "reboot") return StatusScreenKind::Reboot;
     if (s == "factory_reset") return StatusScreenKind::FactoryReset;
+    if (s == "reset_code") return StatusScreenKind::ResetCode;
     return std::nullopt;
 }

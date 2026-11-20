@@ -1,7 +1,7 @@
 import { Skeleton } from '@mui/material';
 import React, { useState, useEffect, useRef } from 'react';
 import { useMinimumLoading } from '@/hooks/loading/useMinimumLoading';
-import { fetchWithTimeout } from '@/common/utils/fetch';
+import { fetchWithTimeout, SLOW_TIMEOUT_MS } from '@/common/utils/fetch';
 
 interface AuthenticatedImageProps {
     url: string;
@@ -62,7 +62,7 @@ const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
         const loadImage = async (): Promise<void> => {
             try {
                 setIsLoading(true);
-                const response = await fetchWithTimeout(url);
+                const response = await fetchWithTimeout(url, {}, SLOW_TIMEOUT_MS);
                 if (!response.ok) {
                     throw new Error(`Failed to load image (${response.status})`);
                 }

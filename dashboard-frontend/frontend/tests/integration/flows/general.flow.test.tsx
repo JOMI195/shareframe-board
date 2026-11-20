@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import * as api from '@/assets/endpoints/api/frame';
 import { card, findCard } from '@tests/helpers/card';
@@ -7,7 +7,7 @@ import { renderRoute } from '@tests/helpers/renderRoute';
 import { signedInState } from '@tests/helpers/preloadedState';
 import { advance, useBoardClock } from '@tests/helpers/time';
 import { makeFrameInfo } from '@tests/fixtures';
-import { apiUrl, failsWith, ok, server, spyOnRequests, withFrameInfo } from '@tests/mocks';
+import { apiUrl, failsWith, ok, server, spyOnRequests, withConnectionMode, withFrameInfo } from '@tests/mocks';
 
 const openGeneral = (expert = false) =>
   renderRoute('/general/', { preloadedState: signedInState({ navigation: { advancedMode: expert } }) });
@@ -80,6 +80,22 @@ describe('device password', () => {
     expect(await screen.findByText('Passwort geändert')).toBeInTheDocument();
     expect(await change.calls[0].json()).toEqual({ current_password: 'oldpassword', new_password: 'newpassword' });
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('asks no current password after a sign-in with a code', async () => {
+    const change = spyOnRequests('post', api.getChangePasswordUrl());
+    server.use(change.handler);
+    const { user } = renderRoute('/general/', { preloadedState: signedInState({ auth: { passwordChangeNeedsCurrent: false } }) });
+    await user.click(await screen.findByRole('button', { name: 'Passwort ändern' }));
+    const dialog = await screen.findByRole('dialog');
+
+    expect(within(dialog).queryByLabelText(/Aktuelles Passwort/)).not.toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText(/^Neues Passwort(?! bestätigen)/), 'newpassword');
+    await user.type(within(dialog).getByLabelText(/Neues Passwort bestätigen/), 'newpassword');
+    await user.click(within(dialog).getByRole('button', { name: 'Passwort ändern' }));
+
+    await waitFor(() => expect(change.calls).toHaveLength(1));
+    expect(await change.calls[0].json()).toEqual({ new_password: 'newpassword' });
   });
 
   it('needs a matching confirmation', async () => {
@@ -185,15 +201,30 @@ describe('power', () => {
   const openFactoryReset = async () => {
     const view = openGeneral();
     await view.user.click(await screen.findByRole('button', { name: 'Zurücksetzen' }));
-    return { ...view, dialog: await screen.findByRole('dialog') };
+    await screen.findByRole('heading', { level: 2, name: 'Auf Werkseinstellungen zurücksetzen' });
+    return view;
   };
+
+  // Asks the frame for its code, then types it.
+  const enterCode = async (user: ReturnType<typeof openGeneral>['user'], code = '731204') => {
+    await user.click(screen.getByRole('button', { name: 'Code auf dem Bilderrahmen anzeigen' }));
+    await user.type(await screen.findByLabelText('Code'), code);
+    await user.click(screen.getByRole('button', { name: 'Endgültig zurücksetzen' }));
+  };
+
+  it('opens the reset as its own page', async () => {
+    const { router } = await openFactoryReset();
+
+    expect(router.state.location.pathname).toBe('/general/factory-reset/');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
 
   it('resets to factory defaults and explains how to set the frame up again', async () => {
     useBoardClock();
     const board = boardGoesDownOn(api.getFactoryResetUrl());
-    const { user, router, store, dialog } = await openFactoryReset();
+    const { user, router, store } = await openFactoryReset();
 
-    await user.click(within(dialog).getByRole('button', { name: 'Zurücksetzen' }));
+    await enterCode(user);
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
     expect(board.commands).toBe(1);
@@ -205,26 +236,98 @@ describe('power', () => {
     expect(window.location.reload).not.toHaveBeenCalled();
   });
 
-  it('does not reset when the dialog is cancelled', async () => {
+  it('asks to turn the display on first while it is off', async () => {
+    const code = spyOnRequests('post', api.getFactoryResetCodeUrl());
+    server.use(...withConnectionMode({ safe_mode: 'remote' }), code.handler);
+    await openFactoryReset();
+
+    expect(await screen.findByText(/Schalte sie zuerst über „Anzeige wieder einschalten“/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Code auf dem Bilderrahmen anzeigen' })).toBeDisabled();
+    expect(code.calls).toHaveLength(0);
+  });
+
+  it('goes back to the system page without resetting', async () => {
     const reset = spyOnRequests('post', api.getFactoryResetUrl());
     server.use(reset.handler);
-    const { user, dialog } = await openFactoryReset();
+    const { user, router } = await openFactoryReset();
 
-    await user.click(within(dialog).getByRole('button', { name: 'Abbrechen' }));
+    await user.click(screen.getByRole('button', { name: 'Abbrechen' }));
 
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() => expect(router.state.location.pathname).toBe('/general/'));
     expect(reset.calls).toHaveLength(0);
   });
 
   it('stays put when the board refuses to reset', async () => {
     server.use(...failsWith('post', api.getFactoryResetUrl(), 500, 'Factory reset failed'));
-    const { user, router, store, dialog } = await openFactoryReset();
+    const { user, router, store } = await openFactoryReset();
 
-    await user.click(within(dialog).getByRole('button', { name: 'Zurücksetzen' }));
+    await enterCode(user);
 
     expect(await screen.findByText('Bilderrahmen konnte nicht zurückgesetzt werden')).toBeInTheDocument();
-    expect(router.state.location.pathname).toBe('/general/');
+    expect(router.state.location.pathname).toBe('/general/factory-reset/');
     expect(store.getState().loadingWall.isLoadingWallVisible).toBe(false);
+  });
+});
+
+describe('factory reset by the code on the panel', () => {
+  const openCodeStep = async () => {
+    const view = openGeneral();
+    await view.user.click(await screen.findByRole('button', { name: 'Zurücksetzen' }));
+    await view.user.click(await screen.findByRole('button', { name: 'Code auf dem Bilderrahmen anzeigen' }));
+    await screen.findByLabelText('Code');
+    return view;
+  };
+
+  it('says when the code will be on the frame', async () => {
+    server.use(http.post(apiUrl(api.getFactoryResetCodeUrl()), () => ok({ expires_in_secs: 300, shows_in_secs: 95 })));
+    await openCodeStep();
+    expect(screen.getByText(/erscheint in etwa 1:3\d auf dem Bildschirm/)).toBeInTheDocument();
+  });
+
+  it('stays on the code with the tries left after a wrong one', async () => {
+    server.use(http.post(apiUrl(api.getFactoryResetUrl()), () =>
+      HttpResponse.json({ success: false, message: 'Wrong code', data: { tries_left: 3 } }, { status: 403 })));
+    const { user, router } = await openCodeStep();
+
+    await user.type(screen.getByLabelText('Code'), '000000');
+    await user.click(screen.getByRole('button', { name: 'Endgültig zurücksetzen' }));
+
+    expect(await screen.findByText('Der Code stimmt nicht. Noch 3 Versuche.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Code')).toHaveValue('');
+    expect(router.state.location.pathname).toBe('/general/factory-reset/');
+  });
+
+  it('takes the code back from the frame on Abbrechen', async () => {
+    const cancel = spyOnRequests('post', api.getFactoryResetCancelUrl());
+    server.use(cancel.handler);
+    const { user, router } = await openCodeStep();
+    expect(screen.getByText('Noch 5 Minuten gültig')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Abbrechen' }));
+
+    await waitFor(() => expect(cancel.calls).toHaveLength(1));
+    expect(router.state.location.pathname).toBe('/general/');
+  });
+
+  // The menu or the back button leave the page as well; the code must not stay on the frame.
+  it('takes the code back from the frame when the page is left any other way', async () => {
+    const cancel = spyOnRequests('post', api.getFactoryResetCancelUrl());
+    server.use(cancel.handler);
+    const { router } = await openCodeStep();
+
+    await act(() => router.navigate('/'));
+
+    await waitFor(() => expect(cancel.calls).toHaveLength(1));
+  });
+
+  it('explains why no code can appear', async () => {
+    server.use(...failsWith('post', api.getFactoryResetCodeUrl(), 409, 'An update is running'));
+    const { user } = openGeneral();
+    await user.click(await screen.findByRole('button', { name: 'Zurücksetzen' }));
+    await user.click(await screen.findByRole('button', { name: 'Code auf dem Bilderrahmen anzeigen' }));
+
+    expect(await screen.findByText('Während ein Update installiert wird, geht das nicht.')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Code')).not.toBeInTheDocument();
   });
 });
 

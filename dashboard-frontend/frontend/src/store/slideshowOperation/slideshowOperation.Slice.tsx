@@ -4,8 +4,8 @@ import uuid from 'react-uuid';
 import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '../snackbars/snackbars.Slice';
 import { fetchWithTimeout } from '@/common/utils/fetch';
 import { IServerResponse } from '@/types';
-import { addTimer, resetTimer, startTimer } from '../timers/timers.Slice';
 import { fetchSlideshowImages } from '../slideshowImages/slideshowImages.Slice';
+import { checkSlideshowStatusThunk } from '../slideshowStatus/slideshowStatus.Slice';
 import { getClearDisplayUrl, getSlideshowIntervalUrl, getSlideshowNightModeUrl, getSkipSlideshowImageUrl, getShowSlideshowImageUrl, getSlideshowStatusUrl, getSlideshowUrl } from '@/assets/endpoints/api/frame';
 
 
@@ -240,9 +240,7 @@ export const updateDisplayImagesLoopInterval = (intervalMins: number) => async (
                 'success'
             ));
 
-            // Start timer
-            dispatch(resetTimer('slideshow-actions-timer'));
-            dispatch(startTimer('slideshow-actions-timer'));
+            dispatch(checkSlideshowStatusThunk());
         } else {
             throw new Error(payload.message || 'Failed to update display interval');
         }
@@ -478,8 +476,7 @@ export const skipImageThunk = () => async (
             'success'
         ));
 
-        dispatch(resetTimer('slideshow-actions-timer'));
-        dispatch(startTimer('slideshow-actions-timer'));
+        dispatch(checkSlideshowStatusThunk());
 
         dispatch(slideshowOperationSlice.actions.setSkipImageStatus({
             isSkippingImage: false,
@@ -543,8 +540,7 @@ export const showImageThunk = (id: number) => async (
 
         dispatch(addAlertSnackbar(uuid(), 'Foto wird auf dem Bilderrahmen angezeigt', 'success'));
 
-        dispatch(resetTimer('slideshow-actions-timer'));
-        dispatch(startTimer('slideshow-actions-timer'));
+        dispatch(checkSlideshowStatusThunk());
         dispatch(fetchSlideshowImages());
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unbekannter Fehler';
@@ -604,9 +600,7 @@ export const clearDisplayThunk = () => async (
             'success'
         ));
 
-        // Start timer
-        dispatch(resetTimer('slideshow-actions-timer'));
-        dispatch(startTimer('slideshow-actions-timer'));
+        dispatch(checkSlideshowStatusThunk());
 
         // Reset clear display status
         dispatch(slideshowOperationSlice.actions.setClearDisplayStatus({
@@ -702,12 +696,7 @@ export const toggleSlideshowThunk = () => async (
                             isToggling: false,
                         }));
 
-                        dispatch(addTimer({
-                            id: 'slideshow-actions-timer',
-                        }));
-
-                        dispatch(resetTimer('slideshow-actions-timer'));
-                        dispatch(startTimer('slideshow-actions-timer'));
+                        dispatch(checkSlideshowStatusThunk());
 
 
                         // Clear frame if stopping

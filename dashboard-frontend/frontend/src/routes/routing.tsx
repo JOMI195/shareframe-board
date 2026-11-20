@@ -1,14 +1,14 @@
 import MainLayout from '@/common/components/layout/layout';
 import Snackbars from '@/common/components/snackbars/snackbars';
 import ProtectedRoute from '@/common/components/protectedRoute';
-import { getHomeUrl, getSlideshowPageUrl, getCustomizationUrl, getGeneralSettingsUrl, getDisplayHealthUrl, getLogsUrl, getNetworkUrl, getUpdatesyUrl, getUpdateHistoryPageUrl, getServicesOverviewUrl, getServiceDetailUrl } from '@/assets/endpoints/app/appEndpoints';
+import { getHomeUrl, getSlideshowPageUrl, getCustomizationUrl, getGeneralSettingsUrl, getDisplayHealthUrl, getLogsUrl, getNetworkUrl, getUpdatesyUrl, getUpdateHistoryPageUrl, getServicesOverviewUrl, getServiceDetailUrl, getFactoryResetUrl, getAddNetworkUrl } from '@/assets/endpoints/app/appEndpoints';
 import FrameActions from '@/main/frame/frameActions';
 import { ServiceType } from '@/types';
 import NotFound from '@/common/components/error/notFound/notFound';
 import RouteError from '@/common/components/error/routeError/routeError';
 import LoadingFallback from '@/common/components/loadingFallback';
 import { createBrowserRouter } from 'react-router';
-import { getAuthenticationUrl, getSignInUrl, getSignOutUrl } from '@/assets/endpoints/app/authEndpoints';
+import { getAuthenticationUrl, getForgotPasswordUrl, getSignInUrl, getSignOutUrl } from '@/assets/endpoints/app/authEndpoints';
 import AuthenticationLayout from '@/main/authentication/layout';
 import SignIn from '@/main/authentication/signIn/signIn';
 import SignOut from '@/main/authentication/signOut/signOut';
@@ -48,6 +48,11 @@ export const routes = [
                 path: getAuthenticationUrl() + getSignInUrl(),
                 handle: { title: 'Anmelden' },
                 element: <SignIn />,
+              },
+              {
+                path: getAuthenticationUrl() + getForgotPasswordUrl(),
+                handle: { title: 'Passwort vergessen' },
+                ...lazyPage(() => import('@/main/factoryReset/forgotPassword')),
               },
               {
                 path: getAuthenticationUrl() + getSignOutUrl(),
@@ -90,6 +95,11 @@ export const routes = [
                         ...lazyPage(() => import('@/main/network/network')),
                       },
                       {
+                        path: getAddNetworkUrl(),
+                        handle: { title: 'WLAN hinzufügen' },
+                        ...lazyPage(() => import('@/main/network/addNetwork')),
+                      },
+                      {
                         path: getUpdatesyUrl(),
                         handle: { title: 'Updates' },
                         ...lazyPage(() => import('@/main/updates/updates')),
@@ -103,6 +113,11 @@ export const routes = [
                         path: getGeneralSettingsUrl(),
                         handle: { title: 'System' },
                         ...lazyPage(() => import('@/main/general/general')),
+                      },
+                      {
+                        path: getFactoryResetUrl(),
+                        handle: { title: 'Werkseinstellungen' },
+                        ...lazyPage(() => import('@/main/factoryReset/factoryResetPage')),
                       },
                       {
                         path: getDisplayHealthUrl(),

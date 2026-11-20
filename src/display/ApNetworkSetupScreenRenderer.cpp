@@ -1,5 +1,6 @@
 #include "display/ApNetworkSetupScreenRenderer.hpp"
 #include "display/QrLayout.hpp"
+#include "util/PanelCode.hpp"
 #include <spdlog/spdlog.h>
 
 namespace
@@ -29,23 +30,53 @@ std::string ApNetworkSetupScreenRenderer::wifiQrPayload(const std::string& ssid,
     return "WIFI:T:WPA;S:" + escape(ssid) + ";P:" + escape(password) + ";;";
 }
 
+namespace
+{
+std::string failureText(const std::string& reason)
+{
+    if (reason == "wrong_password") return "Das WLAN-Passwort stimmt nicht.";
+    if (reason == "not_found") return "Das WLAN war nicht in Reichweite.";
+    if (reason == "not_joined") return "Das WLAN hat die Verbindung abgelehnt.";
+    if (reason == "no_address") return "Das WLAN hat keine Adresse vergeben.";
+    return {};
+}
+}
+
+std::vector<std::string> ApNetworkSetupScreenRenderer::paragraphs(const std::string& ssid, const std::string& password,
+                                                                  const std::string& url, const std::string& code,
+                                                                  const std::string& failure)
+{
+    const std::string join = password.empty()
+                                 ? "mit WLAN " + ssid + " verbinden"
+                                 : "mit WLAN " + ssid + " verbinden (Passwort " + password + ")";
+    std::vector<std::string> text{"Rahmen einrichten"};
+    if (const auto why = failureText(failure); !why.empty())
+        text.push_back("Letzter Versuch: " + why);
+    text.insert(text.end(), {
+        "1. QR-Code scannen oder " + join,
+        "2. Die Einstellungen öffnen sich, sonst " + url,
+    });
+    if (code.empty())
+        text.emplace_back("3. Mit dem Geräte-Passwort anmelden");
+    else
+    {
+        text.emplace_back("3. Mit diesem Code anmelden:");
+        text.push_back(panel_code::grouped(code));
+    }
+    return text;
+}
+
 std::vector<uint8_t> ApNetworkSetupScreenRenderer::render(const std::string& ssid, const std::string& password,
-                                                          const std::string& url, const std::string& fontPath)
+                                                          const std::vector<std::string>& paragraphs,
+                                                          const std::string& fontPath, const bool codeLast)
 {
     panel_text::Canvas canvas;
     qr_layout::drawQr(canvas, wifiQrPayload(ssid, password));
 
     if (panel_text::Font font; font.load(fontPath))
-    {
-        const std::string join = password.empty()
-                                     ? "mit WLAN " + ssid + " verbinden"
-                                     : "mit WLAN " + ssid + " verbinden (Passwort " + password + ")";
-        qr_layout::drawText(canvas, font, {
-                     "Rahmen einrichten",
-                     "1. QR-Code scannen oder " + join,
-                     "2. Dashboard öffnet sich automatisch, sonst " + url + " aufrufen und mit dem Rahmen-Passwort anmelden"
-                 });
-    }
+        // The setup code has to be readable from a step away.
+        qr_layout::drawText(canvas, font, paragraphs,
+                            codeLast ? std::optional(paragraphs.size() - 1) : std::nullopt);
     else
         logger()->error("Failed to load font {}, setup screen shows the QR code only", fontPath);
 

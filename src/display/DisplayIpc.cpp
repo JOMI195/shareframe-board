@@ -180,8 +180,19 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
             {"image_count", static_cast<int64_t>(images_.getAllIds().size())}
         };
 
+    // Everything the dashboard's status shows, in one round trip.
+    case IpcMessageType::GetSlideshowStatus:
+        return {
+            {"active", handle({IpcMessageType::GetSlideshowActive, {}})},
+            {"interval", handle({IpcMessageType::GetDisplayInterval, {}})},
+            {"timing", handle({IpcMessageType::GetSecondsUntilNext, {}})},
+            {"night_mode", handle({IpcMessageType::GetNightMode, {}})},
+            {"screen", handle({IpcMessageType::GetScreenInfo, {}})},
+        };
+
     case IpcMessageType::GetSecondsUntilNext:
-        return {{"seconds_until_next", loop_.secondsUntilNext()}};
+        return {{"seconds_until_next", loop_.secondsUntilNext()},
+                {"refresh_ready_in_secs", display_.secondsUntilRefreshReady()}};
 
     case IpcMessageType::GetHealth:
         return {{"running", true}};
@@ -203,8 +214,10 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
             return nlohmann::json::object();
         }
         spdlog::info("IPC: show status screen {}", toString(*kind));
-        bus_.publish<Topic::STATUS_SCREEN>(StatusScreenEvent{kind, msg.data.value("version", "")});
-        return nlohmann::json::object();
+        bus_.publish<Topic::STATUS_SCREEN>(StatusScreenEvent{kind, msg.data.value("version", ""),
+                                                             msg.data.value("code", ""),
+                                                             msg.data.value("timeout_secs", 0)});
+        return {{"shows_in_secs", display_.secondsUntilRefreshReady()}};
     }
 
     case IpcMessageType::HideStatusScreen:

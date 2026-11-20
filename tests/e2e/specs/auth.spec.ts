@@ -8,7 +8,7 @@ test('protected pages redirect to sign-in', async ({ page }) => {
 
 test('a wrong password is rejected', async ({ page }) => {
   await page.goto('/auth/sign-in');
-  await page.getByRole('button', { name: 'Mit Passwort anmelden' }).click();
+  await page.getByRole('button', { name: 'Mit Geräte-Passwort anmelden' }).click();
   await page.getByRole('textbox', { name: 'Passwort', exact: true }).fill('wrong-password');
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(page.getByText('Das Passwort stimmt nicht.')).toBeVisible();
@@ -17,7 +17,7 @@ test('a wrong password is rejected', async ({ page }) => {
 
 test('a valid password signs in', async ({ page }) => {
   await page.goto('/auth/sign-in');
-  await page.getByRole('button', { name: 'Mit Passwort anmelden' }).click();
+  await page.getByRole('button', { name: 'Mit Geräte-Passwort anmelden' }).click();
   await page.getByRole('textbox', { name: 'Passwort', exact: true }).fill(DASHBOARD_PASSWORD);
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
@@ -30,6 +30,12 @@ test('a one-time code is verified against the server', async ({ page }) => {
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('heading', { level: 2, name: 'Diashow' })).toBeVisible();
+});
+
+test('"Öffnen" on shareframe.de signs in with the code in the link and leaves no code in the address', async ({ page }) => {
+  await page.goto('/auth/sign-in#otp=123456');
+  await expect(page.getByRole('heading', { level: 2, name: 'Diashow' })).toBeVisible();
+  expect(new URL(page.url()).hash).toBe('');
 });
 
 test('an invalid one-time code is rejected by the server', async ({ page }) => {

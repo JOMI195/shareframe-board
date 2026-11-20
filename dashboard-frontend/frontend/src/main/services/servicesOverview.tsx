@@ -8,6 +8,7 @@ import { getServiceDetailUrl } from '@/assets/endpoints/app/appEndpoints';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import { HealthChip, RestartButton } from './serviceUtils';
 import { formatUptime } from './formatUptime';
+import { pollWhileVisible } from '@/common/utils/poll';
 
 const POLL_MS = 10000;
 
@@ -16,9 +17,7 @@ const ServicesOverview = () => {
     const services = useAppSelector(selectServices);
 
     useEffect(() => {
-        dispatch(fetchServices());
-        const t = setInterval(() => dispatch(fetchServices()), POLL_MS);
-        return () => clearInterval(t);
+        return pollWhileVisible(() => dispatch(fetchServices()), POLL_MS);
     }, [dispatch]);
 
     const byId = (id: string): ServiceStatus | null => services.find((s) => s.id === id) ?? null;

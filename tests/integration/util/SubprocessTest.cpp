@@ -1,5 +1,7 @@
 #include "util/Subprocess.hpp"
 #include <chrono>
+#include <fcntl.h>
+#include <unistd.h>
 #include <gtest/gtest.h>
 
 using namespace std::chrono_literals;
@@ -72,4 +74,15 @@ TEST(Subprocess, ACommandThatClosedItsOutputIsStillKilledAtItsTimeout)
     const auto took = timed([&] { r = sh("exec >/dev/null 2>&1; sleep 30", 1); });
     EXPECT_EQ(r.exitCode, -1);
     EXPECT_LT(took, 3s);
+}
+
+// A tool must not hold the dashboard's listening socket or the database open after the service is gone.
+TEST(Subprocess, AChildHoldsNothingButItsStandardStreams)
+{
+    const int inherited = open("/dev/null", O_RDONLY);
+    ASSERT_GE(inherited, 3);
+    const auto r = sh("for f in /proc/self/fd/*; do n=${f##*/}; [ \"$n\" -gt 2 ] && [ -e \"$f\" ] && echo $n; done; true");
+    close(inherited);
+    EXPECT_EQ(r.exitCode, 0) << r.stdErr;
+    EXPECT_EQ(r.stdOut, "") << "open in the child";
 }

@@ -9,11 +9,20 @@ import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import { formatDuration } from '@/main/slideshowImages/slideshowImagesUtils';
 import { boardAddress } from '@/common/utils/boardAddress';
 
+// The Wi-Fi daemon's reasons; the setup screen on the panel names them too.
+const FAILURE: Record<string, string> = {
+    wrong_password: 'Das WLAN-Passwort stimmt nicht. Füge das WLAN mit dem richtigen Passwort noch einmal hinzu.',
+    not_found: 'Das WLAN war nicht in Reichweite. Prüfe den Namen oder stell den Rahmen näher an den Router.',
+    not_joined: 'Das WLAN hat die Verbindung abgelehnt. Prüfe die Einstellungen des Routers.',
+    no_address: 'Das WLAN hat dem Rahmen keine Adresse gegeben. Prüfe die Einstellungen des Routers.',
+};
+
 const HotspotCard = () => {
     const dispatch = useAppDispatch();
     const { isConnected } = usePiConnection();
     const { savedNetworks, loading, connectRequestedAt } = useAppSelector(selectNetworkState);
-    const { ap_ssid, last_failed_secs_ago, last_failed_at } = useAppSelector(selectConnectionMode);
+    const { ap_ssid, hostname, last_failed_secs_ago, last_failed_at, last_failed_reason } = useAppSelector(selectConnectionMode);
+    const why = FAILURE[last_failed_reason];
 
     const failedSinceRequest = connectRequestedAt !== null && last_failed_at !== null && last_failed_at >= connectRequestedAt;
     const connecting = connectRequestedAt !== null && !failedSinceRequest;
@@ -36,13 +45,14 @@ const HotspotCard = () => {
                                     <Alert severity="info">
                                         Der Rahmen verbindet sich. Der Hotspot ist dabei aus, diese Seite
                                         verliert die Verbindung. Danach erreichst du ihn in deinem WLAN unter{' '}
-                                        <b>{boardAddress(ap_ssid)}</b>. Klappt es nicht, ist der Hotspot nach
+                                        <b>{boardAddress(hostname, ap_ssid)}</b>. Klappt es nicht, ist der Hotspot nach
                                         etwa einer Minute wieder da.
                                     </Alert>
                                 ) : last_failed_secs_ago !== null && (
                                     <Alert severity="warning">
-                                        Vor {formatDuration(last_failed_secs_ago * 1000)} war keines der gespeicherten
-                                        WLANs erreichbar. Prüfe Name und Passwort.
+                                        {why
+                                            ? `Der Versuch vor ${formatDuration(last_failed_secs_ago * 1000)} ist gescheitert: ${why}`
+                                            : `Vor ${formatDuration(last_failed_secs_ago * 1000)} war keines der gespeicherten WLANs erreichbar. Prüfe Name und Passwort.`}
                                     </Alert>
                                 )}
                             </Stack>

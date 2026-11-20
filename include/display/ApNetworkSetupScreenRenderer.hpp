@@ -16,7 +16,13 @@ public:
     /// Joins the network when scanned; an empty password is an open network.
     [[nodiscard]] static std::string wifiQrPayload(const std::string& ssid, const std::string& password);
 
-    /// The full 1-bit panel buffer (1 = white).
+    /// The German instructions beside the QR code; the setup code is the way to sign in.
+    [[nodiscard]] static std::vector<std::string> paragraphs(const std::string& ssid, const std::string& password,
+                                                             const std::string& url, const std::string& code,
+                                                             const std::string& failure = {});
+
+    /// The full 1-bit panel buffer (1 = white). `codeLast`: the last paragraph is the setup code, set large.
     [[nodiscard]] static std::vector<uint8_t> render(const std::string& ssid, const std::string& password,
-                                                     const std::string& url, const std::string& fontPath);
+                                                     const std::vector<std::string>& paragraphs,
+                                                     const std::string& fontPath, bool codeLast = false);
 };

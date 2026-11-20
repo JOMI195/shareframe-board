@@ -9,7 +9,9 @@
 #include "support/TokenStore.hpp"
 #include "support/Wait.hpp"
 #include "task/Heartbeat.hpp"
+#include <fstream>
 #include <gtest/gtest.h>
+#include <regex>
 
 using namespace std::chrono_literals;
 
@@ -43,6 +45,7 @@ TEST(HeartbeatContract, EventsAreParsedFromTheEventLog)
 
     heartbeat.start();
     ASSERT_TRUE(waitFor([&] { return !backend.requests(kHeartbeat).empty(); }, 5000ms));
+    ASSERT_TRUE(waitFor([&] { return std::filesystem::exists(cfg.heartbeat.backendOkPath); }));
     heartbeat.stop();
     const auto events = nlohmann::json::parse(backend.requests(kHeartbeat)[0].body).at("events");
 
@@ -54,4 +57,9 @@ TEST(HeartbeatContract, EventsAreParsedFromTheEventLog)
     EXPECT_EQ(events[1].at("source"), "wifi");
     EXPECT_EQ(events[1].at("message"), "ap fallback (no address from home)");
     EXPECT_EQ(events[2].at("seq"), 3);
+
+    // wifi-mode-manager reads the mark as unix seconds on one line: until when the contact counts.
+    std::ifstream f(cfg.heartbeat.backendOkPath);
+    const std::string mark((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    EXPECT_TRUE(std::regex_match(mark, std::regex("[0-9]+\n"))) << mark;
 }

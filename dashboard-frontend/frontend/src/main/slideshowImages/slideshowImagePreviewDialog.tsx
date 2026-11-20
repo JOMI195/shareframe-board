@@ -8,14 +8,14 @@ import UserAvatar from '@/common/components/userAvatar';
 import { getReadablyFileSize } from '@/common/utils/files/fileSize.helpers';
 import { getImageFileUrl } from '@/assets/endpoints/api/frame';
 import { DialogAction, ISlideshowImage } from '@/types';
-import { fetchWithTimeout } from '@/common/utils/fetch';
+import { fetchWithTimeout, SLOW_TIMEOUT_MS } from '@/common/utils/fetch';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { selectSlideshowStatus } from '@/store/slideshowStatus/slideshowStatus.Slice';
 import { selectSlideshowOperation, showImageThunk } from '@/store/slideshowOperation/slideshowOperation.Slice';
 import { addAlertSnackbar } from '@/store/snackbars/snackbars.Slice';
-import { useTimer } from '@/hooks/useTimer';
+import { usePanelRest } from '@/hooks/usePanelRest';
 import { useDesktopActions } from '@/hooks/layout/useDesktopActions';
-import { formatTimeLeft, formatUnix } from './slideshowImagesUtils';
+import { formatExpiresAt, formatTimeLeft, formatUnix } from './slideshowImagesUtils';
 
 interface SlideshowImagePreviewDialogProps {
     image: ISlideshowImage | null;
@@ -44,12 +44,13 @@ const SlideshowImagePreviewDialog: React.FC<SlideshowImagePreviewDialogProps> = 
     const dispatch = useAppDispatch();
     const { isActive, isRefreshing } = useAppSelector(selectSlideshowStatus);
     const { isToggling, isClearingDisplay, isSkippingImage, isShowingImage } = useAppSelector(selectSlideshowOperation);
-    const { isActive: isActionsTimerActive } = useTimer({ id: 'slideshow-actions-timer' });
+    const resting = usePanelRest() > 0;
 
     const showBlockedReason =
         isCurrent ? 'Wird bereits angezeigt'
             : !isActive ? 'Diashow pausiert'
-                : isRefreshing || isActionsTimerActive ? 'Display wird gerade aktualisiert'
+                : isRefreshing ? 'Display wird gerade aktualisiert'
+                    : resting ? 'Das Display ruht kurz, um es zu schonen'
                     : undefined;
 
     const ratio = image?.width && image.height ? image.width / image.height : FALLBACK_RATIO;
@@ -61,7 +62,7 @@ const SlideshowImagePreviewDialog: React.FC<SlideshowImagePreviewDialogProps> = 
     const handleDownload = async () => {
         if (!image) return;
         try {
-            const response = await fetchWithTimeout(getImageFileUrl(image.id));
+            const response = await fetchWithTimeout(getImageFileUrl(image.id), {}, SLOW_TIMEOUT_MS);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const url = URL.createObjectURL(await response.blob());
             const link = document.createElement('a');
@@ -133,7 +134,7 @@ const SlideshowImagePreviewDialog: React.FC<SlideshowImagePreviewDialogProps> = 
                             <Typography>{formatUnix(image.receivedAt)}</Typography>
                         </MetaItem>
                         <MetaItem label="Läuft ab am">
-                            <Typography>{formatUnix(image.expiresAt)}</Typography>
+                            <Typography>{formatExpiresAt(image.expiresAt)}</Typography>
                             <Typography variant="caption" color="text.secondary">{formatTimeLeft(image.expiresAt)}</Typography>
                         </MetaItem>
                         <MetaItem label="Auflösung">

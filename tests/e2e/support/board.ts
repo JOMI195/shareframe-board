@@ -28,7 +28,14 @@ const panelFile = (name: string) =>
 
 // ---- virtual panel
 
-export type Panel = { state: 'image' | 'cleared'; source: string; seq: number };
+export type Panel = { state: 'image' | 'cleared'; source: string; seq: number; text?: string[] };
+
+/** The 6-digit code a screen shows ("482 913"), read like the owner reads it off the frame. */
+export const codeOn = (p: Panel): string => {
+  const match = (p.text ?? []).join(' ').match(/(\d{3}) (\d{3})/);
+  if (!match) throw new Error(`No code on the panel: ${JSON.stringify(p.text)}`);
+  return match[1] + match[2];
+};
 
 export async function readPanel(): Promise<Panel | null> {
   try {
@@ -119,7 +126,7 @@ export async function resetBoardState() {
   await writeFile(path.join(STATE_DIR, 'shim-calls.log'), '');
 }
 
-const wifiConf = () => readFile(path.join(STATE_DIR, 'wifi', 'wpa_supplicant.conf'), 'utf8');
+export const wifiConf = () => readFile(path.join(STATE_DIR, 'wifi', 'wpa_supplicant.conf'), 'utf8');
 
 /** SSIDs in the board's wpa_supplicant.conf, "quoted" or hex as wpa_supplicant saves them. */
 export async function savedWifiNetworks(): Promise<string[]> {

@@ -60,7 +60,13 @@ void ServerContact::touch()
 ServerConnection ServerContact::snapshot() const
 {
     std::lock_guard lk(mtx_);
-    return {connected_, connected_ ? connectedSince_ : lastContact_, lastContact_};
+    return {connected_, connected_ ? connectedSince_ : lastContact_, lastContact_, unregistered_};
+}
+
+void ServerContact::setUnregistered(const bool unregistered)
+{
+    std::lock_guard lk(mtx_);
+    unregistered_ = unregistered;
 }
 
 void ServerContact::_persist(const int64_t at)

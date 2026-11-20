@@ -17,8 +17,8 @@ const App = () => {
 
   const { isLoadingWallVisible, hideAfter } = useAppSelector(selectLoadingWallState);
   const { isConnected } = usePiConnection();
-  const [initialLoad, setInitialLoad] = useState(true);
   const [authCheckComplete, setAuthCheckComplete] = useState(false);
+  const initialLoad = !authCheckComplete;
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -48,17 +48,6 @@ const App = () => {
     );
     return () => clearTimeout(timer);
   }, [isLoadingWallVisible, hideAfter, dispatch]);
-
-  // Timer to ensure loading screen displays for at least 3 seconds
-  useEffect(() => {
-    const minLoadTimer = setTimeout(() => {
-      if (authCheckComplete) {
-        setInitialLoad(false);
-      }
-    }, 3000); // 3 seconds delay
-
-    return () => clearTimeout(minLoadTimer);
-  }, [authCheckComplete]);
 
   useEffect(() => {
     if (!initialLoad) {

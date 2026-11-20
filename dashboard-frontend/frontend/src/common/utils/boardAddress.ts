@@ -1,2 +1,2 @@
-// The board's mDNS name equals its hotspot name (set-hostname on the board).
-export const boardAddress = (apSsid: string) => `http://${apSsid || 'shareframe-board'}.local`;
+// The board's own name on the home network; the hotspot name only as a fallback for older boards.
+export const boardAddress = (hostname: string, apSsid = '') => `http://${hostname || apSsid || 'shareframe-board'}.local`;

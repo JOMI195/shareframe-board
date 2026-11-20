@@ -8,6 +8,7 @@ import {
 } from '@/store/displayStats/displayStats.Slice';
 import { selectFrameInfoState, fetchFrameInfos } from '@/store/frameInfo/frameInfo.Slice';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
+import { pollWhileVisible } from '@/common/utils/poll';
 
 const STATS_POLL_MS = 5000;
 const DASH = '—';
@@ -53,13 +54,10 @@ const DisplayHealthPage = () => {
 
     // Poll panel stats (and frame info for the device boot count) while open.
     useEffect(() => {
-        dispatch(fetchDisplayStats());
-        dispatch(fetchFrameInfos());
-        const id = setInterval(() => {
+        return pollWhileVisible(() => {
             dispatch(fetchDisplayStats());
             dispatch(fetchFrameInfos());
         }, STATS_POLL_MS);
-        return () => clearInterval(id);
     }, [dispatch]);
 
     const chip = stats?.health ? HEALTH_CHIP[stats.health] : undefined;

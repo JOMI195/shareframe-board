@@ -31,14 +31,25 @@ ix::HttpResponsePtr SystemHandlers::handleInfo(const ix::HttpRequestPtr& /*req*/
 
     // Board metrics from the shareframe-sysinfo overlay (key=value); absent keys
     // are just missing — never fail the whole response.
-    auto info = Subprocess::run({"shareframe-sysinfo"}, 10);
-    if (info.exitCode == 0)
     {
-        data.update(SysInfo::parse(info.stdOut));
-    }
-    else
-    {
-        logger_->warn("shareframe-sysinfo failed: {}", info.stdErr);
+        constexpr auto kFresh = std::chrono::seconds(5);
+        std::lock_guard lk(sysinfoMtx_);
+        const auto now = std::chrono::steady_clock::now();
+        if (sysinfo_.is_null() || now - sysinfoAt_ >= kFresh)
+        {
+            if (auto info = Subprocess::run({"shareframe-sysinfo"}, 10); info.exitCode == 0)
+            {
+                sysinfo_ = SysInfo::parse(info.stdOut);
+                sysinfoAt_ = now;
+            }
+            else
+            {
+                logger_->warn("shareframe-sysinfo failed: {}", info.stdErr);
+                sysinfo_ = nullptr;
+            }
+        }
+        if (!sysinfo_.is_null())
+            data.update(sysinfo_);
     }
 
     // Compiled in, so it wins over the sysinfo key.
@@ -75,13 +86,18 @@ ix::HttpResponsePtr SystemHandlers::handleShutdown(const ix::HttpRequestPtr& /*r
     return jsonResponse(200, "OK", nlohmann::json::object(), "Shutting down...");
 }
 
-ix::HttpResponsePtr SystemHandlers::handleFactoryReset(const ix::HttpRequestPtr& /*req*/) const
+ix::HttpResponsePtr SystemHandlers::handleExitSafeMode(const ix::HttpRequestPtr& /*req*/) const
 {
-    logger_->info("Factory reset requested");
-    if (!_runWithStatusScreen(StatusScreenKind::FactoryReset, {"shareframe-factory-reset", "--yes"}))
-        return errorResponse(500, "Internal Server Error", "Factory reset failed");
-
-    return jsonResponse(200, "OK", nlohmann::json::object(), "Resetting to factory defaults...");
+    const auto res = Subprocess::run({"shareframe-safe-mode", "exit"}, 15);
+    auto out = res.stdOut.empty() ? res.stdErr : res.stdOut;
+    out.erase(out.find_last_not_of(" \n\r\t") + 1);
+    if (res.exitCode != 0)
+    {
+        logger_->error("Leaving safe mode failed: {}", out);
+        return jsonResponse(500, "Internal Server Error", {{"reason", out}}, "Leaving safe mode failed");
+    }
+    logger_->info("Safe mode lifted from the dashboard: {}", out);
+    return jsonResponse(200, "OK", nlohmann::json::object(), out);
 }
 
 ix::HttpResponsePtr SystemHandlers::handleSendDiagnostics(const ix::HttpRequestPtr& /*req*/) const

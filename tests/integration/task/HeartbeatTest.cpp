@@ -9,6 +9,8 @@
 #include "support/Wait.hpp"
 #include "task/Heartbeat.hpp"
 #include <fstream>
+#include <cmath>
+#include <ctime>
 #include <gtest/gtest.h>
 #include <thread>
 
@@ -206,6 +208,24 @@ TEST_F(HeartbeatTest, AcknowledgedHeartbeatMarksTheBackendReached)
     shims.add("shareframe-sysinfo", "exit 0");
     sentPayload();
     EXPECT_TRUE(waitFor([&] { return std::filesystem::exists(cfg.heartbeat.backendOkPath); }));
+}
+
+// The Wi-Fi daemon takes the mark as internet, where ping is blocked, until the time it holds:
+// two heartbeats later, so a lost server ends it soon whatever the interval.
+TEST_F(HeartbeatTest, EveryAcknowledgedHeartbeatRenewsTheBackendMarkForTwoBeats)
+{
+    cfg.heartbeat.intervalSecs = 1;
+    shims.add("shareframe-sysinfo", "exit 0");
+    std::filesystem::create_directories(std::filesystem::path(cfg.heartbeat.backendOkPath).parent_path());
+    std::ofstream(cfg.heartbeat.backendOkPath) << "1000\n";
+    heartbeat.start();
+    const auto mark = [&] {
+        std::ifstream f(cfg.heartbeat.backendOkPath);
+        int64_t at = 0;
+        f >> at;
+        return at;
+    };
+    ASSERT_TRUE(waitFor([&] { return std::abs(mark() - (std::time(nullptr) + 2)) <= 1; }, 5000ms));
 }
 
 TEST_F(HeartbeatTest, RetriesFastOnlyUntilTheFirstAcknowledgedHeartbeat)

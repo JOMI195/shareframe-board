@@ -1,12 +1,12 @@
 import { existsSync } from 'node:fs';
 import {
-  attachPanel, DASHBOARD_PASSWORD, expectSavedNetwork, factoryResetScheduled, Frame, retryFlag, setWifiMode, showsApSetup, showsDefault,
-  showsRegistration, showsStatus, waitForPanel,
+  attachPanel, codeOn, DASHBOARD_PASSWORD, expectSavedNetwork, factoryResetScheduled, Frame, retryFlag, setWifiMode, showsApSetup,
+  showsDefault, showsRegistration, showsStatus, waitForPanel,
 } from '../support/board';
-import { card, expect, test } from '../support/fixtures';
+import { card, expect, signIn, test } from '../support/fixtures';
 
-// The hotspot fallback: no internet, the owner joins the board's AP, signs in with the
-// device password and sets up Wi-Fi in the regular dashboard.
+// The hotspot fallback: no internet, the owner joins the board's AP, signs in with the setup
+// code from the panel (or the device password) and sets up Wi-Fi in the regular dashboard.
 
 const signInOnHotspot = async (page: import('@playwright/test').Page) => {
   await setWifiMode('ap');
@@ -14,6 +14,7 @@ const signInOnHotspot = async (page: import('@playwright/test').Page) => {
   await expect(page).toHaveURL(/\/auth\/sign-in$/);
   await expect(page.getByText(/stellt den Hotspot „shareframe-e2e“ bereit/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Mit Einmal-Code anmelden' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Mit Geräte-Passwort anmelden' }).click();
   await page.getByRole('textbox', { name: 'Passwort', exact: true }).fill(DASHBOARD_PASSWORD);
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(page).toHaveURL(/\/network\/$/);
@@ -26,32 +27,44 @@ test('on the hotspot the owner signs in with the device password and lands on th
   await expect(card(page, 'WLAN einrichten')).toBeVisible();
 });
 
-test('on the hotspot a saved network is only tried on request', async ({ page }) => {
+test('on the hotspot a new network is saved and tried in one step', async ({ page }) => {
   await signInOnHotspot(page);
 
   await page.getByRole('button', { name: 'WLAN hinzufügen' }).click();
-  const add = page.getByRole('dialog');
+  const add = card(page, 'WLAN hinzufügen');
+  await expect(add.getByText('http://shareframe-board-0e2e.local')).toBeVisible();
   await add.getByLabel(/Netzwerkname/).fill('HomeNet');
   await add.getByLabel(/^Passwort$/).fill('homepass1');
-  await add.getByRole('button', { name: 'Hinzufügen' }).click();
+  await add.getByRole('button', { name: 'Speichern & verbinden' }).click();
+
   await expectSavedNetwork('HomeNet', 'homepass1');
-  expect(existsSync(retryFlag), 'saving alone switched the board over').toBe(false);
+  await expect.poll(() => existsSync(retryFlag), { message: 'retry requested from the Wi-Fi daemon' }).toBe(true);
+  await expect(card(page, 'WLAN einrichten').getByText(/Der Rahmen verbindet sich/)).toBeVisible();
+});
+
+test('a saved network is tried again on request', async ({ page }) => {
+  await signInOnHotspot(page);
 
   await card(page, 'WLAN einrichten').getByRole('button', { name: 'Jetzt verbinden' }).click();
   const connect = page.getByRole('dialog');
-  await expect(connect.getByText('http://shareframe-e2e.local')).toBeVisible();
+  await expect(connect.getByText('http://shareframe-board-0e2e.local')).toBeVisible();
   await connect.getByRole('button', { name: 'Verbinden' }).click();
 
   await expect(card(page, 'WLAN einrichten').getByText(/Der Rahmen verbindet sich/)).toBeVisible();
   await expect.poll(() => existsSync(retryFlag), { message: 'retry requested from the Wi-Fi daemon' }).toBe(true);
 });
 
-test('the hotspot says when the last attempt failed', async ({ page }) => {
+test('the hotspot and the panel say why the last attempt failed', async ({ page, board }) => {
   await signInOnHotspot(page);
-  await setWifiMode('ap', { last_failed_at: Math.floor(Date.now() / 1000) - 120 });
+  await setWifiMode('ap', { last_failed_at: Math.floor(Date.now() / 1000) - 120, last_failed_reason: 'wrong_password' });
+  // A display that saw the frame connected keeps the photos up until it restarts.
+  await board.restartService('display');
 
-  await expect(card(page, 'WLAN einrichten').getByText(/Vor 2 Minuten war keines der gespeicherten/))
+  await expect(card(page, 'WLAN einrichten').getByText(/Der Versuch vor 2 Minuten ist gescheitert: Das WLAN-Passwort stimmt nicht/))
     .toBeVisible({ timeout: 15_000 });
+  const panel = await waitForPanel((p) => showsApSetup(p) && (p.text ?? []).includes('Letzter Versuch: Das WLAN-Passwort stimmt nicht.'),
+    'setup screen naming the wrong password', 30_000);
+  expect(codeOn(panel)).toMatch(/^\d{6}$/);
 });
 
 test('the Wi-Fi endpoints need a session, also on the hotspot', async ({ request, board }) => {
@@ -65,15 +78,49 @@ test('the Wi-Fi endpoints need a session, also on the hotspot', async ({ request
   expect((await board.postRaw('/api/connection/apply')).status()).toBe(409);
 });
 
-test('on the hotspot a visitor can reset the frame to factory defaults from the sign-in page', async ({ page, request }) => {
-  expect((await request.post('/api/system/factory-reset')).status()).toBe(401);
-
+test('on the hotspot the owner signs in with the setup code from the panel, until the frame joins a Wi-Fi', async ({ page, board }) => {
   await setWifiMode('ap');
+  await board.restartService('display');
+  const code = codeOn(await waitForPanel(showsApSetup, 'Wi-Fi setup screen with its code'));
+
+  await page.goto('/');
+  await expect(page).toHaveURL(/\/auth\/sign-in$/);
+  await page.getByRole('textbox', { name: 'Einrichtungscode' }).fill(code);
+  await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
+  await expect(page).toHaveURL(/\/network\/$/);
+
+  await setWifiMode('connected');
+  await page.reload();
+  await expect(page).toHaveURL(/\/auth\/sign-in$/);
+});
+
+test('a forgotten password resets the frame with the code from its panel', async ({ page, request }) => {
+  expect((await request.post('/api/system/factory-reset', { data: {} })).status()).toBe(400);
+  expect((await request.post('/api/system/factory-reset', { data: { code: '123456' } })).status()).toBe(409);
+  expect(await factoryResetScheduled()).toBe(false);
+
   await page.goto('/auth/sign-in');
-  await page.getByRole('button', { name: /Auf Werkseinstellungen zurücksetzen/ }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Zurücksetzen' }).click();
+  await page.getByRole('link', { name: 'Passwort vergessen?' }).click();
+  await expect(page).toHaveURL(/\/auth\/forgot-password$/);
+  await page.getByRole('button', { name: 'Code auf dem Bilderrahmen anzeigen' }).click();
+  const code = codeOn(await waitForPanel(showsStatus('reset_code'), 'reset code on the panel'));
+
+  await page.getByLabel('Code').fill(code);
+  await page.getByRole('button', { name: 'Endgültig zurücksetzen' }).click();
   await expect.poll(factoryResetScheduled, { message: 'wipe marked for the next boot' }).toBe(true);
   await waitForPanel(showsStatus('factory_reset'), 'factory reset status screen');
+});
+
+test('a reset code taken back leaves the panel to the photos', async ({ page }) => {
+  await signIn(page);
+  await page.goto('/general/factory-reset/');
+  await page.getByRole('button', { name: 'Code auf dem Bilderrahmen anzeigen' }).click();
+  await waitForPanel(showsStatus('reset_code'), 'reset code on the panel');
+
+  // Leaving the page any way takes the code back, here through the menu.
+  await page.goto('/');
+  await waitForPanel(showsDefault, 'slideshow back after the code was taken back');
+  expect(await factoryResetScheduled()).toBe(false);
 });
 
 test('the hotspot password is only shown to hotspot clients and signed-in owners', async ({ request, board }) => {
@@ -110,7 +157,8 @@ test('a frame nobody owns asks to be registered until the owner does', async ({ 
   await server.unregistered(true);
   await board.restartService('websocket');
 
-  await waitForPanel(showsRegistration, 'registration screen', 30_000);
+  const panel = await waitForPanel(showsRegistration, 'registration screen', 30_000);
+  expect(panel.text, 'the dashboard address for settings before claiming').toContain('Einstellungen: http://shareframe-board-0e2e.local');
   await attachPanel(testInfo, 'registration');
   const frame = await Frame.read();
   expect(frame.blackRatio(82, 44, 382, 436), 'QR code').toBeGreaterThan(0.2);

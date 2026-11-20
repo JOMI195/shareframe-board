@@ -107,6 +107,7 @@ protected:
     Recorder<Topic::CLEAR_IMAGES> clearImages{bus};
     Recorder<Topic::CLEAR_DISPLAY> clearDisplay{bus};
     Recorder<Topic::REMOTE_COMMAND> commands{bus};
+    Recorder<Topic::FRAME_REGISTRATION> registration{bus};
     SettingsRepository settingsRepo{db.get()};
     ServerContact contact{settingsRepo};
     WebsocketClient client{bus, cfg, auth, contact};
@@ -122,12 +123,24 @@ TEST_F(WebsocketClientTest, ConnectsWithTheFrameTokenAndAnnouncesIt)
     EXPECT_TRUE(contact.snapshot().connected);
 }
 
+// The display marks the frame as owned on this, also when it never was refused.
+TEST_F(WebsocketClientTest, AFrameRegisteredFromTheStartSaysSoOnItsFirstConnect)
+{
+    ASSERT_TRUE(server.start());
+    connect();
+    ASSERT_TRUE(waitFor([&] { return registration.size() == 1; }));
+    EXPECT_TRUE(registration.get()[0].registered);
+}
+
 TEST_F(WebsocketClientTest, ServerMessagesAreRoutedByType)
 {
     ASSERT_TRUE(server.start());
     connect();
 
     server.sendToAll("not json");
+    server.sendToAll("[1,2]");
+    server.sendToAll("5");
+    server.sendToAll(R"({"type":7})");
     server.sendToAll(R"({"no_type":1})");
     server.sendToAll(R"({"type":"something_new"})");
     server.sendToAll(R"({"type":"picture","sent_image_id":1})");

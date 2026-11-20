@@ -1,5 +1,5 @@
 import { isCleared, showsDefault, showsImage, waitForPanel } from '../support/board';
-import { expect, signIn, skipActionLock, test } from '../support/fixtures';
+import { expect, signIn, test } from '../support/fixtures';
 import { boxOf } from '../support/layout';
 
 test.afterEach(async ({ board }) => {
@@ -25,7 +25,6 @@ test('stops and starts the slideshow on a phone', async ({ page }) => {
   await expect(page.getByText('Diashow gestoppt')).toBeVisible();
   await waitForPanel(isCleared, 'panel cleared');
 
-  await skipActionLock(page);
   await page.getByRole('button', { name: 'Starten' }).click();
   await expect(page.getByText('Diashow gestartet')).toBeVisible();
   await waitForPanel(showsDefault, 'default image after start');
@@ -59,7 +58,7 @@ test('an error stays until it is closed', async ({ page }) => {
   await page.getByRole('button', { name: '„E2E-WiFi“ entfernen' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Entfernen' }).click();
 
-  const error = page.getByRole('alert').filter({ hasText: 'WLAN konnte nicht entfernt werden' });
+  const error = page.getByRole('alert').filter({ hasText: 'Mit diesem WLAN ist der Bilderrahmen gerade verbunden' });
   await expect(error).toBeInViewport({ ratio: 1 });
   await page.clock.fastForward('00:30');
   await expect(error).toBeVisible();

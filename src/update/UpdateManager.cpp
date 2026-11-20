@@ -20,6 +20,16 @@ std::string readFirstLine(const std::string& path)
     std::getline(f, line);
     return line;
 }
+
+/// "/path?query" of an absolute or root-relative URL.
+std::string urlPath(const std::string& url)
+{
+    const auto scheme = url.find("://");
+    if (scheme == std::string::npos)
+        return url.starts_with('/') ? url : "/" + url;
+    const auto path = url.find('/', scheme + 3);
+    return path == std::string::npos ? "/" : url.substr(path);
+}
 } // namespace
 
 UpdateManager::UpdateManager(const AppConfig& cfg, HTTPClient& http, AuthTokenManager& authTokenManager,
@@ -132,19 +142,25 @@ std::string UpdateManager::_committedSlot() const
 
 bool UpdateManager::startUpdate(std::string& error)
 {
-    std::lock_guard lock(mutex_);
-    if (isBusy(phase_.state()))
     {
-        error = "Update already in progress";
-        return false;
-    }
-    if (!_pendingSlot().empty())
-    {
-        error = "Previous update awaits confirmation; reboot or wait first";
-        return false;
+        std::lock_guard lock(mutex_);
+        if (isBusy(phase_.state()) || starting_)
+        {
+            error = "Update already in progress";
+            return false;
+        }
+        if (!_pendingSlot().empty())
+        {
+            error = "Previous update awaits confirmation; reboot or wait first";
+            return false;
+        }
+        starting_ = true;
     }
 
+    // Unlocked: the status stays readable while the update server takes its time.
     auto release = _latestReleaseJson();
+    std::lock_guard lock(mutex_);
+    starting_ = false;
     if (!release)
     {
         error = "Failed to fetch latest release from server";
@@ -178,12 +194,14 @@ void UpdateManager::_fail(const std::string& error, const std::string& toVersion
 void UpdateManager::_worker(nlohmann::json release)
 {
     const std::string version = release.value("version", "");
-    const std::string url = release.value("download_url", "");
-    if (url.empty())
+    const std::string announced = release.value("download_url", "");
+    if (announced.empty())
     {
         _fail("Release has no download_url", version);
         return;
     }
+    // Fetched with the frame's token: only the path is taken, the host is always the frame's own server.
+    const std::string url = cfg_.httpBaseUrl() + urlPath(announced);
 
     // staged meta: consumed by shareframe-update-history on commit/rollback
     std::error_code ec;

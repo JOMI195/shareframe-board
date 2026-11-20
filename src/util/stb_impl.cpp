@@ -1,4 +1,6 @@
 #define STBI_MAX_DIMENSIONS (1 << 13)
+#define STBI_ONLY_JPEG
+#define STBI_ONLY_PNG
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 

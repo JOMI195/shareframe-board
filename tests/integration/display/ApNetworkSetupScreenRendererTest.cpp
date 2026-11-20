@@ -25,8 +25,9 @@ TEST(ApNetworkSetupScreenRenderer, LongCredentialsStayInsideTheVisibleArea)
 {
     const std::string ssid(32, 'W');
     const std::string password(63, 'M');
-    const auto buffer = Renderer::render(ssid, password, "http://192.168.4.1",
-                                         std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans.ttf");
+    const auto text = Renderer::paragraphs(ssid, password, "http://192.168.4.1", "482913", "wrong_password");
+    const auto buffer = Renderer::render(ssid, password, text, std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans.ttf",
+                                         true);
     ASSERT_EQ(buffer.size(), DisplayManager::BUFFER_SIZE);
 
     constexpr auto safe = Renderer::SAFE_AREA;
@@ -37,4 +38,17 @@ TEST(ApNetworkSetupScreenRenderer, LongCredentialsStayInsideTheVisibleArea)
     EXPECT_GT(blackIn(buffer, safe.x0, safe.y0, middle - 50, safe.y1), 0) << "no QR code";
     EXPECT_GT(blackIn(buffer, middle + 50, safe.y0, safe.x1, safe.y1), 0) << "no text";
     EXPECT_EQ(blackIn(buffer, middle + 50, safe.y1 - 10, safe.x1, safe.y1), 0) << "text runs to the bottom edge, likely cut off";
+}
+
+// After a failed attempt the owner reads what to fix, the code stays last.
+TEST(ApNetworkSetupScreenRenderer, NamesWhyTheLastAttemptFailed)
+{
+    const auto text = Renderer::paragraphs("frame", "hotspot-1", "http://192.168.4.1", "482913", "wrong_password");
+    EXPECT_EQ(text.at(1), "Letzter Versuch: Das WLAN-Passwort stimmt nicht.");
+    EXPECT_EQ(text.back(), "482 913");
+
+    for (const auto* reason : {"not_found", "not_joined", "no_address"})
+        EXPECT_EQ(Renderer::paragraphs("frame", "", "u", "1", reason).at(1).rfind("Letzter Versuch: ", 0), 0u) << reason;
+    EXPECT_EQ(Renderer::paragraphs("frame", "", "u", "1", "no_networks").size(),
+              Renderer::paragraphs("frame", "", "u", "1", "").size()) << "nothing failed on a fresh frame";
 }

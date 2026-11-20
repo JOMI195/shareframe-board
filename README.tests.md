@@ -125,8 +125,9 @@ Prefer a step in an existing spec over a new one; the stack takes about a minute
   phone check there. `./test.sh e2e --project=mobile --no-deps` runs only those.
 - **Virtual panel.** With `display.mock_display` and `display.mock_output_dir` set, the
   display writes every frame to `panel.pbm` (the exact 800×480 1-bit buffer the e-paper
-  would get) and `panel.json` (`state`, `source`, `seq`), and counts refreshes like the
-  panel. Wait with `waitForPanel(predicate)`; check the frame with `Frame.read()` and
+  would get) and `panel.json` (`state`, `source`, `seq`, and the `text` the screen says), and
+  counts refreshes like the panel. `codeOn(panel)` reads a setup or reset code off it, as the owner
+  would. Wait with `waitForPanel(predicate)`; check the frame with `Frame.read()` and
   `blackRatio(...)` (orientation, polarity, dithering) — no reference images in the repo.
   The report attaches the frames as PNG.
 - **The image's own scripts.** The board runs shareframe-hardware's real scripts

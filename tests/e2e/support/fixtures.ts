@@ -5,6 +5,7 @@ type Fixtures = {
   server: FakeServer;
   board: BoardApi;
   cleanBoard: void;
+  contentPolicy: void;
 };
 
 export const test = base.extend<Fixtures>({
@@ -39,16 +40,27 @@ export const test = base.extend<Fixtures>({
     },
     { auto: true },
   ],
+
+  // The board's Content-Security-Policy must not block anything the dashboard loads.
+  contentPolicy: [
+    async ({ page }, use) => {
+      const blocked: string[] = [];
+      page.on('console', (m) => { if (m.type() === 'error' && /Content Security Policy/.test(m.text())) blocked.push(m.text()); });
+      await use();
+      expect(blocked, 'blocked by the Content-Security-Policy').toEqual([]);
+    },
+    { auto: true },
+  ],
 });
 
 export { expect };
 
-/** Signs in through the UI and waits until the home page's start-up lock is over. */
+/** Signs in through the UI and waits for the first page. */
 export async function signIn(page: Page, password = DASHBOARD_PASSWORD) {
   await page.clock.install();
   await page.goto('/auth/sign-in');
-  // On its hotspot the frame has no server for a code login and asks for the password straight away.
-  const choosePassword = page.getByRole('button', { name: 'Mit Passwort anmelden' });
+  // The page starts on the one-time code (online) or the setup code (hotspot); both offer the password.
+  const choosePassword = page.getByRole('button', { name: 'Mit Geräte-Passwort anmelden' });
   const passwordBox = page.getByRole('textbox', { name: 'Passwort', exact: true });
   await expect(choosePassword.or(passwordBox).first()).toBeVisible();
   if (await choosePassword.isVisible()) await choosePassword.click();
@@ -58,12 +70,6 @@ export async function signIn(page: Page, password = DASHBOARD_PASSWORD) {
   const home = page.getByRole('heading', { level: 2, name: 'Diashow' });
   const network = page.getByRole('heading', { level: 1, name: 'Netzwerk' });
   await expect(home.or(network).first()).toBeVisible();
-  await page.clock.fastForward('00:21');
-}
-
-/** Jumps over the 3-minute lock the UI puts on slideshow actions after each action. */
-export async function skipActionLock(page: Page) {
-  await page.clock.fastForward('03:05');
 }
 
 /** A dashboard card by its exact title. */

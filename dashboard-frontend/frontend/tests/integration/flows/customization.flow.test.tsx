@@ -3,7 +3,8 @@ import { screen, waitFor } from '@testing-library/react';
 import * as api from '@/assets/endpoints/api/frame';
 import { renderRoute } from '@tests/helpers/renderRoute';
 import { signedInState } from '@tests/helpers/preloadedState';
-import { failsWith, ok, server, setBoard, spyOnRequests } from '@tests/mocks';
+import { apiUrl, failsWith, ok, server, setBoard, spyOnRequests } from '@tests/mocks';
+import { http } from 'msw';
 
 const senderSwitch = () => screen.getByLabelText('Name des Absenders anzeigen');
 
@@ -27,6 +28,20 @@ describe('customization', () => {
     expect(await save.calls[0].json()).toEqual({ show_sender: false });
     expect(await screen.findByText('Der Name des Absenders wird ab dem nächsten Fotowechsel ausgeblendet')).toBeInTheDocument();
     expect(senderSwitch()).not.toBeChecked();
+  });
+
+  it('follows the tap at once while the board saves', async () => {
+    let answer: () => void = () => {};
+    server.use(http.post(apiUrl(api.getDisplayCustomizationUrl()),
+      () => new Promise<Response>((resolve) => { answer = () => resolve(ok({ show_sender: true })); })));
+    const { user } = await openCustomization();
+
+    await user.click(senderSwitch());
+
+    expect(senderSwitch()).toBeChecked();
+    answer();
+    expect(await screen.findByText('Der Name des Absenders wird ab dem nächsten Fotowechsel angezeigt')).toBeInTheDocument();
+    expect(senderSwitch()).toBeChecked();
   });
 
   it('a failed save leaves the switch off and says so', async () => {

@@ -69,12 +69,12 @@ log_file = "shareframe-heartbeat.log"
 # nng endpoints for cross-process IPC (REQ/REP + PUB/SUB).
 # Every service exposes a *_rep health endpoint.
 [ipc]
-ws_rep = "ipc:///tmp/shareframe-ws.rep.sock"
-ws_pub = "ipc:///tmp/shareframe-ws.pub.sock"
-display_rep = "ipc:///tmp/shareframe-display.rep.sock"
-dashboard_rep = "ipc:///tmp/shareframe-dashboard.rep.sock"
-heartbeat_rep = "ipc:///tmp/shareframe-heartbeat.rep.sock"
-update_rep = "ipc:///tmp/shareframe-update.rep.sock"
+ws_rep = "ipc:///run/shareframe/ws.rep.sock"
+ws_pub = "ipc:///run/shareframe/ws.pub.sock"
+display_rep = "ipc:///run/shareframe/display.rep.sock"
+dashboard_rep = "ipc:///run/shareframe/dashboard.rep.sock"
+heartbeat_rep = "ipc:///run/shareframe/heartbeat.rep.sock"
+update_rep = "ipc:///run/shareframe/update.rep.sock"
 
 [heartbeat]
 interval_secs = 300

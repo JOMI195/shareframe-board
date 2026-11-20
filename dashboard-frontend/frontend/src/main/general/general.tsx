@@ -6,14 +6,16 @@ import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import uuid from 'react-uuid';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { selectFrameInfoState, fetchFrameInfos } from '@/store/frameInfo/frameInfo.Slice';
-import { openGeneralChangePasswordDialog, openGeneralFactoryResetDialog } from '@/store/dialogs/dialogs.Slice';
+import { openGeneralChangePasswordDialog } from '@/store/dialogs/dialogs.Slice';
 import { getAdvancedMode, toggleAdvancedMode } from '@/store/navigation/navigation.Slice';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import ChangePasswordDialog from './dialogs/changePasswordDialog';
-import FactoryResetDialog from '@/common/components/factoryResetDialog';
 import { addAlertSnackbar } from '@/store/snackbars/snackbars.Slice';
 import { fetchWithTimeout } from '@/common/utils/fetch';
 import { getSendDiagnosticsUrl } from '@/assets/endpoints/api/frame';
+import { pollWhileVisible } from '@/common/utils/poll';
+import { useNavigate } from 'react-router';
+import { getFactoryResetUrl, getHomeUrl } from '@/assets/endpoints/app/appEndpoints';
 
 const RESOLUTION = "800mm x 480mm";
 const SYSTEM_INFO_POLL_MS = 5000;
@@ -74,6 +76,7 @@ const fmtWifiMode = (m?: string): string => (m ? WIFI_MODE_LABELS[m] ?? m : DASH
 
 const General = () => {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
     const info = useAppSelector(selectFrameInfoState).frameInfo;
     const expertMode = useAppSelector(getAdvancedMode);
     const [sendingDiagnostics, setSendingDiagnostics] = useState(false);
@@ -94,9 +97,7 @@ const General = () => {
 
     // Poll live metrics while this page is open (layout fetches once on mount).
     useEffect(() => {
-        dispatch(fetchFrameInfos());
-        const id = setInterval(() => { dispatch(fetchFrameInfos()); }, SYSTEM_INFO_POLL_MS);
-        return () => clearInterval(id);
+        return pollWhileVisible(() => dispatch(fetchFrameInfos()), SYSTEM_INFO_POLL_MS);
     }, [dispatch]);
 
     return (
@@ -237,7 +238,7 @@ const General = () => {
                             variant="contained"
                             color="error"
                             startIcon={<RestoreIcon />}
-                            onClick={() => dispatch(openGeneralFactoryResetDialog())}
+                            onClick={() => navigate(getHomeUrl() + getFactoryResetUrl())}
                         >
                             Zurücksetzen
                         </Button>
@@ -245,7 +246,6 @@ const General = () => {
                 />
             </Stack>
             <ChangePasswordDialog />
-            <FactoryResetDialog />
         </>
     );
 };

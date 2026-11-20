@@ -17,10 +17,10 @@ export const loadingWallSlice = createSlice({
     name: 'loadingWall',
     initialState,
     reducers: {
-        loadingWallVisible: (state, action: PayloadAction<string>) => {
+        loadingWallVisible: (state, action: PayloadAction<{ message: string; maxMs: number }>) => {
             state.isLoadingWallVisible = true;
-            state.message = action.payload;
-            state.hideAfter = Date.now() + 3 * 60 * 1000; // 3 minutes in the future
+            state.message = action.payload.message;
+            state.hideAfter = Date.now() + action.payload.maxMs;
         },
         loadingWallHidden: (state) => {
             state.isLoadingWallVisible = false;
@@ -30,11 +30,13 @@ export const loadingWallSlice = createSlice({
     }
 });
 
+// The wall goes once the board answers again; maxMs is the latest it gives up waiting.
 export const showLoadingWall = (
-    message: string
+    message: string,
+    maxMs = 3 * 60 * 1000
 ) => ({
     type: loadingWallVisible.type,
-    payload: message,
+    payload: { message, maxMs },
 });
 
 export const hideLoadingWall = () => ({

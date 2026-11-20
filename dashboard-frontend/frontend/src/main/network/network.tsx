@@ -5,6 +5,7 @@ import {
     Stack
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import WifiOffIcon from '@mui/icons-material/WifiOff';
 import WifiIcon from '@mui/icons-material/Wifi';
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -19,7 +20,6 @@ import {
     selectNetworkState
 } from '@/store/network/network.Slice';
 import {
-    openNetworkAddNetworkDialog,
     openNetworkChangeApPasswordDialog,
     openNetworkForgetNetworkDialog
 } from '@/store/dialogs/dialogs.Slice';
@@ -28,12 +28,16 @@ import { selectConnectionMode } from '@/store/connectionMode/connectionMode.Slic
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import Dialogs from './dialogs/dialogs';
 import HotspotCard from './hotspotCard';
+import { useNavigate } from 'react-router';
+import { getAddNetworkUrl, getHomeUrl } from '@/assets/endpoints/app/appEndpoints';
 
 const Network = () => {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
     const { isConnected } = usePiConnection();
     const { currentConnection, savedNetworks, loading } = useAppSelector(selectNetworkState);
     const { mode, ap_ssid, ap_password } = useAppSelector(selectConnectionMode);
+    const onNoNetwork = mode === 'ap' || !currentConnection;
     const [showApPassword, setShowApPassword] = useState(false);
 
     const isButtonsDisabled = loading || !isConnected;
@@ -42,8 +46,8 @@ const Network = () => {
         dispatch(openNetworkForgetNetworkDialog(ssid));
     };
 
-    const handleAddNetworkDialogOpen = (): void => {
-        dispatch(openNetworkAddNetworkDialog());
+    const openAddNetwork = (): void => {
+        navigate(getHomeUrl() + getAddNetworkUrl());
     };
 
     const handleRefreshNetworks = async (): Promise<void> => {
@@ -73,9 +77,13 @@ const Network = () => {
                                 type: 'reactNode',
                                 value: (
                                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                        <WifiIcon sx={{ mr: 1, color: 'primary.main' }} />
+                                        {onNoNetwork
+                                            ? <WifiOffIcon sx={{ mr: 1, color: 'text.secondary' }} />
+                                            : <WifiIcon sx={{ mr: 1, color: 'primary.main' }} />}
                                         <Typography variant="body2">
-                                            {loading ? <CircularProgress size={12} /> : currentConnection}
+                                            {loading ? <CircularProgress size={12} />
+                                                : onNoNetwork ? (mode === 'ap' ? 'Keins, der Bilderrahmen stellt seinen Hotspot bereit' : 'Keins')
+                                                    : currentConnection}
                                         </Typography>
                                     </Box>
                                 )
@@ -120,7 +128,10 @@ const Network = () => {
                                                                 </IconButton>
                                                             }
                                                         >
-                                                            <ListItemText primary={<Typography variant="body2" noWrap>{network}</Typography>} />
+                                                            <ListItemText
+                                                                primary={<Typography variant="body2" noWrap>{network}</Typography>}
+                                                                secondary={network === currentConnection ? 'Verbunden' : undefined}
+                                                            />
                                                         </ListItem>
                                                     ))}
                                                 </List>
@@ -146,7 +157,7 @@ const Network = () => {
                                 variant="contained"
                                 color="primary"
                                 startIcon={<AddIcon />}
-                                onClick={handleAddNetworkDialogOpen}
+                                onClick={openAddNetwork}
                                 disabled={isButtonsDisabled}
                             >
                                 WLAN hinzufügen

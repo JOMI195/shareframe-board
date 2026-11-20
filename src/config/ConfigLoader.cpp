@@ -176,6 +176,10 @@ void ConfigLoader::resolvePaths(AppConfig& cfg) {
     resolveField(cfg.display.loadingImagePath,  base);
     resolveField(cfg.display.defaultImagesPath, base);
     resolveField(cfg.display.wifiModePath,      base);
+    resolveField(cfg.display.setupCodePath,     base);
+    resolveField(cfg.display.wifiJoinedPath,    base);
+    resolveField(cfg.display.registeredOncePath, base);
+    resolveField(cfg.display.safeModePath,      base);
     resolveField(cfg.display.setupFontPath,     base);
     resolveField(cfg.display.boldFontPath,      base);
     resolveField(cfg.heartbeat.eventCursorPath, base);

@@ -3,7 +3,7 @@
 
 TEST(ServerConnection, RoundTripsThroughJson)
 {
-    const ServerConnection c{false, 1700, 1800};
+    const ServerConnection c{false, 1700, 1800, true};
     EXPECT_EQ(serverConnectionFromJson(toJson(c)), c);
     EXPECT_EQ(toJson(c)["last_contact_at"], 1800);
 }
