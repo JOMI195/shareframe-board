@@ -4,9 +4,25 @@
 #include <csignal>
 #include <cstring>
 #include <poll.h>
+#include <sys/syscall.h>
 #include <sys/wait.h>
 #include <thread>
 #include <unistd.h>
+
+namespace
+{
+// In the child, before exec: the tool gets only its standard streams, not the service's sockets or database.
+void closeInheritedFds()
+{
+#ifdef SYS_close_range
+    if (syscall(SYS_close_range, 3U, ~0U, 0U) == 0)
+        return;
+#endif
+    const long max = sysconf(_SC_OPEN_MAX);
+    for (int fd = 3; fd < (max > 0 ? max : 1024); ++fd)
+        close(fd);
+}
+} // namespace
 
 SubprocessResult Subprocess::run(const std::vector<std::string>& args, int timeoutSecs)
 {
@@ -42,6 +58,7 @@ SubprocessResult Subprocess::run(const std::vector<std::string>& args, int timeo
             _exit(126);
         close(outPipe[1]);
         close(errPipe[1]);
+        closeInheritedFds();
 
         execvp(argv[0], const_cast<char* const*>(argv.data()));
         _exit(127); // execvp failed
