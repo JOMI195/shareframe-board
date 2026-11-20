@@ -16,9 +16,10 @@ export interface DisplayCustomizationState {
     isUpdating: boolean;
 }
 
+// Fetching until the board answered: the default would otherwise look like the stored choice.
 const initialState: DisplayCustomizationState = {
     showSender: false,
-    isFetching: false,
+    isFetching: true,
     isUpdating: false,
 };
 
