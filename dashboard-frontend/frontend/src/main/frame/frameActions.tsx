@@ -67,8 +67,19 @@ const FrameActions: React.FC = () => {
     const { isActive, loopStarted, isRefreshing, imageCount, lastCheckedAt, secondsUntilNext, nowShowing } = useAppSelector(selectSlideshowStatus);
 
     // Interval form state
-    const [intervalValue, setIntervalValue] = useState<number>(useAppSelector(selectDisplayRefreshInterval));
-    const [intervalUnit, setIntervalUnit] = useState<'minutes' | 'hours'>('minutes');
+    // Re-seeded whenever the stored interval arrives; whole hours show as hours.
+    const storedInterval = useAppSelector(selectDisplayRefreshInterval);
+    const asForm = (mins: number) => (mins >= 60 && mins % 60 === 0
+        ? { value: mins / 60, unit: 'hours' as const }
+        : { value: mins, unit: 'minutes' as const });
+    const [intervalValue, setIntervalValue] = useState<number>(asForm(storedInterval).value);
+    const [intervalUnit, setIntervalUnit] = useState<'minutes' | 'hours'>(asForm(storedInterval).unit);
+    const [seededInterval, setSeededInterval] = useState(storedInterval);
+    if (storedInterval !== seededInterval) {
+        setSeededInterval(storedInterval);
+        setIntervalValue(asForm(storedInterval).value);
+        setIntervalUnit(asForm(storedInterval).unit);
+    }
 
     // Night mode form state, re-seeded whenever the stored values arrive
     const storedNightEnabled = useAppSelector(selectNightModeEnabled);
@@ -166,6 +177,7 @@ const FrameActions: React.FC = () => {
     const isWaitingForStatus = isConnected && lastCheckedAt === null;
     const isButtonsDisabled = panelRest > 0 || isLoopLoading || isToggling || isClearingDisplay || isSkippingImage || isRefreshing || !isConnected || lastCheckedAt === null;
     const isNightModeDisabled = !isConnected || lastCheckedAt === null || isUpdatingNightMode;
+    const isIntervalDisabled = !isConnected || lastCheckedAt === null || isUpdatingInterval;
 
     return (
         <>
@@ -366,7 +378,7 @@ const FrameActions: React.FC = () => {
                                                     value={intervalValue}
                                                     onChange={(e) => setIntervalValue(Number(e.target.value))}
                                                     sx={{ flex: 1 }}
-                                                    disabled={isButtonsDisabled || isUpdatingInterval}
+                                                    disabled={isIntervalDisabled}
                                                     slotProps={{
                                                         htmlInput: {
                                                             min,
@@ -382,7 +394,7 @@ const FrameActions: React.FC = () => {
                                                         value={intervalUnit}
                                                         label="Einheit"
                                                         onChange={(e) => setIntervalUnit(e.target.value as 'minutes' | 'hours')}
-                                                        disabled={isButtonsDisabled || isUpdatingInterval}
+                                                        disabled={isIntervalDisabled}
                                                     >
                                                         <MenuItem value="minutes">Minuten</MenuItem>
                                                         <MenuItem value="hours">Stunden</MenuItem>
@@ -400,7 +412,7 @@ const FrameActions: React.FC = () => {
                                 startIcon={<SaveOutlined />}
                                 onClick={handleUpdateInterval}
                                 fullWidth
-                                disabled={isButtonsDisabled || isUpdatingInterval || isFetchingInterval || intervalValue < min || intervalValue > max}
+                                disabled={isIntervalDisabled || isFetchingInterval || intervalValue < min || intervalValue > max}
                             >
                                 Intervall speichern
                             </Button>

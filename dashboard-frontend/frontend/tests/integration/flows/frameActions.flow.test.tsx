@@ -169,6 +169,24 @@ describe('frame actions', () => {
     expect(await interval.calls[0].json()).toEqual({ interval_seconds: 1800 });
   });
 
+  it('shows the stored interval in whole hours when it is some', async () => {
+    server.use(...withSlideshowStatus({ interval_seconds: 7200 }));
+    await openHome();
+
+    const intervalCard = card('Wechselintervall');
+    await waitFor(() => expect(within(intervalCard).getByLabelText('Intervall')).toHaveValue(2));
+    expect(within(intervalCard).getByRole('combobox', { name: 'Einheit' })).toHaveTextContent('Stunden');
+  });
+
+  // Changing the interval paints nothing, so the panel's rest does not hold it back.
+  it('takes a new interval while the panel rests', async () => {
+    server.use(...resting(90));
+    await openHome();
+
+    expect(within(card('Wechselintervall')).getByLabelText('Intervall')).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Foto überspringen' })).toBeDisabled();
+  });
+
   it('rejects an interval below five minutes', async () => {
     const { user } = await openHome();
 
