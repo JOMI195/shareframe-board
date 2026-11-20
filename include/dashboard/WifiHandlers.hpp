@@ -13,6 +13,7 @@ public:
     /// The wifi mode plus the server link and safe mode; server_connected is null when the websocket service is silent.
     nlohmann::json connectionMode() const;
     ix::HttpResponsePtr handleSavedNetworks(const ix::HttpRequestPtr& req) const;
+    ix::HttpResponsePtr handleScan(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleConnect(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleForget(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleApply(const ix::HttpRequestPtr& req) const;

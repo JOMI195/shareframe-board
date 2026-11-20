@@ -55,7 +55,7 @@ TEST_F(WifiManagerTest, TheNetworkTheBoardIsOnCannotBeForgotten)
 {
     shims.add("shareframe-wifi", "[ \"$1\" = status ] && printf 'ssid=home\\nwpa_state=COMPLETED\\n'; "
                                  "[ \"$1\" = del ] && echo del >> " + argv.string() + "; exit 0");
-    EXPECT_EQ(wifi.forget("home").value("error", ""), "Cannot delete active connection");
+    EXPECT_EQ(wifi.forget("home").value("error", ""), "Active network");
     EXPECT_TRUE(wifi.forget("office").contains("message"));
     EXPECT_EQ(calls(), "del\n");
 }

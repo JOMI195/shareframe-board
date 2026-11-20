@@ -17,7 +17,11 @@ WifiHandlers::WifiHandlers(WifiManager& wifi, IpcClient& wsIpc, std::string safe
 static ix::HttpResponsePtr wifiResult(const nlohmann::json& result)
 {
     if (result.contains("error"))
-        return errorResponse(500, "Internal Server Error", result["error"].get<std::string>());
+    {
+        const int status = result.value("status", 500);
+        return errorResponse(status, status == 409 ? "Conflict" : "Internal Server Error",
+                             result["error"].get<std::string>());
+    }
     return jsonResponse(200, "OK", result);
 }
 
@@ -50,6 +54,11 @@ nlohmann::json WifiHandlers::connectionMode() const
     return mode;
 }
 
+ix::HttpResponsePtr WifiHandlers::handleScan(const ix::HttpRequestPtr& /*req*/) const
+{
+    return jsonResponse(200, "OK", wifi_.getScan());
+}
+
 ix::HttpResponsePtr WifiHandlers::handleSavedNetworks(const ix::HttpRequestPtr& /*req*/) const
 {
     return wifiResult(wifi_.getSavedNetworks());
@@ -67,7 +76,8 @@ ix::HttpResponsePtr WifiHandlers::handleConnect(const ix::HttpRequestPtr& req) c
     if (!Validation::isValidSsid(ssid))
         return errorResponse(400, "Bad Request", "Invalid SSID (max 32 bytes, no control chars)");
 
-    if (!Validation::isValidPassword(password))
+    // An empty password saves an open network.
+    if (!password.empty() && !Validation::isValidPassword(password))
         return errorResponse(400, "Bad Request", "Invalid password (8-63 chars, no control chars)");
 
     return wifiResult(wifi_.connect(ssid, password));

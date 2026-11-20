@@ -11,6 +11,8 @@ public:
 
     [[nodiscard]] nlohmann::json getCurrentConnection() const;
     [[nodiscard]] nlohmann::json getSavedNetworks() const;
+    /// What the radio saw on its last station attempt; age_secs is null when it saw nothing yet.
+    [[nodiscard]] nlohmann::json getScan() const;
     nlohmann::json connect(const std::string& ssid, const std::string& password) const;
     nlohmann::json forget(const std::string& ssid) const;
     /// Asks wifi-mode-manager to leave the AP and try the saved networks.

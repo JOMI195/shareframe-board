@@ -2,6 +2,8 @@
 #include "util/Subprocess.hpp"
 #include "util/WifiMode.hpp"
 #include "util/WpaText.hpp"
+#include <algorithm>
+#include <ctime>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -84,7 +86,7 @@ nlohmann::json WifiManager::getSavedNetworks() const
 nlohmann::json WifiManager::connect(const std::string& ssid, const std::string& password) const
 {
     if (WifiMode::isProtectedNetwork(ssid))
-        return {{"error", "Cannot modify protected network"}};
+        return {{"error", "Protected network"}, {"status", 409}};
 
     // `add` hashes the PSK, enables the network and saves the config; wpa
     // associates on its own afterwards.
@@ -98,6 +100,30 @@ nlohmann::json WifiManager::connect(const std::string& ssid, const std::string& 
 
     logger_->info("Added WiFi network: {}", ssid);
     return {{"message", "Saved " + ssid}};
+}
+
+nlohmann::json WifiManager::getScan() const
+{
+    const auto path = std::filesystem::path(wifiModePath_).parent_path() / "wifi-scan.json";
+    nlohmann::json scan = {{"networks", nlohmann::json::array()}, {"age_secs", nullptr}};
+    std::ifstream f(path);
+    if (!f)
+        return scan;
+    try
+    {
+        const auto raw = nlohmann::json::parse(f);
+        for (const auto& n : raw.at("networks"))
+            scan["networks"].push_back({{"ssid", WpaText::decode(n.at("ssid").get<std::string>())},
+                                        {"signal", n.at("signal").get<int>()},
+                                        {"secured", n.at("secured").get<bool>()}});
+        scan["age_secs"] = std::max<int64_t>(0, std::time(nullptr) - raw.at("at").get<int64_t>());
+    }
+    catch (const nlohmann::json::exception& e)
+    {
+        logger_->warn("Unreadable {}: {}", path.string(), e.what());
+        return {{"networks", nlohmann::json::array()}, {"age_secs", nullptr}};
+    }
+    return scan;
 }
 
 bool WifiManager::isApMode() const
@@ -126,12 +152,12 @@ nlohmann::json WifiManager::getWifiMode() const
 nlohmann::json WifiManager::forget(const std::string& ssid) const
 {
     if (WifiMode::isProtectedNetwork(ssid))
-        return {{"error", "Cannot delete protected network"}};
+        return {{"error", "Protected network"}, {"status", 409}};
 
     // Refuse to drop the network we're currently associated with.
     auto current = getCurrentConnection();
     if (current.value("connection_name", "") == ssid)
-        return {{"error", "Cannot delete active connection"}};
+        return {{"error", "Active network"}, {"status", 409}};
 
     auto result = Subprocess::run({"shareframe-wifi", "del", ssid}, 10);
 

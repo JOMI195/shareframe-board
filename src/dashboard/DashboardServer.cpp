@@ -106,6 +106,7 @@ void DashboardServer::_initRoutes()
         // WiFi / Connection
         {"GET",  "/api/connection/status",         [this](auto& req, auto&) { return wifiHandlers_.handleStatus(req); }},
         {"GET",  "/api/connection/saved-networks", [this](auto& req, auto&) { return wifiHandlers_.handleSavedNetworks(req); }},
+        {"GET",  "/api/connection/scan",           [this](auto& req, auto&) { return wifiHandlers_.handleScan(req); }},
         {"POST", "/api/connection/connect",        [this](auto& req, auto&) { return wifiHandlers_.handleConnect(req); }},
         {"POST", "/api/connection/forget",         [this](auto& req, auto&) { return wifiHandlers_.handleForget(req); }},
         {"POST", "/api/connection/apply",          [this](auto& req, auto&) { return wifiHandlers_.handleApply(req); }},
