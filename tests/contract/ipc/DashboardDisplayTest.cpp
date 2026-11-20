@@ -10,6 +10,7 @@
 #include "support/ImageFixture.hpp"
 #include "support/PathShim.hpp"
 #include "support/Wait.hpp"
+#include <atomic>
 #include <gtest/gtest.h>
 
 using namespace std::chrono_literals;
@@ -52,7 +53,8 @@ protected:
     Recorder<Topic::STATUS_SCREEN> statusScreens{bus};
     Recorder<Topic::UPDATE_CUSTOMIZATION> customizations{bus};
 
-    NngRepServer server{url, [this](const IpcMessage& m) { return displayIpc.handle(m); }};
+    std::atomic<int> requests{0};
+    NngRepServer server{url, [this](const IpcMessage& m) { ++requests; return displayIpc.handle(m); }};
     IpcClient ipc{url};
     FrameHandlers frame{ipc, cfg};
     SlideshowImageHandlers slideshowImages{ipc, repo};
@@ -196,6 +198,27 @@ TEST_F(DashboardDisplayTest, StatusAggregatesTheDisplayState)
     EXPECT_EQ(d["night_mode"]["end_hour"], 6);
     EXPECT_EQ(d["night_mode"]["interval_seconds"], 7200);
     EXPECT_EQ(d["night_mode"]["style"], "slower");
+}
+
+// The dashboard holds back repainting actions until then, instead of guessing.
+TEST_F(DashboardDisplayTest, StatusSaysWhenThePanelMayPaintAgain)
+{
+    cfg.display.minRefreshSecs = 120;
+    cfg.display.mockOutputDir = (db.dir() / "panel").string();
+    const auto readyIn = [&] { return result(frame.handleStatus(httpRequest("GET", "/"))).body["data"]["refresh_ready_in_secs"]; };
+    EXPECT_EQ(readyIn(), 0);
+
+    std::stop_source stop;
+    ASSERT_TRUE(display.displayBuffer(std::vector<uint8_t>(DisplayManager::BUFFER_SIZE, 0xFF), "test", stop.get_token()));
+    EXPECT_NEAR(readyIn().get<int>(), 120, 3);
+}
+
+// The home page polls the status every few seconds; each answer is one round trip to the display.
+TEST_F(DashboardDisplayTest, StatusAsksTheDisplayOnce)
+{
+    requests = 0;
+    ASSERT_EQ(result(frame.handleStatus(httpRequest("GET", "/"))).status, 200);
+    EXPECT_EQ(requests, 1);
 }
 
 TEST_F(DashboardDisplayTest, DisplayStatsDeriveWearFromRefreshCount)

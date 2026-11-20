@@ -14,20 +14,23 @@ FrameHandlers::FrameHandlers(IpcClient& ipc, AppConfig& cfg)
 
 ix::HttpResponsePtr FrameHandlers::handleStatus(const ix::HttpRequestPtr& /*req*/) const
 {
-    auto activeResult = ipc_.sendAndReceive(IpcMessage{IpcMessageType::GetSlideshowActive, {}});
-    auto intervalResult = ipc_.sendAndReceive(IpcMessage{IpcMessageType::GetDisplayInterval, {}});
-
+    const auto all = ipc_.sendAndReceive(IpcMessage{IpcMessageType::GetSlideshowStatus, {}});
+    const auto part = [&](const char* key) -> std::optional<nlohmann::json>
+    {
+        if (all && all->contains(key) && (*all)[key].is_object())
+            return (*all)[key];
+        return std::nullopt;
+    };
+    const auto activeResult = part("active");
+    const auto intervalResult = part("interval");
     if (!activeResult || !intervalResult)
     {
         logger_->error("Failed to query slideshow status via IPC");
         return errorResponse(500, "Internal Server Error", "Service unavailable");
     }
-
-    // Remaining time until the next image change (-1 when paused/unknown).
-    // Best-effort: don't fail the whole status if this single call misses.
-    auto secondsResult = ipc_.sendAndReceive(IpcMessage{IpcMessageType::GetSecondsUntilNext, {}});
-    auto nightResult = ipc_.sendAndReceive(IpcMessage{IpcMessageType::GetNightMode, {}});
-    auto screenResult = ipc_.sendAndReceive(IpcMessage{IpcMessageType::GetScreenInfo, {}});
+    const auto secondsResult = part("timing");
+    const auto nightResult = part("night_mode");
+    const auto screenResult = part("screen");
 
     nlohmann::json nightMode = {
         {"enabled", nightResult ? nightResult->value("enabled", false) : cfg_.display.nightModeEnabled},
@@ -45,6 +48,7 @@ ix::HttpResponsePtr FrameHandlers::handleStatus(const ix::HttpRequestPtr& /*req*
         {"image_count", activeResult->value("image_count", 0)},
         {"interval_seconds", intervalResult->value("interval_secs", cfg_.display.intervalSecs)},
         {"seconds_until_next", secondsResult ? secondsResult->value("seconds_until_next", -1) : -1},
+        {"refresh_ready_in_secs", secondsResult ? secondsResult->value("refresh_ready_in_secs", 0) : 0},
         {"night_mode", nightMode},
         {"now_showing", {
             {"seq", screenResult ? screenResult->value("seq", int64_t{0}) : 0},
