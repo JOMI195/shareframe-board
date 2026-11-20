@@ -1,4 +1,5 @@
 #include "auth/AuthTokenManager.hpp"
+#include "dashboard/FactoryResetHandlers.hpp"
 #include "dashboard/FrameHandlers.hpp"
 #include "dashboard/SlideshowImageHandlers.hpp"
 #include "dashboard/SystemHandlers.hpp"
@@ -291,12 +292,31 @@ TEST_F(DashboardDisplayTest, RebootShowsTheStatusScreen)
     EXPECT_EQ(statusScreens.get()[0].kind, StatusScreenKind::Reboot);
 }
 
-TEST_F(DashboardDisplayTest, FailedFactoryResetHidesTheStatusScreenAgain)
+// The code the dashboard makes up is the one the panel shows, for as long as the dashboard accepts it.
+TEST_F(DashboardDisplayTest, TheResetCodeReachesThePanelAndAFailedResetTakesItsScreenBack)
 {
     PathShim shims;
+    shims.add("shareframe-remote-gate", "exit 0");
     shims.add("shareframe-factory-reset", "exit 1");
-    EXPECT_EQ(result(system.handleFactoryReset(httpRequest("POST", "/"))).status, 500);
-    ASSERT_TRUE(waitFor([&] { return statusScreens.size() == 2; }));
-    EXPECT_EQ(statusScreens.get()[0].kind, StatusScreenKind::FactoryReset);
-    EXPECT_FALSE(statusScreens.get()[1].kind);
+    NngRepServer updates{"ipc://" + (db.dir() / "update.sock").string(), [](const IpcMessage&) -> nlohmann::json
+    {
+        return {{"ok", true}, {"status", {{"phase", "idle"}}}};
+    }};
+    updates.start();
+    IpcClient updateIpc{"ipc://" + (db.dir() / "update.sock").string()};
+    FactoryResetHandlers reset{ipc, updateIpc};
+
+    const auto requested = result(reset.handleRequestCode(httpRequest("POST", "/")));
+    ASSERT_EQ(requested.status, 200);
+    EXPECT_EQ(requested.body["data"]["expires_in_secs"], 300);
+    ASSERT_TRUE(waitFor([&] { return statusScreens.size() == 1; }));
+    const auto shown = statusScreens.get()[0];
+    EXPECT_EQ(shown.kind, StatusScreenKind::ResetCode);
+    EXPECT_EQ(shown.timeoutSecs, 300);
+    ASSERT_EQ(shown.code.size(), 6u);
+
+    EXPECT_EQ(result(reset.handleReset(httpRequest("POST", "/", {{"code", shown.code}}))).status, 500);
+    ASSERT_TRUE(waitFor([&] { return statusScreens.size() == 3; }));
+    EXPECT_EQ(statusScreens.get()[1].kind, StatusScreenKind::FactoryReset);
+    EXPECT_FALSE(statusScreens.get()[2].kind);
 }

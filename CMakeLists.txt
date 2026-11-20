@@ -241,6 +241,8 @@ target_link_libraries(shareframe-display PRIVATE shareframe-display-lib)
 set(DASHBOARD_SOURCES
         src/dashboard/DashboardServer.cpp
         src/dashboard/SessionManager.cpp
+        src/dashboard/FactoryResetGuard.cpp
+        src/dashboard/FactoryResetHandlers.cpp
         src/dashboard/WifiManager.cpp
         src/dashboard/WifiHandlers.cpp
         src/dashboard/FrameHandlers.cpp

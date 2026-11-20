@@ -75,15 +75,6 @@ ix::HttpResponsePtr SystemHandlers::handleShutdown(const ix::HttpRequestPtr& /*r
     return jsonResponse(200, "OK", nlohmann::json::object(), "Shutting down...");
 }
 
-ix::HttpResponsePtr SystemHandlers::handleFactoryReset(const ix::HttpRequestPtr& /*req*/) const
-{
-    logger_->info("Factory reset requested");
-    if (!_runWithStatusScreen(StatusScreenKind::FactoryReset, {"shareframe-factory-reset", "--yes"}))
-        return errorResponse(500, "Internal Server Error", "Factory reset failed");
-
-    return jsonResponse(200, "OK", nlohmann::json::object(), "Resetting to factory defaults...");
-}
-
 ix::HttpResponsePtr SystemHandlers::handleSendDiagnostics(const ix::HttpRequestPtr& /*req*/) const
 {
     logger_->info("Diagnostics upload requested by owner");

@@ -4,6 +4,7 @@
 #include "net/ServerConnection.hpp"
 #include <algorithm>
 #include <ctime>
+#include <unistd.h>
 
 using namespace dashboard;
 
@@ -28,6 +29,9 @@ nlohmann::json WifiHandlers::connectionMode() const
 {
     auto mode = wifi_.getWifiMode();
     mode.erase("known_ssids");
+    // The name the dashboard tells the owner to open once the frame is on the home network.
+    char host[256] = {};
+    mode["hostname"] = gethostname(host, sizeof host - 1) == 0 ? std::string(host) : std::string{};
     const auto server = queryServerConnection(wsIpc_);
     mode["server_connected"] = server ? nlohmann::json(server->connected) : nlohmann::json();
     mode["server_offline_secs"] = server && !server->connected && server->since > 0
