@@ -317,7 +317,6 @@ bool DisplayManager::_hwInit()
     const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - t0).count();
     _metrics.increment("epd_poweron_total");
-    _consecutiveFailures = 0;
     _logger->debug("Panel init done (reset + power-on, {} ms)", ms);
     return true;
 #else
