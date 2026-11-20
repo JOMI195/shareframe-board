@@ -1,5 +1,5 @@
 import { isCleared, showsDefault, showsImage, waitForPanel } from '../support/board';
-import { expect, signIn, skipActionLock, test } from '../support/fixtures';
+import { expect, signIn, test } from '../support/fixtures';
 import { boxOf } from '../support/layout';
 
 test.afterEach(async ({ board }) => {
@@ -25,7 +25,6 @@ test('stops and starts the slideshow on a phone', async ({ page }) => {
   await expect(page.getByText('Diashow gestoppt')).toBeVisible();
   await waitForPanel(isCleared, 'panel cleared');
 
-  await skipActionLock(page);
   await page.getByRole('button', { name: 'Starten' }).click();
   await expect(page.getByText('Diashow gestartet')).toBeVisible();
   await waitForPanel(showsDefault, 'default image after start');

@@ -38,7 +38,8 @@ test('a bundle that fails verification is not installed and lands in the history
   await signIn(page);
   await page.goto('/updates/');
   await expect(page.getByText('Update fehlgeschlagen')).toBeVisible();
-  await expect(page.getByText(/Checksum mismatch/)).toBeVisible();
+  await expect(page.getByText(/^Das heruntergeladene Update war beschädigt/)).toBeVisible();
+  await expect(page.getByText(/^Details: Checksum mismatch/)).toBeVisible();
 
   await page.goto('/update-history/');
   await expect(page.getByText(`${INSTALLED_VERSION} → 9.9.1`)).toBeVisible();

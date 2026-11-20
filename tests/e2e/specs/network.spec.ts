@@ -11,7 +11,8 @@ test.beforeEach(async ({ page }) => {
 
 test('shows the current and saved networks but never protected ones', async ({ page }) => {
   await expect(page.getByText('E2E-WiFi').first()).toBeVisible();
-  await expect(savedNetworks(page)).toHaveText(['E2E-WiFi', 'Neighbour']);
+  await expect(savedNetworks(page)).toHaveText([/^E2E-WiFi/, 'Neighbour']);
+  await expect(savedNetworks(page).first()).toContainText('Verbunden');
 });
 
 test('adding a network saves it on the board', async ({ page }) => {
@@ -54,7 +55,7 @@ test('forgetting a network removes it from the board', async ({ page }) => {
 
   await expect(page.getByText('WLAN entfernt')).toBeVisible();
   await expect.poll(savedWifiNetworks, { message: 'Neighbour gone from the board' }).not.toContain('Neighbour');
-  await expect(savedNetworks(page)).toHaveText(['E2E-WiFi']);
+  await expect(savedNetworks(page)).toHaveText([/^E2E-WiFi/]);
 });
 
 test('the network the board is connected to cannot be forgotten', async ({ page }) => {

@@ -55,7 +55,7 @@ export const test = base.extend<Fixtures>({
 
 export { expect };
 
-/** Signs in through the UI and waits until the home page's start-up lock is over. */
+/** Signs in through the UI and waits for the first page. */
 export async function signIn(page: Page, password = DASHBOARD_PASSWORD) {
   await page.clock.install();
   await page.goto('/auth/sign-in');
@@ -70,12 +70,6 @@ export async function signIn(page: Page, password = DASHBOARD_PASSWORD) {
   const home = page.getByRole('heading', { level: 2, name: 'Diashow' });
   const network = page.getByRole('heading', { level: 1, name: 'Netzwerk' });
   await expect(home.or(network).first()).toBeVisible();
-  await page.clock.fastForward('00:21');
-}
-
-/** Jumps over the 3-minute lock the UI puts on slideshow actions after each action. */
-export async function skipActionLock(page: Page) {
-  await page.clock.fastForward('03:05');
 }
 
 /** A dashboard card by its exact title. */
