@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 #include "TestDb.hpp"
 #include "events/EventBus.hpp"
 #include "image/ImageManager.hpp"
@@ -14,10 +15,26 @@ public:
         cfg.image.imageSavePath = (db.dir() / "images").string();
     }
 
+    /// A real 1x1 grey JPEG (159 bytes): the board checks a picture's format and size before storing it.
+    static std::vector<unsigned char> jpegBytes()
+    {
+        std::vector<unsigned char> b = {0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 'J', 'F', 'I', 'F', 0x00, 0x01, 0x01, 0x00,
+                                        0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x43, 0x00};
+        b.insert(b.end(), 64, 0xFF);
+        b.insert(b.end(), {0xFF, 0xC0, 0x00, 0x0B, 0x08, 0x00, 0x01, 0x00, 0x01, 0x01, 0x01, 0x11, 0x00});
+        for (const unsigned char tableClass : {0x00, 0x10})
+        {
+            b.insert(b.end(), {0xFF, 0xC4, 0x00, 0x14, tableClass, 0x01});
+            b.insert(b.end(), 16, 0x00);
+        }
+        b.insert(b.end(), {0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3F, 0x00, 0x3F, 0xFF, 0xD9});
+        return b;
+    }
+
     static std::string jpegBase64()
     {
-        static const unsigned char bytes[] = {0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 'J', 'F', 'I', 'F', 0xFF, 0xD9};
-        return Base64::encode(bytes, sizeof(bytes));
+        const auto bytes = jpegBytes();
+        return Base64::encode(bytes.data(), bytes.size());
     }
 
     TestDb db;

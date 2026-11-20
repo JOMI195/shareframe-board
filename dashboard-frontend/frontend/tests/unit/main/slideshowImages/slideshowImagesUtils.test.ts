@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatTimeLeft, formatUnix } from '@/main/slideshowImages/slideshowImagesUtils';
+import { formatExpiresAt, formatTimeLeft, formatUnix, NEVER_EXPIRES } from '@/main/slideshowImages/slideshowImagesUtils';
 
 const NOW = Date.UTC(2025, 9, 10, 12, 0, 0);
 const inSecs = (secs: number) => NOW / 1000 + secs;
@@ -14,6 +14,11 @@ describe('slideshow image time formatting', () => {
   it('calls a picture past its expiry expired', () => {
     expect(formatTimeLeft(inSecs(0), NOW)).toBe('Abgelaufen');
     expect(formatTimeLeft(inSecs(-3_600), NOW)).toBe('Abgelaufen');
+  });
+
+  it('says a picture the server sent without an expiry never expires', () => {
+    expect(formatExpiresAt(NEVER_EXPIRES)).toBe('Nie');
+    expect(formatTimeLeft(NEVER_EXPIRES, NOW)).toBe('Läuft nicht ab');
   });
 
   it('shows no date for a picture stored before arrival times were recorded', () => {

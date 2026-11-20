@@ -74,7 +74,8 @@ struct glz::meta<ImageConfig>
 {
     using T = ImageConfig;
     static constexpr auto value = glz::object(
-        "image_save_path", &T::imageSavePath
+        "image_save_path", &T::imageSavePath,
+        "min_free_mb", &T::minFreeMb
     );
 };
 

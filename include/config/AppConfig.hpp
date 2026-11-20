@@ -46,6 +46,7 @@ struct WebsocketConfig
 struct ImageConfig
 {
     std::string imageSavePath = "images";
+    int minFreeMb = 64;
 };
 
 struct DisplayConfig

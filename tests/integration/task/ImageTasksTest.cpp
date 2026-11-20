@@ -45,6 +45,17 @@ TEST_F(ImageUpdateTest, PictureIsStoredAndAnnounced)
     EXPECT_EQ(repo.getAllIds(), std::vector<int64_t>{5});
 }
 
+TEST_F(ImageUpdateTest, APictureWithoutExpirySurvivesTheCleanup)
+{
+    auto forever = picture(7);
+    forever["expiry_unix_timestamp"] = nullptr;
+    bus.publish<Topic::PICTURE>(forever);
+    ASSERT_TRUE(waitFor([&] { return newImages.size() == 1; }));
+
+    EXPECT_TRUE(mgr.removeExpired().empty());
+    EXPECT_EQ(repo.getAllIds(), std::vector<int64_t>{7});
+}
+
 TEST_F(ImageUpdateTest, DuplicatePictureIsIgnored)
 {
     bus.publish<Topic::PICTURE>(picture(5));

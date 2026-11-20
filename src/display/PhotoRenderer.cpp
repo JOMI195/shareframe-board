@@ -1,5 +1,6 @@
 #include "display/PhotoRenderer.hpp"
 #include "display/DisplayManager.hpp"
+#include "image/PictureLimits.hpp"
 #include <spdlog/spdlog.h>
 #include <stb_image.h>
 #include <stb_image_resize2.h>
@@ -55,6 +56,16 @@ void applyToneCurve(std::vector<float>& gray)
 std::vector<uint8_t> PhotoRenderer::render(const std::filesystem::path& imagePath)
 {
     int w, h, channels;
+    if (!stbi_info(imagePath.c_str(), &w, &h, &channels))
+    {
+        logger()->error("Not a readable JPEG or PNG: {} ({})", imagePath.string(), stbi_failure_reason());
+        return {};
+    }
+    if (int64_t{w} * h > picture::kMaxPixels)
+    {
+        logger()->error("Picture {} is {}x{}, over the pixel limit", imagePath.string(), w, h);
+        return {};
+    }
     auto* data = stbi_load(imagePath.c_str(), &w, &h, &channels, 3);
     if (!data)
     {

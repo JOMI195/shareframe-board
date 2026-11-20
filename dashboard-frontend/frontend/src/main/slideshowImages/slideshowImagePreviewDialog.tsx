@@ -15,7 +15,7 @@ import { selectSlideshowOperation, showImageThunk } from '@/store/slideshowOpera
 import { addAlertSnackbar } from '@/store/snackbars/snackbars.Slice';
 import { useTimer } from '@/hooks/useTimer';
 import { useDesktopActions } from '@/hooks/layout/useDesktopActions';
-import { formatTimeLeft, formatUnix } from './slideshowImagesUtils';
+import { formatExpiresAt, formatTimeLeft, formatUnix } from './slideshowImagesUtils';
 
 interface SlideshowImagePreviewDialogProps {
     image: ISlideshowImage | null;
@@ -133,7 +133,7 @@ const SlideshowImagePreviewDialog: React.FC<SlideshowImagePreviewDialogProps> = 
                             <Typography>{formatUnix(image.receivedAt)}</Typography>
                         </MetaItem>
                         <MetaItem label="Läuft ab am">
-                            <Typography>{formatUnix(image.expiresAt)}</Typography>
+                            <Typography>{formatExpiresAt(image.expiresAt)}</Typography>
                             <Typography variant="caption" color="text.secondary">{formatTimeLeft(image.expiresAt)}</Typography>
                         </MetaItem>
                         <MetaItem label="Auflösung">
