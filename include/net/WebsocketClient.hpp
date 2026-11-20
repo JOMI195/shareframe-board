@@ -52,6 +52,7 @@ private:
     std::mutex restartMtx_;
     bool stopping_ = false;
     fsm::Machine<ws::Link> link_;
+    std::atomic<bool> announcedRegistered_{false};
     std::mutex sendMtx_;
     std::vector<nlohmann::json> sendQueue_;
 };

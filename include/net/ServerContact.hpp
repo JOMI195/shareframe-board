@@ -22,6 +22,7 @@ public:
     void onClose();
     /// Any sign of life from the server while connected.
     void touch();
+    void setUnregistered(bool unregistered);
 
     [[nodiscard]] ServerConnection snapshot() const;
 
@@ -36,4 +37,5 @@ private:
     int64_t connectedSince_ = 0;
     int64_t lastContact_ = 0;
     int64_t lastPersisted_ = 0;
+    bool unregistered_ = false;
 };

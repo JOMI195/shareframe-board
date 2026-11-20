@@ -177,6 +177,7 @@ void WebsocketClient::_reportIfUnregistered()
         return;
     link_.moveTo(next);
     ws_.setMaxWaitBetweenReconnectionRetries(ws::maxReconnectWaitMs(next));
+    contact_.setUnregistered(true);
     bus_.publish<Topic::FRAME_REGISTRATION>({false, authMgr_.claimCode()});
 }
 
@@ -184,10 +185,14 @@ void WebsocketClient::_onOpened()
 {
     const bool wasUnregistered = link_.state() == ws::Link::Unregistered;
     link_.moveTo(ws::onOpened(link_.state()));
-    if (!wasUnregistered)
-        return;
-    ws_.setMaxWaitBetweenReconnectionRetries(ws::maxReconnectWaitMs(link_.state()));
-    bus_.publish<Topic::FRAME_REGISTRATION>({true});
+    if (wasUnregistered)
+    {
+        ws_.setMaxWaitBetweenReconnectionRetries(ws::maxReconnectWaitMs(link_.state()));
+        contact_.setUnregistered(false);
+    }
+    const bool firstOpen = !announcedRegistered_.exchange(true);
+    if (wasUnregistered || firstOpen)
+        bus_.publish<Topic::FRAME_REGISTRATION>({true});
 }
 
 // ------- SEND QUEUE
