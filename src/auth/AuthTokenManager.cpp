@@ -18,31 +18,15 @@ static int64_t parseIso8601ToUnix(const std::string& s)
     // std::get_time stops at '.' or 'Z' — all 4 ISO 8601 variants handled
 }
 
-static bool isExpiredLocally(TokenRepository& repo)
-{
-    const auto tokenOpt = repo.get();
-    if (!tokenOpt.has_value())
-    {
-        spdlog::warn("No cached token found");
-        return true;
-    }
-    return std::time(nullptr) >= tokenOpt->expiresAt;
-}
-
-static bool isExpiredServer(const HTTPClient& http, const AppConfig& cfg, TokenRepository& repo)
+static bool acceptedByServer(const HTTPClient& http, const AppConfig& cfg, const Token& token)
 {
     spdlog::info("Verifying token with server");
-    auto tokenOpt = repo.get();
-    if (!tokenOpt.has_value())
-        return true;
-
-    const std::string httpFetchTokenBodyKey = "access_token";
-    const nlohmann::json body = {{httpFetchTokenBodyKey, tokenOpt->value}};
+    const nlohmann::json body = {{"access_token", token.value}};
     const std::string url = cfg.httpBaseUrl() + cfg.authToken.httpVerifyTokenUrl;
 
     const auto res = http.post(url, body.dump(), {{"Content-Type", "application/json"}});
     spdlog::info("Token verification result: {}", res.ok());
-    return !res.ok();
+    return res.ok();
 }
 
 enum class FetchResult
@@ -97,8 +81,14 @@ AuthTokenManager::AuthTokenManager(AppConfig& cfg, TokenRepository& repo, HTTPCl
 
 std::optional<std::string> AuthTokenManager::getOrFetchToken() const
 {
-    if (!isExpiredLocally(_repo) || !isExpiredServer(_http, _cfg, _repo))
-        return _repo.get()->value;
+    // Other services share and may clear the stored token at any time: read it once.
+    if (const auto token = _repo.get())
+    {
+        if (std::time(nullptr) < token->expiresAt || acceptedByServer(_http, _cfg, *token))
+            return token->value;
+    }
+    else
+        spdlog::warn("No cached token found");
 
     std::string claimCode;
     const auto result = fetchAndSaveToken(_http, _repo, _cfg, claimCode);
@@ -110,7 +100,8 @@ std::optional<std::string> AuthTokenManager::getOrFetchToken() const
     if (result != FetchResult::Ok)
         return std::nullopt;
 
-    return _repo.get()->value;
+    const auto fetched = _repo.get();
+    return fetched ? std::optional(fetched->value) : std::nullopt;
 }
 
 std::string AuthTokenManager::claimCode() const

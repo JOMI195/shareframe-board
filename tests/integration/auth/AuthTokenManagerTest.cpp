@@ -90,6 +90,15 @@ TEST_F(AuthTokenManagerTest, AnExpiredTokenTheServerStillAcceptsIsKept)
     EXPECT_TRUE(backend.requests("/api/frames/obtain-frame-token/").empty());
 }
 
+TEST_F(AuthTokenManagerTest, AnotherServiceClearingTheTokenMidCheckIsSurvived)
+{
+    tokens.save({"old-token", std::time(nullptr) - 10});
+    backend.on(kVerify, 200);
+    TokenRepository otherService{db.get()};
+    backend.during(kVerify, [&] { otherService.clear(); });
+    EXPECT_EQ(auth.getOrFetchToken(), "old-token");
+}
+
 TEST_F(AuthTokenManagerTest, AnExpiredTokenTheServerRejectsIsReplaced)
 {
     tokens.save({"old-token", std::time(nullptr) - 10});

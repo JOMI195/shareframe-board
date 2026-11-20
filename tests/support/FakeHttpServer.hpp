@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include <ixwebsocket/IXHttpServer.h>
 #include <map>
 #include <mutex>
@@ -49,6 +50,20 @@ public:
         routes_[methodAndPath] = {status, std::move(body)};
     }
 
+    void redirect(const std::string& methodAndPath, const std::string& location)
+    {
+        std::lock_guard lk(mtx_);
+        routes_[methodAndPath] = {302, "{}"};
+        locations_[methodAndPath] = location;
+    }
+
+    /// Runs while the server answers "METHOD /path", before the reply goes out: what else happens meanwhile.
+    void during(const std::string& methodAndPath, std::function<void()> action)
+    {
+        std::lock_guard lk(mtx_);
+        during_[methodAndPath] = std::move(action);
+    }
+
     [[nodiscard]] std::vector<Request> requests(const std::string& path = "") const
     {
         std::lock_guard lk(mtx_);
@@ -69,9 +84,13 @@ private:
         std::lock_guard lk(mtx_);
         const auto path = req->uri.substr(0, req->uri.find('?'));
         requests_.push_back({req->method, path, req->body, req->headers, req->uri});
+        if (const auto action = during_.find(req->method + " " + path); action != during_.end())
+            action->second();
         const auto it = routes_.find(req->method + " " + path);
         const auto [status, body] = it != routes_.end() ? it->second : std::pair{404, std::string("{}")};
         ix::WebSocketHttpHeaders headers{{"Content-Type", "application/json"}};
+        if (const auto location = locations_.find(req->method + " " + path); location != locations_.end())
+            headers["Location"] = location->second;
         return std::make_shared<ix::HttpResponse>(status, "", ix::HttpErrorCode::Ok, headers, body);
     }
 
@@ -79,5 +98,7 @@ private:
     std::unique_ptr<ix::HttpServer> server_;
     mutable std::mutex mtx_;
     std::map<std::string, std::pair<int, std::string>> routes_;
+    std::map<std::string, std::function<void()>> during_;
+    std::map<std::string, std::string> locations_;
     std::vector<Request> requests_;
 };
