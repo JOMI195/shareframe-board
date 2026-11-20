@@ -142,6 +142,7 @@ struct glz::meta<DisplayConfig>
         "setup_code_path", &T::setupCodePath,
         "wifi_joined_path", &T::wifiJoinedPath,
         "registered_once_path", &T::registeredOncePath,
+        "safe_mode_path", &T::safeModePath,
         "ap_setup_boot_window_secs", &T::apSetupBootWindowSecs,
         "setup_url", &T::setupUrl,
         "register_path", &T::registerPath,

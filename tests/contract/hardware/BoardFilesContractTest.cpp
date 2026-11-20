@@ -19,7 +19,7 @@ TEST(BoardFilesContract, ProfilesAreTheOnesTheImageBuildAccepts)
 }
 
 // Flags shared with the image's scripts: wifi-mode-manager and rauc-mark-good watch the first ones,
-// wifi-mode-manager and a system migration leave the last two for the display.
+// shareframe-safe-mode, wifi-mode-manager and a system migration leave the others for the apps.
 TEST(BoardFilesContract, FlagsLandWhereTheScriptsLook)
 {
     const AppConfig cfg;
@@ -34,6 +34,7 @@ TEST(BoardFilesContract, FlagsLandWhereTheScriptsLook)
     golden::expectBoard("run-flags.txt", "wifi_mode=" + cfg.display.wifiModePath + "\n" +
                                              "wifi_retry_requested=" + (runDir / retryName).string() + "\n" +
                                              "backend_ok=" + cfg.heartbeat.backendOkPath + "\n" +
+                                             "safe_mode=" + cfg.display.safeModePath + "\n" +
                                              "wifi_joined=" + cfg.display.wifiJoinedPath + "\n" +
                                              "registered_once=" + cfg.display.registeredOncePath + "\n");
 }

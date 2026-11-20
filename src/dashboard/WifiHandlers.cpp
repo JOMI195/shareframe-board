@@ -1,4 +1,5 @@
 #include "dashboard/WifiHandlers.hpp"
+#include <fstream>
 #include "dashboard/ResponseUtil.hpp"
 #include "dashboard/Validation.hpp"
 #include "net/ServerConnection.hpp"
@@ -8,8 +9,8 @@
 
 using namespace dashboard;
 
-WifiHandlers::WifiHandlers(WifiManager& wifi, IpcClient& wsIpc)
-    : wifi_(wifi), wsIpc_(wsIpc), logger_(spdlog::default_logger()->clone("WifiHandlers"))
+WifiHandlers::WifiHandlers(WifiManager& wifi, IpcClient& wsIpc, std::string safeModePath)
+    : wifi_(wifi), wsIpc_(wsIpc), safeModePath_(std::move(safeModePath)), logger_(spdlog::default_logger()->clone("WifiHandlers"))
 {
 }
 
@@ -34,6 +35,7 @@ nlohmann::json WifiHandlers::connectionMode() const
     mode["hostname"] = gethostname(host, sizeof host - 1) == 0 ? std::string(host) : std::string{};
     const auto server = queryServerConnection(wsIpc_);
     mode["server_connected"] = server ? nlohmann::json(server->connected) : nlohmann::json();
+    mode["registered"] = server ? nlohmann::json(!server->unregistered) : nlohmann::json();
     mode["server_offline_secs"] = server && !server->connected && server->since > 0
         ? std::max<int64_t>(0, std::time(nullptr) - server->since) : 0;
     mode["server_last_contact_at"] = server ? server->lastContactAt : 0;
@@ -41,6 +43,10 @@ nlohmann::json WifiHandlers::connectionMode() const
     mode.erase("last_failed_at");
     mode["last_failed_secs_ago"] = failedAt > 0
         ? nlohmann::json(std::max<int64_t>(0, std::time(nullptr) - failedAt)) : nlohmann::json();
+    std::string safeMode;
+    if (std::ifstream f(safeModePath_); f)
+        std::getline(f, safeMode);
+    mode["safe_mode"] = safeMode;
     return mode;
 }
 

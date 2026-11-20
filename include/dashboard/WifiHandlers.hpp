@@ -7,10 +7,10 @@
 class WifiHandlers
 {
 public:
-    WifiHandlers(WifiManager& wifi, IpcClient& wsIpc);
+    WifiHandlers(WifiManager& wifi, IpcClient& wsIpc, std::string safeModePath = {});
 
     ix::HttpResponsePtr handleStatus(const ix::HttpRequestPtr& req) const;
-    /// The wifi mode plus the server link; server_connected is null when the websocket service is silent.
+    /// The wifi mode plus the server link and safe mode; server_connected is null when the websocket service is silent.
     nlohmann::json connectionMode() const;
     ix::HttpResponsePtr handleSavedNetworks(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleConnect(const ix::HttpRequestPtr& req) const;
@@ -22,5 +22,6 @@ public:
 private:
     WifiManager& wifi_;
     IpcClient& wsIpc_;
+    std::string safeModePath_;
     std::shared_ptr<spdlog::logger> logger_;
 };

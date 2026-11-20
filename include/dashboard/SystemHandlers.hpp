@@ -20,6 +20,7 @@ public:
     ix::HttpResponsePtr handleInfo(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleRestart(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleShutdown(const ix::HttpRequestPtr& req) const;
+    ix::HttpResponsePtr handleExitSafeMode(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleSendDiagnostics(const ix::HttpRequestPtr& req) const;
     ix::HttpResponsePtr handleLogs(const ix::HttpRequestPtr& req,
                                    const std::unordered_map<std::string, std::string>& queryParams) const;

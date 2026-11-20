@@ -71,6 +71,8 @@ struct DisplayConfig
     // Left by the image's scripts and the display: a frame set up or owned before gets the short windows.
     std::string wifiJoinedPath = "/data/shareframe/wifi-joined";
     std::string registeredOncePath = "/data/shareframe/registered-once";
+    // Holds the reason while the image's scripts keep the display down.
+    std::string safeModePath = "/run/shareframe/safe-mode";
     // The setup QR only shows this long after boot, before the first connection.
     int apSetupBootWindowSecs = 600;
     std::string setupUrl = "http://192.168.4.1";

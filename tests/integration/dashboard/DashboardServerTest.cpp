@@ -49,6 +49,7 @@ protected:
         cfg.dashboardApplication.port = freePort();
         cfg.secrets.dashboardInitialPassword = "initial-pass";
         cfg.display.setupCodePath = (db.dir() / "setup-code").string();
+        cfg.display.safeModePath = (db.dir() / "safe-mode").string();
         cfg.baseUrl = backend.baseUrl();
         wifiMode("connected");
         shims.add("shareframe-factory-reset", "exit 0");
@@ -126,7 +127,7 @@ TEST_F(DashboardServerTest, EveryProtectedRouteNeedsASession)
 {
     for (const auto& [method, path] : std::vector<std::pair<std::string, std::string>>{
              {"GET", "/api/system/info"}, {"GET", "/api/services"}, {"POST", "/api/frame/slideshow/skip"},
-             {"POST", "/api/connection/connect"},
+             {"POST", "/api/connection/connect"}, {"POST", "/api/system/safe-mode/exit"},
              {"POST", "/api/auth/change-password"}, {"GET", "/api/system/updates/status"}})
     {
         EXPECT_EQ(request(method, path).status, 401) << method << " " << path;
@@ -347,4 +348,29 @@ TEST_F(DashboardServerTest, AOneTimeCodeLoginGivesUpOnAHangingServer)
     EXPECT_EQ(r.status, 401);
     EXPECT_LT(std::chrono::steady_clock::now() - started, std::chrono::seconds(11));
     EXPECT_EQ(backend.requests(cfg.dashboardApplication.httpVerifyOtpUrl).size(), 1u) << "no retries";
+}
+
+// With the display down the panel stays blank; the owner sees why and can bring it back.
+TEST_F(DashboardServerTest, SafeModeIsShownAndTheOwnerCanLiftIt)
+{
+    EXPECT_EQ(request("GET", "/api/connection/mode").body["data"]["safe_mode"], "");
+    std::ofstream(cfg.display.safeModePath) << "display-crash\n";
+    EXPECT_EQ(request("GET", "/api/connection/mode").body["data"]["safe_mode"], "display-crash");
+
+    const auto calls = db.dir() / "safe-mode-calls";
+    shims.add("shareframe-safe-mode", "echo \"$@\" >> " + calls.string() + "; echo 'remote: display enabled'");
+    const auto r = request("POST", "/api/system/safe-mode/exit", "{}", session());
+    EXPECT_EQ(r.status, 200) << r.body.dump();
+    std::ifstream f(calls);
+    std::string args;
+    std::getline(f, args);
+    EXPECT_EQ(args, "exit");
+}
+
+TEST_F(DashboardServerTest, AFailedSafeModeExitSaysWhy)
+{
+    shims.add("shareframe-safe-mode", "echo 'display service missing'; exit 1");
+    const auto r = request("POST", "/api/system/safe-mode/exit", "{}", session());
+    EXPECT_EQ(r.status, 500);
+    EXPECT_EQ(r.body["data"]["reason"], "display service missing");
 }

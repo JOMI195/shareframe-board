@@ -75,6 +75,20 @@ ix::HttpResponsePtr SystemHandlers::handleShutdown(const ix::HttpRequestPtr& /*r
     return jsonResponse(200, "OK", nlohmann::json::object(), "Shutting down...");
 }
 
+ix::HttpResponsePtr SystemHandlers::handleExitSafeMode(const ix::HttpRequestPtr& /*req*/) const
+{
+    const auto res = Subprocess::run({"shareframe-safe-mode", "exit"}, 15);
+    auto out = res.stdOut.empty() ? res.stdErr : res.stdOut;
+    out.erase(out.find_last_not_of(" \n\r\t") + 1);
+    if (res.exitCode != 0)
+    {
+        logger_->error("Leaving safe mode failed: {}", out);
+        return jsonResponse(500, "Internal Server Error", {{"reason", out}}, "Leaving safe mode failed");
+    }
+    logger_->info("Safe mode lifted from the dashboard: {}", out);
+    return jsonResponse(200, "OK", nlohmann::json::object(), out);
+}
+
 ix::HttpResponsePtr SystemHandlers::handleSendDiagnostics(const ix::HttpRequestPtr& /*req*/) const
 {
     logger_->info("Diagnostics upload requested by owner");

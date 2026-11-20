@@ -41,6 +41,16 @@ TEST_F(DashboardWsTest, ConnectionModeCarriesTheServerLink)
     EXPECT_NEAR(mode["server_offline_secs"].get<int64_t>(), 3600, 5);
 }
 
+TEST_F(DashboardWsTest, ConnectionModeSaysWhetherTheServerKnowsAnOwner)
+{
+    EXPECT_EQ(handlers.connectionMode()["registered"], true) << "a frame not refused yet";
+    contact.setUnregistered(true);
+    EXPECT_EQ(handlers.connectionMode()["registered"], false);
+    contact.onOpen();
+    contact.setUnregistered(false);
+    EXPECT_EQ(handlers.connectionMode()["registered"], true);
+}
+
 TEST_F(DashboardWsTest, ConnectionModeHidesSavedNetworks)
 {
     std::ofstream(db.dir() / "wifi-mode.json") << R"({"mode":"ap","known_ssids":["Jomi","HomeNet"]})";
@@ -60,5 +70,6 @@ TEST_F(DashboardWsTest, SilentWebsocketServiceIsReportedAsUnknown)
     server.stop();
     const auto mode = handlers.connectionMode();
     EXPECT_TRUE(mode["server_connected"].is_null());
+    EXPECT_TRUE(mode["registered"].is_null());
     EXPECT_EQ(mode["server_offline_secs"], 0);
 }
