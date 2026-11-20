@@ -24,6 +24,7 @@ import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import ReleaseNotes from '@/common/components/releaseNotes';
 import Dialogs from './dialogs/dialogs';
 import { pollWhileVisible } from '@/common/utils/poll';
+import { updateFailure } from '@/common/utils/errors/boardErrors';
 
 const phaseLabel = (phase: string): string => {
     switch (phase) {
@@ -161,7 +162,17 @@ const Updates = () => {
                                 }
                             },
                             {
-                                content: update_status.error
+                                content: {
+                                    type: 'reactNode',
+                                    value: (
+                                        <Stack spacing={1}>
+                                            <Typography variant="body2">{updateFailure(update_status.error)}</Typography>
+                                            <Typography variant="caption" sx={{ color: 'text.secondary', wordBreak: 'break-word' }}>
+                                                {`Details: ${update_status.error}`}
+                                            </Typography>
+                                        </Stack>
+                                    )
+                                }
                             }
                         ]}
                     />

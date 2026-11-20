@@ -102,12 +102,21 @@ describe('updates', () => {
     expect(await screen.findByRole('button', { name: 'Jetzt installieren' })).toBeDisabled();
   });
 
-  it('explains a failed update', async () => {
-    server.use(...withUpdateStatus(makeUpdateStatus({ phase: 'failed', error: 'Signatur ungültig' })));
+  it('explains a failed update in German and keeps the board\'s reason for support', async () => {
+    server.use(...withUpdateStatus(makeUpdateStatus({ phase: 'failed', error: 'Download failed: HTTP 404' })));
     openUpdates();
 
     expect(await screen.findByText('Update fehlgeschlagen')).toBeInTheDocument();
-    expect(screen.getByText('Signatur ungültig')).toBeInTheDocument();
+    expect(screen.getByText(/^Das Update konnte nicht heruntergeladen werden\./)).toBeInTheDocument();
+    expect(screen.getByText('Details: Download failed: HTTP 404')).toBeInTheDocument();
+  });
+
+  it('explains an unknown failure without hiding it', async () => {
+    server.use(...withUpdateStatus(makeUpdateStatus({ phase: 'failed', error: 'something new' })));
+    openUpdates();
+
+    expect(await screen.findByText(/^Das Update ist fehlgeschlagen\./)).toBeInTheDocument();
+    expect(screen.getByText('Details: something new')).toBeInTheDocument();
   });
 
   it('explains a rollback', async () => {

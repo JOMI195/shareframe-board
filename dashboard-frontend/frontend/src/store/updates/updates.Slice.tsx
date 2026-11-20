@@ -7,6 +7,7 @@ import { fetchWithTimeout, SLOW_TIMEOUT_MS } from '@/common/utils/fetch';
 import { getLatestReleaseUrl, getPerformUpdateUrl, getUpdateStatusUrl, getUpdateHistoryUrl } from '@/assets/endpoints/api/frame';
 import { showLoadingWall } from '../loadingWall/loadingWall.Slice';
 import { getHomeUrl } from '@/assets/endpoints/app/appEndpoints';
+import { boardErrorMessage } from '@/common/utils/errors/boardErrors';
 
 interface Release {
     version: string;
@@ -89,7 +90,7 @@ export const performUpdate = createAsyncThunk(
                 navigate(getHomeUrl());
                 dispatch(showLoadingWall("Das Update wird installiert. Die Einstellungen sind solange nicht erreichbar und der Bilderrahmen startet danach neu. Lade diese Seite in ein paar Minuten neu."));
             } else {
-                dispatch(addAlertSnackbar(uuid(), "Update konnte nicht gestartet werden", "error"));
+                dispatch(addAlertSnackbar(uuid(), boardErrorMessage("Update konnte nicht gestartet werden", response, payload.message), "error"));
                 return rejectWithValue('Failed start update process');
             }
         } catch (error) {

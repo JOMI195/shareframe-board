@@ -25,6 +25,10 @@ const KNOWN_MESSAGES: Record<string, string> = {
     'Too many reset codes': 'Zu viele Codes angefordert. Versuche es in einer Stunde erneut.',
     'No reset code requested': 'Der Code ist abgelaufen. Fordere einen neuen an.',
     'Cross-origin request refused': 'Diese Anfrage kam nicht von den Einstellungen des Bilderrahmens.',
+    'No newer version available': 'Es gibt keine neuere Version.',
+    'Update already in progress': 'Ein Update läuft bereits.',
+    'Previous update awaits confirmation; reboot or wait first': 'Das letzte Update wird noch bestätigt. Starte den Bilderrahmen neu oder warte ein paar Minuten.',
+    'Failed to fetch latest release from server': 'Der Update-Server ist gerade nicht erreichbar.',
 };
 
 export const OFFLINE_MESSAGE = 'Du bist offline. Prüfe die WLAN-Verbindung deines Geräts.';
@@ -45,3 +49,16 @@ export const boardErrorMessage = (fallback: string, response?: { status: number 
 
 /** Text for a request that got no answer at all. */
 export const unreachableMessage = () => (navigator.onLine === false ? OFFLINE_MESSAGE : UNREACHABLE_MESSAGE);
+
+// The updater reports in English, starting with the step that failed.
+const UPDATE_FAILURES: [string, string][] = [
+    ['Download failed', 'Das Update konnte nicht heruntergeladen werden. Prüfe die Internetverbindung und versuche es erneut.'],
+    ['Checksum mismatch', 'Das heruntergeladene Update war beschädigt. Versuche es erneut.'],
+    ['rauc install failed', 'Das Update konnte nicht installiert werden. Der Bilderrahmen läuft mit der bisherigen Version weiter.'],
+    ['Installed, but the reboot failed', 'Das Update ist installiert, aber der Neustart hat nicht geklappt. Starte den Bilderrahmen unter „System“ neu.'],
+];
+
+/** German text for a failed update; the board's own words go along as details. */
+export const updateFailure = (raw: string) =>
+    UPDATE_FAILURES.find(([prefix]) => raw.startsWith(prefix))?.[1]
+    ?? 'Das Update ist fehlgeschlagen. Versuche es später erneut.';

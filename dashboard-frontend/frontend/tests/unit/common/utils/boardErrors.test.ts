@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { boardErrorMessage, OFFLINE_MESSAGE, UNREACHABLE_MESSAGE, unreachableMessage } from '@/common/utils/errors/boardErrors';
+import { boardErrorMessage, updateFailure, OFFLINE_MESSAGE, UNREACHABLE_MESSAGE, unreachableMessage } from '@/common/utils/errors/boardErrors';
 
 describe('board error messages', () => {
   afterEach(() => vi.restoreAllMocks());
@@ -30,5 +30,16 @@ describe('board error messages', () => {
 
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
     expect(unreachableMessage()).toBe(UNREACHABLE_MESSAGE);
+  });
+});
+
+describe('updateFailure', () => {
+  it.each([
+    ['Download failed: HTTP 404', /heruntergeladen/],
+    ['Checksum mismatch: expected a, got b', /beschädigt/],
+    ['rauc install failed: signature invalid', /installiert werden/],
+    ['Installed, but the reboot failed: busy', /Neustart/],
+  ])('names what went wrong for %s', (raw, text) => {
+    expect(updateFailure(raw)).toMatch(text);
   });
 });
