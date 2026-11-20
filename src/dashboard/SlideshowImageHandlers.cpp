@@ -133,6 +133,12 @@ ix::HttpResponsePtr SlideshowImageHandlers::handleUpdateOrder(const ix::HttpRequ
     {
         customOrder = current->value("custom_order", std::vector<int64_t>{});
     }
+    else
+    {
+        // Writing without the current order would wipe the owner's own one.
+        logger_->error("Failed to read the playback order via IPC");
+        return errorResponse(503, "Service Unavailable", "Service unavailable");
+    }
 
     if (!ipc_.send(IpcMessage{IpcMessageType::UpdatePlaybackOrder, {{"mode", mode}, {"custom_order", customOrder}}}))
     {
