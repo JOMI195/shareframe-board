@@ -5,6 +5,7 @@ type Fixtures = {
   server: FakeServer;
   board: BoardApi;
   cleanBoard: void;
+  contentPolicy: void;
 };
 
 export const test = base.extend<Fixtures>({
@@ -36,6 +37,17 @@ export const test = base.extend<Fixtures>({
       if (panel && !showsDefault(panel)) await board.skip();
       await waitForPanel(showsDefault, 'board back on default images');
       await use();
+    },
+    { auto: true },
+  ],
+
+  // The board's Content-Security-Policy must not block anything the dashboard loads.
+  contentPolicy: [
+    async ({ page }, use) => {
+      const blocked: string[] = [];
+      page.on('console', (m) => { if (m.type() === 'error' && /Content Security Policy/.test(m.text())) blocked.push(m.text()); });
+      await use();
+      expect(blocked, 'blocked by the Content-Security-Policy').toEqual([]);
     },
     { auto: true },
   ],

@@ -27,16 +27,23 @@ test('on the hotspot the owner signs in with the device password and lands on th
   await expect(card(page, 'WLAN einrichten')).toBeVisible();
 });
 
-test('on the hotspot a saved network is only tried on request', async ({ page }) => {
+test('on the hotspot a new network is saved and tried in one step', async ({ page }) => {
   await signInOnHotspot(page);
 
   await page.getByRole('button', { name: 'WLAN hinzufügen' }).click();
   const add = page.getByRole('dialog');
+  await expect(add.getByText('http://shareframe-board-0e2e.local')).toBeVisible();
   await add.getByLabel(/Netzwerkname/).fill('HomeNet');
   await add.getByLabel(/^Passwort$/).fill('homepass1');
-  await add.getByRole('button', { name: 'Hinzufügen' }).click();
+  await add.getByRole('button', { name: 'Speichern & verbinden' }).click();
+
   await expectSavedNetwork('HomeNet', 'homepass1');
-  expect(existsSync(retryFlag), 'saving alone switched the board over').toBe(false);
+  await expect.poll(() => existsSync(retryFlag), { message: 'retry requested from the Wi-Fi daemon' }).toBe(true);
+  await expect(card(page, 'WLAN einrichten').getByText(/Der Rahmen verbindet sich/)).toBeVisible();
+});
+
+test('a saved network is tried again on request', async ({ page }) => {
+  await signInOnHotspot(page);
 
   await card(page, 'WLAN einrichten').getByRole('button', { name: 'Jetzt verbinden' }).click();
   const connect = page.getByRole('dialog');
@@ -47,12 +54,17 @@ test('on the hotspot a saved network is only tried on request', async ({ page })
   await expect.poll(() => existsSync(retryFlag), { message: 'retry requested from the Wi-Fi daemon' }).toBe(true);
 });
 
-test('the hotspot says when the last attempt failed', async ({ page }) => {
+test('the hotspot and the panel say why the last attempt failed', async ({ page, board }) => {
   await signInOnHotspot(page);
-  await setWifiMode('ap', { last_failed_at: Math.floor(Date.now() / 1000) - 120 });
+  await setWifiMode('ap', { last_failed_at: Math.floor(Date.now() / 1000) - 120, last_failed_reason: 'wrong_password' });
+  // A display that saw the frame connected keeps the photos up until it restarts.
+  await board.restartService('display');
 
-  await expect(card(page, 'WLAN einrichten').getByText(/Vor 2 Minuten war keines der gespeicherten/))
+  await expect(card(page, 'WLAN einrichten').getByText(/Der Versuch vor 2 Minuten ist gescheitert: Das WLAN-Passwort stimmt nicht/))
     .toBeVisible({ timeout: 15_000 });
+  const panel = await waitForPanel((p) => showsApSetup(p) && (p.text ?? []).includes('Letzter Versuch: Das WLAN-Passwort stimmt nicht.'),
+    'setup screen naming the wrong password', 30_000);
+  expect(codeOn(panel)).toMatch(/^\d{6}$/);
 });
 
 test('the Wi-Fi endpoints need a session, also on the hotspot', async ({ request, board }) => {

@@ -26,11 +26,12 @@ test('signs in with the device password and adds a WLAN in a fullscreen dialog',
 
   await dialog.getByLabel(/Netzwerkname/).fill('HomeNet');
   await dialog.getByLabel(/^Passwort$/).fill('homepass1');
-  await dialog.getByRole('button', { name: 'Hinzufügen' }).click();
+  await dialog.getByRole('button', { name: 'Speichern & verbinden' }).click();
 
   await expectSavedNetwork('HomeNet', 'homepass1');
   await expect(dialog).toBeHidden();
   await expect(page.getByText(/WLAN gespeichert/)).toBeInViewport();
+  await expect(card(page, 'WLAN einrichten').getByText(/Der Rahmen verbindet sich/)).toBeVisible();
 });
 
 test('asks before switching to the WLAN and the back button keeps the hotspot', async ({ page }) => {

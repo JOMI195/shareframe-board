@@ -126,7 +126,7 @@ export async function resetBoardState() {
   await writeFile(path.join(STATE_DIR, 'shim-calls.log'), '');
 }
 
-const wifiConf = () => readFile(path.join(STATE_DIR, 'wifi', 'wpa_supplicant.conf'), 'utf8');
+export const wifiConf = () => readFile(path.join(STATE_DIR, 'wifi', 'wpa_supplicant.conf'), 'utf8');
 
 /** SSIDs in the board's wpa_supplicant.conf, "quoted" or hex as wpa_supplicant saves them. */
 export async function savedWifiNetworks(): Promise<string[]> {

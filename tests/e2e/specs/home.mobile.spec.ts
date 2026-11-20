@@ -59,7 +59,7 @@ test('an error stays until it is closed', async ({ page }) => {
   await page.getByRole('button', { name: '„E2E-WiFi“ entfernen' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Entfernen' }).click();
 
-  const error = page.getByRole('alert').filter({ hasText: 'WLAN konnte nicht entfernt werden' });
+  const error = page.getByRole('alert').filter({ hasText: 'Mit diesem WLAN ist der Bilderrahmen gerade verbunden' });
   await expect(error).toBeInViewport({ ratio: 1 });
   await page.clock.fastForward('00:30');
   await expect(error).toBeVisible();
