@@ -100,7 +100,10 @@ ix::HttpResponsePtr FrameHandlers::handleUpdateNightMode(const ix::HttpRequestPt
     try { body = nlohmann::json::parse(req->body); }
     catch (...) { return errorResponse(400, "Bad Request", "Invalid JSON"); }
 
-    const bool enabled = body.value("enabled", false);
+    const auto enabledIt = body.find("enabled");
+    if (enabledIt == body.end() || !enabledIt->is_boolean())
+        return errorResponse(400, "Bad Request", "enabled must be a boolean");
+    const bool enabled = enabledIt->get<bool>();
     const int startHour = body.value("start_hour", -1);
     const int endHour = body.value("end_hour", -1);
     const int secs = body.value("interval_seconds", 0);
