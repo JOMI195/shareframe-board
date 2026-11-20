@@ -2,6 +2,7 @@
 #include "util/PanelCode.hpp"
 #include "util/WifiMode.hpp"
 #include <ctime>
+#include <filesystem>
 
 namespace
 {
@@ -22,7 +23,9 @@ void WifiModeWatcher::execute()
 {
     const auto mode = WifiMode::read(cfg_.display.wifiModePath);
     ApSetupStateEvent state;
-    state.required = debounce_.update(mode.value("mode", ""), uptimeSecs());
+    std::error_code ec;
+    const bool joinedBefore = std::filesystem::exists(cfg_.display.wifiJoinedPath, ec);
+    state.required = debounce_.update(mode.value("mode", ""), uptimeSecs(), joinedBefore);
     if (state.required)
     {
         state.ssid = mode.value("ap_ssid", "");

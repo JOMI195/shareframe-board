@@ -3,17 +3,17 @@
 #include <string_view>
 
 /// Decides from the Wi-Fi daemon's mode whether the panel shows the AP setup screen.
-/// It shows only within the boot window and before the first connection, so outages keep
-/// the photos up until the next reboot. Station retries (`connecting`) keep the verdict,
-/// so they don't flap the panel.
+/// It shows before the first connection of this boot: for a frame that never joined a Wi-Fi
+/// for as long as it takes, for one set up before only within the boot window, so outages keep
+/// the photos up. Station retries (`connecting`) keep the verdict, so they don't flap the panel.
 class ApSetupDebounce
 {
 public:
     explicit ApSetupDebounce(const int64_t bootWindowSecs) : bootWindowSecs_(bootWindowSecs) {}
 
-    bool update(const std::string_view mode, const int64_t uptimeSecs)
+    bool update(const std::string_view mode, const int64_t uptimeSecs, const bool joinedBefore = true)
     {
-        const bool allowed = !seenConnected_ && uptimeSecs < bootWindowSecs_;
+        const bool allowed = !seenConnected_ && (!joinedBefore || uptimeSecs < bootWindowSecs_);
         if (mode == "connected")
         {
             seenConnected_ = true;

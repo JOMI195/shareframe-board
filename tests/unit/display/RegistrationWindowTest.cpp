@@ -42,3 +42,14 @@ TEST(RegistrationWindow, ARegisteredFrameNeverShowsIt)
     window.report(false, 10, kWindow);
     EXPECT_FALSE(window.required(10));
 }
+
+TEST(RegistrationWindow, AFrameNeverOwnedKeepsAskingUntilItIsClaimed)
+{
+    RegistrationWindow window;
+    window.report(false, 100, kWindow, false);
+    EXPECT_TRUE(window.required(100 + 100 * kWindow));
+    EXPECT_EQ(window.endsAt(100), std::nullopt) << "no deadline to wake up for";
+
+    window.report(true, 200 * kWindow, kWindow, false);
+    EXPECT_FALSE(window.required(200 * kWindow));
+}

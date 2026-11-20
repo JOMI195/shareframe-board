@@ -38,6 +38,7 @@ protected:
     void _run(std::stop_token st) override;
 
 private:
+    void _rememberOwned() const;
     /// What the other services ask for, as of one evaluation.
     struct Wishes
     {

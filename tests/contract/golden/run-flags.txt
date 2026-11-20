@@ -1,3 +1,5 @@
 wifi_mode=/run/shareframe/wifi-mode.json
 wifi_retry_requested=/run/shareframe/wifi-retry-requested
 backend_ok=/run/shareframe/backend-ok
+wifi_joined=/data/shareframe/wifi-joined
+registered_once=/data/shareframe/registered-once

@@ -140,6 +140,8 @@ struct glz::meta<DisplayConfig>
         "night_style", &T::nightStyle,
         "wifi_mode_path", &T::wifiModePath,
         "setup_code_path", &T::setupCodePath,
+        "wifi_joined_path", &T::wifiJoinedPath,
+        "registered_once_path", &T::registeredOncePath,
         "ap_setup_boot_window_secs", &T::apSetupBootWindowSecs,
         "setup_url", &T::setupUrl,
         "register_path", &T::registerPath,

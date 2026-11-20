@@ -68,6 +68,9 @@ struct DisplayConfig
     std::string nightStyle = "hold";
     std::string wifiModePath = "/run/shareframe/wifi-mode.json";
     std::string setupCodePath = "/run/shareframe/setup-code";
+    // Left by the image's scripts and the display: a frame set up or owned before gets the short windows.
+    std::string wifiJoinedPath = "/data/shareframe/wifi-joined";
+    std::string registeredOncePath = "/data/shareframe/registered-once";
     // The setup QR only shows this long after boot, before the first connection.
     int apSetupBootWindowSecs = 600;
     std::string setupUrl = "http://192.168.4.1";

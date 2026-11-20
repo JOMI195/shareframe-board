@@ -23,6 +23,7 @@ protected:
         cfg.display.defaultImagesPath = std::string(SHAREFRAME_ASSETS_DIR) + "/image/default";
         cfg.display.setupFontPath = std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans.ttf";
         cfg.display.boldFontPath = std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans-Bold.ttf";
+        cfg.display.registeredOncePath = (db.dir() / "flags" / "registered-once").string();
         // The migrated DB blanks the panel from 1 to 6, whatever the wall clock says here.
         settings.setNightMode(false, 1, 6, 3600, NightStyle::Slower);
     }
@@ -370,9 +371,11 @@ TEST_F(DisplayTaskManagerTest, NewClaimCodeRepaintsTheRegistrationScreen)
     EXPECT_EQ(source(), "registration");
 }
 
-TEST_F(DisplayTaskManagerTest, RegistrationScreenTimesOutForGood)
+TEST_F(DisplayTaskManagerTest, RegistrationScreenOfAFrameOwnedBeforeTimesOutForGood)
 {
     cfg.display.registrationScreenWindowSecs = 1;
+    std::filesystem::create_directories(std::filesystem::path(cfg.display.registeredOncePath).parent_path());
+    std::ofstream(cfg.display.registeredOncePath) << "1\n";
     start();
     registered(false);
     ASSERT_TRUE(waitFor([&] { return source() == "registration"; }));
@@ -381,6 +384,21 @@ TEST_F(DisplayTaskManagerTest, RegistrationScreenTimesOutForGood)
     registered(false);
     std::this_thread::sleep_for(300ms);
     EXPECT_EQ(manager.state(), Screen::Slideshow);
+}
+
+TEST_F(DisplayTaskManagerTest, AFrameNeverOwnedAsksToBeRegisteredPastTheWindowAndRemembersItsOwner)
+{
+    cfg.display.registrationScreenWindowSecs = 1;
+    start();
+    registered(false);
+    ASSERT_TRUE(waitFor([&] { return source() == "registration"; }));
+    std::this_thread::sleep_for(1500ms);
+    EXPECT_EQ(source(), "registration");
+    EXPECT_FALSE(std::filesystem::exists(cfg.display.registeredOncePath));
+
+    registered(true);
+    EXPECT_TRUE(waitFor([&] { return showsDefault(); }));
+    EXPECT_TRUE(waitFor([&] { return std::filesystem::exists(cfg.display.registeredOncePath); }));
 }
 
 TEST_F(DisplayTaskManagerTest, SetupScreenOutranksTheRegistrationScreen)
