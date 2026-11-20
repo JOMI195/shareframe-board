@@ -81,7 +81,7 @@ describe('frameLogs slice', () => {
 
 describe('slideshowStatus slice', () => {
   const payload = {
-    active: true, loopStarted: true, isRefreshing: true, imageCount: 4, secondsUntilNext: 30,
+    active: true, loopStarted: true, isRefreshing: true, imageCount: 4, secondsUntilNext: 30, refreshReadyInSecs: 0,
     nowShowing: { seq: 3, state: 'image' as const, imageId: 7, sender: 'alice' },
   };
 
@@ -90,6 +90,14 @@ describe('slideshowStatus slice', () => {
 
     expect(state).toMatchObject({ isActive: true, loopStarted: true, isRefreshing: true, imageCount: 4, secondsUntilNext: 30, isLoading: false });
     expect(state.lastCheckedAt).toEqual(expect.any(Number));
+  });
+
+  it('keeps when the board lets the panel paint again', () => {
+    const resting = slideshowStatus(undefined, checkSlideshowStatusThunk.fulfilled({ ...payload, refreshReadyInSecs: 90 }, 'req'));
+    expect(resting.refreshReadyAt! - resting.lastCheckedAt!).toBe(90_000);
+
+    const ready = slideshowStatus(resting, checkSlideshowStatusThunk.fulfilled(payload, 'req'));
+    expect(ready.refreshReadyAt).toBeNull();
   });
 
   it('treats a failed check as stopped', () => {

@@ -4,16 +4,14 @@ import NetworkStatusBanner from "@/common/components/networkStatusBanner";
 import SafeModeNotice from "@/common/components/safeModeNotice";
 import { Outlet, useLocation, useNavigation } from "react-router";
 import { useAppDispatch, useAppSelector } from "@/store";
-import { useTimer } from "@/hooks/useTimer";
-import { useEffect, useEffectEvent, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { startContinuousStatusCheck } from "@/store/slideshowStatus/slideshowStatus.Slice";
 import { fetchDisplayImagesLoopInterval, fetchNightMode } from "@/store/slideshowOperation/slideshowOperation.Slice";
 import { fetchFrameInfos } from "@/store/frameInfo/frameInfo.Slice";
 import { fetchLatestRelease } from "@/store/updates/updates.Slice";
 import Sidebar from "./sidebar/sidebar";
 import PowerDialogs from "@/common/components/powerDialogs";
-import { getAuthenticationUrl, getSignOutUrl } from "@/assets/endpoints/app/authEndpoints";
-import { getCurrentPath, getSidebar, routeChanged } from "@/store/navigation/navigation.Slice";
+import { getSidebar, routeChanged } from "@/store/navigation/navigation.Slice";
 import HiddenPageTitle from "@/common/components/hiddenPageTitle";
 import { usePageTitle } from "@/hooks/navigation/usePageTitle";
 import { SIDEBAR_ICON_WIDTH, SIDEBAR_WIDTH } from "./sidebar/sidebarWidth";
@@ -39,7 +37,6 @@ const MainLayout = () => {
     const mainRef = useRef<HTMLElement>(null);
     const pageTitle = usePageTitle();
 
-    const prevPath = useAppSelector(getCurrentPath);
     const { pathname } = useLocation();
     const focusedPathname = useRef(pathname);
 
@@ -56,11 +53,6 @@ const MainLayout = () => {
         dispatch(routeChanged());
     }, [pathname, dispatch]);
 
-    const { reset: resetAppIntitialLoadTimer, start: startAppIntitialLoadTimer } = useTimer({
-        id: 'app-initial-load-timer',
-        duration: 20,
-    });
-
     useEffect(() => {
         const stopStatusCheck = dispatch(startContinuousStatusCheck());
 
@@ -69,16 +61,7 @@ const MainLayout = () => {
         };
     }, [dispatch]);
 
-    const restartInitialLoadTimer = useEffectEvent(() => {
-        if (prevPath !== (getAuthenticationUrl() + getSignOutUrl())) {
-            resetAppIntitialLoadTimer();
-            startAppIntitialLoadTimer();
-        }
-    });
-
     useEffect(() => {
-        restartInitialLoadTimer();
-
         dispatch(fetchDisplayImagesLoopInterval());
         dispatch(fetchNightMode());
         dispatch(fetchFrameInfos());

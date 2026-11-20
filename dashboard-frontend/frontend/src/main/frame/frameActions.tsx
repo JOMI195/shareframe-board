@@ -46,8 +46,7 @@ import {
 } from '@/store/slideshowOperation/slideshowOperation.Slice';
 import { selectSlideshowStatus } from '@/store/slideshowStatus/slideshowStatus.Slice';
 import { usePiConnection } from '@/context/piConnection/piConnectionContextValue';
-import { useTimer } from '@/hooks/useTimer';
-import { syncSpecificTimer } from '@/store/timers/timers.Slice';
+import { formatRest, usePanelRest } from '@/hooks/usePanelRest';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import NowShowingCard from './nowShowingCard';
 
@@ -118,33 +117,7 @@ const FrameActions: React.FC = () => {
                 : isRefreshing ? 'Wird aktualisiert…'
                 : remaining != null ? formatCountdown(remaining) : '—';
 
-    const {
-        isActive: isAppIntialLoadTimerActive,
-    } = useTimer({
-        id: 'app-initial-load-timer',
-        shouldCreate: false
-    });
-
-    const {
-        isActive: isSlideshowActionsTimerActive,
-        formattedTime: slideshowActionsTimerTime
-    } = useTimer({
-        id: 'slideshow-actions-timer',
-    });
-
-    useEffect(() => {
-        dispatch(syncSpecificTimer('app-initial-load-timer'));
-        dispatch(syncSpecificTimer('slideshow-actions-timer'));
-
-        const syncInterval = setInterval(() => {
-            if (isAppIntialLoadTimerActive || isSlideshowActionsTimerActive) {
-                dispatch(syncSpecificTimer('app-initial-load-timer'));
-                dispatch(syncSpecificTimer('slideshow-actions-timer'));
-            }
-        }, 1000);
-
-        return () => clearInterval(syncInterval);
-    }, [dispatch, isAppIntialLoadTimerActive, isSlideshowActionsTimerActive]);
+    const panelRest = usePanelRest();
 
     const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -190,8 +163,8 @@ const FrameActions: React.FC = () => {
         || nightInterval > NIGHT_MAX_MINS;
 
     const isLoopLoading = isActive && !loopStarted && isConnected && lastCheckedAt !== null;
-    const isTimerRunning = isSlideshowActionsTimerActive || isAppIntialLoadTimerActive;
-    const isButtonsDisabled = isTimerRunning || isLoopLoading || isToggling || isClearingDisplay || isSkippingImage || isRefreshing || !isConnected || lastCheckedAt === null;
+    const isWaitingForStatus = isConnected && lastCheckedAt === null;
+    const isButtonsDisabled = panelRest > 0 || isLoopLoading || isToggling || isClearingDisplay || isSkippingImage || isRefreshing || !isConnected || lastCheckedAt === null;
     const isNightModeDisabled = !isConnected || lastCheckedAt === null || isUpdatingNightMode;
 
     return (
@@ -260,7 +233,7 @@ const FrameActions: React.FC = () => {
                     <NowShowingCard nowShowing={nowShowing} />
                 </Grid>
 
-                {!isSlideshowActionsTimerActive && isAppIntialLoadTimerActive && (
+                {isWaitingForStatus && (
                     <Grid size={12}>
                         <Alert severity="info" sx={{ display: 'flex', alignItems: 'center' }}>
                             Einen Moment, der Status der Diashow wird abgefragt.
@@ -268,7 +241,7 @@ const FrameActions: React.FC = () => {
                     </Grid>
                 )}
 
-                {!isTimerRunning && isLoopLoading && (
+                {panelRest === 0 && isLoopLoading && (
                     <Grid size={12}>
                         <Alert severity="info" sx={{ display: 'flex', alignItems: 'center' }}>
                             Der Bilderrahmen startet noch. Einen Moment bitte.
@@ -276,10 +249,10 @@ const FrameActions: React.FC = () => {
                     </Grid>
                 )}
 
-                {isSlideshowActionsTimerActive && (
+                {panelRest > 0 && (
                     <Grid size={12}>
                         <Alert severity="info" sx={{ display: 'flex', alignItems: 'center' }}>
-                            Um das Display zu schonen ist die nächste Aktion erst wieder in {slideshowActionsTimerTime}min möglich
+                            {`Um das Display zu schonen, ist die nächste Aktion in ${formatRest(panelRest)} möglich.`}
                         </Alert>
                     </Grid>
                 )}

@@ -13,7 +13,7 @@ import { useAppDispatch, useAppSelector } from '@/store';
 import { selectSlideshowStatus } from '@/store/slideshowStatus/slideshowStatus.Slice';
 import { selectSlideshowOperation, showImageThunk } from '@/store/slideshowOperation/slideshowOperation.Slice';
 import { addAlertSnackbar } from '@/store/snackbars/snackbars.Slice';
-import { useTimer } from '@/hooks/useTimer';
+import { usePanelRest } from '@/hooks/usePanelRest';
 import { useDesktopActions } from '@/hooks/layout/useDesktopActions';
 import { formatExpiresAt, formatTimeLeft, formatUnix } from './slideshowImagesUtils';
 
@@ -44,12 +44,13 @@ const SlideshowImagePreviewDialog: React.FC<SlideshowImagePreviewDialogProps> = 
     const dispatch = useAppDispatch();
     const { isActive, isRefreshing } = useAppSelector(selectSlideshowStatus);
     const { isToggling, isClearingDisplay, isSkippingImage, isShowingImage } = useAppSelector(selectSlideshowOperation);
-    const { isActive: isActionsTimerActive } = useTimer({ id: 'slideshow-actions-timer' });
+    const resting = usePanelRest() > 0;
 
     const showBlockedReason =
         isCurrent ? 'Wird bereits angezeigt'
             : !isActive ? 'Diashow pausiert'
-                : isRefreshing || isActionsTimerActive ? 'Display wird gerade aktualisiert'
+                : isRefreshing ? 'Display wird gerade aktualisiert'
+                    : resting ? 'Das Display ruht kurz, um es zu schonen'
                     : undefined;
 
     const ratio = image?.width && image.height ? image.width / image.height : FALLBACK_RATIO;

@@ -9,7 +9,13 @@ const initialBoard = () => ({
   slideshowActive: true,
   slideshowImages: makeSlideshowImages() as SlideshowImagesPayload,
   showSender: false,
+  // How long the panel rests after a paint; restUntil is when the last one ends (ms).
+  restAfterPaintSecs: 0,
+  restUntil: 0,
 });
+
+const painted = () => { board.restUntil = Date.now() + board.restAfterPaintSecs * 1000; };
+const restLeft = () => Math.max(0, Math.ceil((board.restUntil - Date.now()) / 1000));
 
 const board = initialBoard();
 
@@ -33,10 +39,11 @@ const applyOrder = (current: SlideshowImagesPayload, mode: SlideshowImagesPayloa
 };
 
 export const frameHandlers = [
-  http.get(apiUrl(api.getSlideshowStatusUrl()), () => ok(makeSlideshowStatus({ active: board.slideshowActive }))),
+  http.get(apiUrl(api.getSlideshowStatusUrl()), () => ok(makeSlideshowStatus({ active: board.slideshowActive, refresh_ready_in_secs: restLeft() }))),
   http.post(apiUrl(api.getSlideshowUrl()), async ({ request }) => {
     const { action } = (await request.json()) as { action: 'start' | 'stop' };
     board.slideshowActive = action === 'start';
+    painted();
     return ok({ action });
   }),
   http.post(apiUrl(api.getSlideshowIntervalUrl()), async ({ request }) => {
@@ -44,9 +51,9 @@ export const frameHandlers = [
     return ok({ interval_seconds });
   }),
   http.post(apiUrl(api.getSlideshowNightModeUrl()), () => ok()),
-  http.post(apiUrl(api.getSkipSlideshowImageUrl()), () => ok()),
-  http.post(apiUrl(api.getShowSlideshowImageUrl()), () => ok()),
-  http.post(apiUrl(api.getClearDisplayUrl()), () => ok()),
+  http.post(apiUrl(api.getSkipSlideshowImageUrl()), () => { painted(); return ok(); }),
+  http.post(apiUrl(api.getShowSlideshowImageUrl()), () => { painted(); return ok(); }),
+  http.post(apiUrl(api.getClearDisplayUrl()), () => { painted(); return ok(); }),
   http.get(apiUrl(api.getDisplayStatsUrl()), () => ok(makeDisplayStats())),
   http.get(apiUrl(api.getDisplayCustomizationUrl()), () => ok({ show_sender: board.showSender })),
   http.post(apiUrl(api.getDisplayCustomizationUrl()), async ({ request }) => {
