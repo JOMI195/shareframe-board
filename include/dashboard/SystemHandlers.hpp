@@ -1,4 +1,6 @@
 #pragma once
+#include <mutex>
+#include <chrono>
 #include "config/AppConfig.hpp"
 #include "dashboard/WifiManager.hpp"
 #include "ipc/IpcClient.hpp"
@@ -35,4 +37,8 @@ private:
     IpcClient& displayIpc_;
     std::shared_ptr<spdlog::logger> logger_;
     std::vector<std::string> allowedServiceNames_;
+    // The board tool forks a handful of commands; open tabs share one answer for a few seconds.
+    mutable std::mutex sysinfoMtx_;
+    mutable nlohmann::json sysinfo_;
+    mutable std::chrono::steady_clock::time_point sysinfoAt_{};
 };

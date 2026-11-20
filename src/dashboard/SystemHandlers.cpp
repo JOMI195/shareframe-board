@@ -31,14 +31,25 @@ ix::HttpResponsePtr SystemHandlers::handleInfo(const ix::HttpRequestPtr& /*req*/
 
     // Board metrics from the shareframe-sysinfo overlay (key=value); absent keys
     // are just missing — never fail the whole response.
-    auto info = Subprocess::run({"shareframe-sysinfo"}, 10);
-    if (info.exitCode == 0)
     {
-        data.update(SysInfo::parse(info.stdOut));
-    }
-    else
-    {
-        logger_->warn("shareframe-sysinfo failed: {}", info.stdErr);
+        constexpr auto kFresh = std::chrono::seconds(5);
+        std::lock_guard lk(sysinfoMtx_);
+        const auto now = std::chrono::steady_clock::now();
+        if (sysinfo_.is_null() || now - sysinfoAt_ >= kFresh)
+        {
+            if (auto info = Subprocess::run({"shareframe-sysinfo"}, 10); info.exitCode == 0)
+            {
+                sysinfo_ = SysInfo::parse(info.stdOut);
+                sysinfoAt_ = now;
+            }
+            else
+            {
+                logger_->warn("shareframe-sysinfo failed: {}", info.stdErr);
+                sysinfo_ = nullptr;
+            }
+        }
+        if (!sysinfo_.is_null())
+            data.update(sysinfo_);
     }
 
     // Compiled in, so it wins over the sysinfo key.

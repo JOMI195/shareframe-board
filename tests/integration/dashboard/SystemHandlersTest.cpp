@@ -50,6 +50,21 @@ TEST_F(SystemHandlersTest, InfoCombinesTheBoardMetricsTheBuildAndTheNetwork)
     EXPECT_EQ(data["wlan_ssid"], "my home net");
 }
 
+// Every open tab polls this page; the board tool runs once for all of them.
+TEST_F(SystemHandlersTest, InfoAskedTwiceInARowRunsTheBoardToolOnce)
+{
+    const auto calls = db.dir() / "sysinfo-calls";
+    shims.add("shareframe-sysinfo", "echo x >> " + calls.string() + "; printf 'serial=000123ab\\n'");
+    for (int i = 0; i < 3; ++i)
+        EXPECT_EQ(result(system.handleInfo(httpRequest("GET", "/api/system/info"))).body["data"]["serial"], "000123ab");
+
+    std::ifstream f(calls);
+    int lines = 0;
+    for (std::string line; std::getline(f, line);)
+        ++lines;
+    EXPECT_EQ(lines, 1);
+}
+
 // The dashboard's device page must not go blank when one board tool misbehaves.
 TEST_F(SystemHandlersTest, InfoStillAnswersWhenTheBoardMetricsFail)
 {
