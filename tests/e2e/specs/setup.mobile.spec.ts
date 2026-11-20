@@ -12,10 +12,11 @@ test.beforeEach(async ({ page }) => {
 
 test('signs in with the device password and adds a WLAN in a fullscreen dialog', async ({ page }) => {
   await expectNoHorizontalScroll(page);
+  await page.getByRole('button', { name: 'Mit Geräte-Passwort anmelden' }).click();
   await page.getByRole('textbox', { name: 'Passwort', exact: true }).fill(DASHBOARD_PASSWORD);
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(page).toHaveURL(/\/network\/$/);
-  await expect(page.getByText('Hotspot aktiv')).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'WLAN einrichten' })).toBeVisible();
   await expectNoHorizontalScroll(page);
 
   await page.getByRole('button', { name: 'WLAN hinzufügen' }).click();
@@ -33,13 +34,14 @@ test('signs in with the device password and adds a WLAN in a fullscreen dialog',
 });
 
 test('asks before switching to the WLAN and the back button keeps the hotspot', async ({ page }) => {
+  await page.getByRole('button', { name: 'Mit Geräte-Passwort anmelden' }).click();
   await page.getByRole('textbox', { name: 'Passwort', exact: true }).fill(DASHBOARD_PASSWORD);
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(page).toHaveURL(/\/network\/$/);
 
   await card(page, 'WLAN einrichten').getByRole('button', { name: 'Jetzt verbinden' }).click();
   const confirm = page.getByRole('dialog', { name: 'Mit WLAN verbinden?' });
-  await expect(confirm.getByText('http://shareframe-e2e.local')).toBeVisible();
+  await expect(confirm.getByText('http://shareframe-board-0e2e.local')).toBeVisible();
   await expect(confirm.getByRole('button', { name: 'Verbinden' })).toBeFocused();
 
   await page.goBack();
@@ -50,8 +52,8 @@ test('asks before switching to the WLAN and the back button keeps the hotspot', 
 });
 
 test('a forgotten password leads to a factory reset that starts on Abbrechen', async ({ page }) => {
-  await page.getByRole('button', { name: /Auf Werkseinstellungen zurücksetzen/ }).click();
-  const confirm = page.getByRole('dialog', { name: 'Auf Werkseinstellungen zurücksetzen?' });
+  await page.getByRole('button', { name: 'Passwort vergessen?' }).click();
+  const confirm = page.getByRole('dialog', { name: 'Passwort vergessen?' });
 
   await expect(confirm.getByRole('button', { name: 'Abbrechen' })).toBeFocused();
   expect((await boxOf(confirm)).width).toBeLessThan(page.viewportSize()!.width);

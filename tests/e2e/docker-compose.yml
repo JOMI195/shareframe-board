@@ -8,6 +8,8 @@ services:
       additional_contexts:
         hardware: ${SHAREFRAME_HARDWARE_DIR:-../../../shareframe-hardware}/br2-external
     image: shareframe-board-e2e-board
+    # Like a real frame: its own name differs from the hotspot's (shareframe-e2e).
+    hostname: shareframe-board-0e2e
     volumes:
       - panel:/panel
       - state:/state

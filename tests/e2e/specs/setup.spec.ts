@@ -1,12 +1,12 @@
 import { existsSync } from 'node:fs';
 import {
-  attachPanel, DASHBOARD_PASSWORD, expectSavedNetwork, factoryResetScheduled, Frame, retryFlag, setWifiMode, showsApSetup, showsDefault,
-  showsRegistration, showsStatus, waitForPanel,
+  attachPanel, codeOn, DASHBOARD_PASSWORD, expectSavedNetwork, factoryResetScheduled, Frame, retryFlag, setWifiMode, showsApSetup,
+  showsDefault, showsRegistration, showsStatus, waitForPanel,
 } from '../support/board';
-import { card, expect, test } from '../support/fixtures';
+import { card, expect, signIn, test } from '../support/fixtures';
 
-// The hotspot fallback: no internet, the owner joins the board's AP, signs in with the
-// device password and sets up Wi-Fi in the regular dashboard.
+// The hotspot fallback: no internet, the owner joins the board's AP, signs in with the setup
+// code from the panel (or the device password) and sets up Wi-Fi in the regular dashboard.
 
 const signInOnHotspot = async (page: import('@playwright/test').Page) => {
   await setWifiMode('ap');
@@ -14,6 +14,7 @@ const signInOnHotspot = async (page: import('@playwright/test').Page) => {
   await expect(page).toHaveURL(/\/auth\/sign-in$/);
   await expect(page.getByText(/stellt den Hotspot „shareframe-e2e“ bereit/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Mit Einmal-Code anmelden' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Mit Geräte-Passwort anmelden' }).click();
   await page.getByRole('textbox', { name: 'Passwort', exact: true }).fill(DASHBOARD_PASSWORD);
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(page).toHaveURL(/\/network\/$/);
@@ -39,7 +40,7 @@ test('on the hotspot a saved network is only tried on request', async ({ page })
 
   await card(page, 'WLAN einrichten').getByRole('button', { name: 'Jetzt verbinden' }).click();
   const connect = page.getByRole('dialog');
-  await expect(connect.getByText('http://shareframe-e2e.local')).toBeVisible();
+  await expect(connect.getByText('http://shareframe-board-0e2e.local')).toBeVisible();
   await connect.getByRole('button', { name: 'Verbinden' }).click();
 
   await expect(card(page, 'WLAN einrichten').getByText(/Der Rahmen verbindet sich/)).toBeVisible();
@@ -65,15 +66,49 @@ test('the Wi-Fi endpoints need a session, also on the hotspot', async ({ request
   expect((await board.postRaw('/api/connection/apply')).status()).toBe(409);
 });
 
-test('on the hotspot a visitor can reset the frame to factory defaults from the sign-in page', async ({ page, request }) => {
-  expect((await request.post('/api/system/factory-reset')).status()).toBe(401);
-
+test('on the hotspot the owner signs in with the setup code from the panel, until the frame joins a Wi-Fi', async ({ page, board }) => {
   await setWifiMode('ap');
+  await board.restartService('display');
+  const code = codeOn(await waitForPanel(showsApSetup, 'Wi-Fi setup screen with its code'));
+
+  await page.goto('/');
+  await expect(page).toHaveURL(/\/auth\/sign-in$/);
+  await page.getByRole('textbox', { name: 'Einrichtungscode' }).fill(code);
+  await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
+  await expect(page).toHaveURL(/\/network\/$/);
+
+  await setWifiMode('connected');
+  await page.reload();
+  await expect(page).toHaveURL(/\/auth\/sign-in$/);
+});
+
+test('a forgotten password resets the frame with the code from its panel', async ({ page, request }) => {
+  expect((await request.post('/api/system/factory-reset', { data: {} })).status()).toBe(400);
+  expect((await request.post('/api/system/factory-reset', { data: { code: '123456' } })).status()).toBe(409);
+  expect(await factoryResetScheduled()).toBe(false);
+
   await page.goto('/auth/sign-in');
-  await page.getByRole('button', { name: /Auf Werkseinstellungen zurücksetzen/ }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Zurücksetzen' }).click();
+  await page.getByRole('button', { name: 'Passwort vergessen?' }).click();
+  await page.getByRole('dialog', { name: 'Passwort vergessen?' }).getByRole('button', { name: 'Zurücksetzen' }).click();
+  const code = codeOn(await waitForPanel(showsStatus('reset_code'), 'reset code on the panel'));
+
+  const entry = page.getByRole('dialog', { name: 'Code vom Bilderrahmen eingeben' });
+  await entry.getByLabel('Code').fill(code);
+  await entry.getByRole('button', { name: 'Endgültig zurücksetzen' }).click();
   await expect.poll(factoryResetScheduled, { message: 'wipe marked for the next boot' }).toBe(true);
   await waitForPanel(showsStatus('factory_reset'), 'factory reset status screen');
+});
+
+test('a reset code taken back leaves the panel to the photos', async ({ page }) => {
+  await signIn(page);
+  await page.goto('/general/');
+  await page.getByRole('button', { name: 'Zurücksetzen' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Zurücksetzen' }).click();
+  await waitForPanel(showsStatus('reset_code'), 'reset code on the panel');
+
+  await page.getByRole('dialog', { name: 'Code vom Bilderrahmen eingeben' }).getByRole('button', { name: 'Schließen' }).click();
+  await waitForPanel(showsDefault, 'slideshow back after the code was taken back');
+  expect(await factoryResetScheduled()).toBe(false);
 });
 
 test('the hotspot password is only shown to hotspot clients and signed-in owners', async ({ request, board }) => {

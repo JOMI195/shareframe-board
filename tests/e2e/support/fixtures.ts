@@ -47,8 +47,8 @@ export { expect };
 export async function signIn(page: Page, password = DASHBOARD_PASSWORD) {
   await page.clock.install();
   await page.goto('/auth/sign-in');
-  // On its hotspot the frame has no server for a code login and asks for the password straight away.
-  const choosePassword = page.getByRole('button', { name: 'Mit Passwort anmelden' });
+  // The page starts on the one-time code (online) or the setup code (hotspot); both offer the password.
+  const choosePassword = page.getByRole('button', { name: 'Mit Geräte-Passwort anmelden' });
   const passwordBox = page.getByRole('textbox', { name: 'Passwort', exact: true });
   await expect(choosePassword.or(passwordBox).first()).toBeVisible();
   if (await choosePassword.isVisible()) await choosePassword.click();

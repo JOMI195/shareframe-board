@@ -8,7 +8,7 @@ test('protected pages redirect to sign-in', async ({ page }) => {
 
 test('a wrong password is rejected', async ({ page }) => {
   await page.goto('/auth/sign-in');
-  await page.getByRole('button', { name: 'Mit Passwort anmelden' }).click();
+  await page.getByRole('button', { name: 'Mit Geräte-Passwort anmelden' }).click();
   await page.getByRole('textbox', { name: 'Passwort', exact: true }).fill('wrong-password');
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(page.getByText('Das Passwort stimmt nicht.')).toBeVisible();
@@ -17,7 +17,7 @@ test('a wrong password is rejected', async ({ page }) => {
 
 test('a valid password signs in', async ({ page }) => {
   await page.goto('/auth/sign-in');
-  await page.getByRole('button', { name: 'Mit Passwort anmelden' }).click();
+  await page.getByRole('button', { name: 'Mit Geräte-Passwort anmelden' }).click();
   await page.getByRole('textbox', { name: 'Passwort', exact: true }).fill(DASHBOARD_PASSWORD);
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
