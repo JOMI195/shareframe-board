@@ -1,32 +1,33 @@
-import { Alert, AlertTitle } from '@mui/material';
+import type { ReactNode } from 'react';
+import { Alert, AlertTitle, Link } from '@mui/material';
 import WifiTetheringIcon from '@mui/icons-material/WifiTethering';
 import SignalWifiStatusbarConnectedNoInternet4Icon from '@mui/icons-material/SignalWifiStatusbarConnectedNoInternet4';
 import CloudOffIcon from '@mui/icons-material/CloudOff';
+import AddLinkIcon from '@mui/icons-material/AddLink';
 import { useLocation } from 'react-router';
 import { useAppSelector } from '@/store';
 import { getHomeUrl, getNetworkUrl } from '@/assets/endpoints/app/appEndpoints';
-import { selectConnectionMode } from '@/store/connectionMode/connectionMode.Slice';
+import { isServerDown, selectConnectionMode } from '@/store/connectionMode/connectionMode.Slice';
 import { formatDuration } from '@/main/slideshowImages/slideshowImagesUtils';
-
-// A reconnect normally takes seconds; only a longer gap is worth a banner.
-const SERVER_GRACE_SECS = 120;
 
 // Network-mode notice: hidden on the happy path, shown for connecting / no internet /
 // hotspot / server unreachable. Polling is central (RouterContext); this only reads.
 const NetworkStatusBanner = () => {
-    const { mode, ssid, internet, ap_ssid, server_connected, server_offline_secs, server_last_contact_at, loaded } = useAppSelector(selectConnectionMode);
+    const connection = useAppSelector(selectConnectionMode);
+    const { mode, ssid, internet, ap_ssid, registered, server_offline_secs, server_last_contact_at, loaded } = connection;
     const { pathname } = useLocation();
 
     if (!loaded) return null;
-    const serverDown = server_connected === false && (server_last_contact_at === 0 || server_offline_secs > SERVER_GRACE_SECS);
-    if (mode === 'connected' && internet && !serverDown) return null;
+    const serverDown = isServerDown(connection);
+    const unowned = registered === false;
+    if (mode === 'connected' && internet && !serverDown && !unowned) return null;
     // There the "WLAN einrichten" card says the same and has the button.
     if (mode === 'ap' && pathname === getHomeUrl() + getNetworkUrl()) return null;
 
     let severity: 'info' | 'warning' = 'warning';
     let Icon = SignalWifiStatusbarConnectedNoInternet4Icon;
     let title: string;
-    let detail: string;
+    let detail: ReactNode;
 
     if (mode === 'ap') {
         // Expected while setting the frame up, so information rather than a warning.
@@ -37,6 +38,15 @@ const NetworkStatusBanner = () => {
     } else if (mode === 'connecting') {
         title = 'Verbindet …';
         detail = ssid ? `Verbindung zu „${ssid}“ wird hergestellt.` : 'Suche nach bekannten Netzwerken.';
+    } else if (internet && unowned) {
+        severity = 'info';
+        Icon = AddLinkIcon;
+        title = 'Noch nicht registriert';
+        detail = <>
+            {'Füge den Bilderrahmen auf '}
+            <Link href="https://www.shareframe.de/" target="_blank" rel="noopener" color="inherit">shareframe.de</Link>
+            {' unter „Bilderrahmen hinzufügen“ hinzu. Den Code dafür zeigt sein Bildschirm.'}
+        </>;
     } else if (internet) {
         Icon = CloudOffIcon;
         title = 'Server nicht erreichbar';

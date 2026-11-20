@@ -4,10 +4,11 @@ import uuid from 'react-uuid';
 import { addAlertSnackbar, addLoadingSnackbar, removeLoadingSnackbar } from '@/store/snackbars/snackbars.Slice';
 import { IServerResponse } from '@/types';
 import { fetchWithTimeout } from '@/common/utils/fetch';
-import { getClearDisplayUrl, getFactoryResetCancelUrl, getFactoryResetCodeUrl, getFactoryResetUrl, getRestartPiUrl, getShutdownPiUrl, getSystemHealthUrl } from '@/assets/endpoints/api/frame';
+import { getClearDisplayUrl, getExitSafeModeUrl, getFactoryResetCancelUrl, getFactoryResetCodeUrl, getFactoryResetUrl, getRestartPiUrl, getShutdownPiUrl, getSystemHealthUrl } from '@/assets/endpoints/api/frame';
 import { boardErrorMessage, unreachableMessage } from '@/common/utils/errors/boardErrors';
 import { showLoadingWall } from '../loadingWall/loadingWall.Slice';
 import { getHomeUrl } from '@/assets/endpoints/app/appEndpoints';
+import { fetchConnectionMode } from '../connectionMode/connectionMode.Slice';
 
 // This slice holds no state; power actions are fire-and-forget async thunks.
 export type PiPowerState = Record<string, never>;
@@ -125,6 +126,26 @@ export const shutdownPi = createAsyncThunk<void, (path: string) => void, { state
             return rejectWithValue(errorMessage);
         } finally {
             dispatch(removeLoadingSnackbar(snackbarId));
+        }
+    }
+);
+
+export const exitSafeMode = createAsyncThunk<void, void, { dispatch: AppDispatch }>(
+    'piPower/exitSafeMode',
+    async (_, { dispatch, rejectWithValue }) => {
+        try {
+            const response = await fetchWithTimeout(getExitSafeModeUrl(), { method: 'POST' }, 20000);
+            const payload: IServerResponse = await response.json();
+            if (payload.success) {
+                dispatch(addAlertSnackbar(uuid(), 'Die Anzeige wird wieder eingeschaltet.', 'success'));
+                dispatch(fetchConnectionMode());
+                return;
+            }
+            dispatch(addAlertSnackbar(uuid(), boardErrorMessage('Die Anzeige konnte nicht eingeschaltet werden', response, payload.message), 'error'));
+            return rejectWithValue(payload.message);
+        } catch {
+            dispatch(addAlertSnackbar(uuid(), unreachableMessage(), 'error'));
+            return rejectWithValue('unreachable');
         }
     }
 );

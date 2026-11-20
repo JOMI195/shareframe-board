@@ -21,7 +21,7 @@ const FactoryResetDialog = ({ variant = "reset" }: { variant?: Variant }) => {
     const navigate = useNavigate();
     const { isConnected } = usePiConnection();
     const isOpen = useAppSelector(getDialogs).general.factoryReset.open;
-    const { mode } = useAppSelector(selectConnectionMode);
+    const { mode, safe_mode } = useAppSelector(selectConnectionMode);
     const [step, setStep] = useState<"confirm" | "code">("confirm");
     const [busy, setBusy] = useState(false);
     const [code, setCode] = useState("");
@@ -106,12 +106,17 @@ const FactoryResetDialog = ({ variant = "reset" }: { variant?: Variant }) => {
                 confirmLabel="Zurücksetzen"
                 onConfirm={showCode}
                 onCancel={close}
-                confirmDisabled={!isConnected}
+                confirmDisabled={!isConnected || !!safe_mode}
                 loading={busy}
                 destructive
             >
                 <Stack spacing={2}>
                     {variant === "forgot" && <Alert severity="info">{keepEverything}</Alert>}
+                    {safe_mode && (
+                        <Alert severity="warning">{variant === "forgot"
+                            ? "Die Anzeige ist ausgeschaltet, deshalb kann dort kein Code erscheinen. Melde dich an und schalte sie zuerst wieder ein."
+                            : "Die Anzeige ist ausgeschaltet, deshalb kann dort kein Code erscheinen. Schalte sie zuerst über „Anzeige wieder einschalten“ oben auf der Seite ein."}</Alert>
+                    )}
                     {codeDead && (
                         <Alert severity="warning">Der Code wurde zu oft falsch eingegeben. Fordere einen neuen an.</Alert>
                     )}

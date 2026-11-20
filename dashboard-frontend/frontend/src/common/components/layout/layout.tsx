@@ -1,6 +1,7 @@
 import { Box, Container, LinearProgress, Link, useMediaQuery, useTheme } from "@mui/material";
 import TopAppbar from "./topLayout/topAppBar";
 import NetworkStatusBanner from "@/common/components/networkStatusBanner";
+import SafeModeNotice from "@/common/components/safeModeNotice";
 import { Outlet, useLocation, useNavigation } from "react-router";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { useTimer } from "@/hooks/useTimer";
@@ -136,6 +137,7 @@ const MainLayout = () => {
                 >
                     {pageTitle && <HiddenPageTitle>{pageTitle}</HiddenPageTitle>}
                     <NetworkStatusBanner />
+                    <SafeModeNotice />
                     <Outlet />
                 </Container>
             </Box>

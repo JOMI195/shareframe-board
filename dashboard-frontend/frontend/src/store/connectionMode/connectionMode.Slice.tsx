@@ -18,6 +18,10 @@ export interface ConnectionModeState {
     hostname: string;
     // null while the board can't tell; server_last_contact_at is unix seconds, 0 = never connected.
     server_connected: boolean | null;
+    // false once the server refused the frame because nobody owns it; null while the board can't tell.
+    registered: boolean | null;
+    // Why the board keeps the display down (remote, display-crash, boot-loop); empty while it runs.
+    safe_mode: string;
     server_offline_secs: number;
     server_last_contact_at: number;
     // How long ago the last try of the saved networks failed and the hotspot came back; null = none.
@@ -35,6 +39,8 @@ const initialState: ConnectionModeState = {
     ap_password: '',
     hostname: '',
     server_connected: null,
+    registered: null,
+    safe_mode: '',
     server_offline_secs: 0,
     server_last_contact_at: 0,
     last_failed_secs_ago: null,
@@ -73,6 +79,8 @@ export const connectionModeSlice = createSlice({
             state.ap_password = d.ap_password ?? '';
             state.hostname = d.hostname ?? '';
             state.server_connected = d.server_connected ?? null;
+            state.registered = d.registered ?? null;
+            state.safe_mode = d.safe_mode ?? '';
             state.server_offline_secs = d.server_offline_secs ?? 0;
             state.server_last_contact_at = d.server_last_contact_at ?? 0;
             state.last_failed_secs_ago = d.last_failed_secs_ago ?? null;
@@ -84,5 +92,11 @@ export const connectionModeSlice = createSlice({
 });
 
 export const selectConnectionMode = (state: RootState) => state.connectionMode;
+
+// A reconnect normally takes seconds; only a longer gap counts as the server being down.
+const SERVER_GRACE_SECS = 120;
+
+export const isServerDown = ({ server_connected, server_last_contact_at, server_offline_secs }: ConnectionModeState) =>
+    server_connected === false && (server_last_contact_at === 0 || server_offline_secs > SERVER_GRACE_SECS);
 
 export default connectionModeSlice.reducer;

@@ -77,6 +77,47 @@ describe('sign-in', () => {
     expect(screen.getByRole('button', { name: 'Anmelden' })).toBeDisabled();
   });
 
+  it('signs in with the code from a shareframe.de link and drops it from the address', async () => {
+    const spy = spyOnRequests('post', api.getLoginUrl());
+    server.use(spy.handler);
+    const { router } = renderRoute(`${SIGN_IN}#otp=482913`, { preloadedState: buildState() });
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    expect(await spy.calls[0].json()).toEqual({ otp: '482913' });
+    expect(spy.calls).toHaveLength(1);
+    expect(router.state.location.hash).toBe('');
+  });
+
+  it('keeps a rejected code from a link off the address bar', async () => {
+    server.use(...failsWith('post', api.getLoginUrl(), 401, 'OTP invalid'));
+    const { router } = renderRoute(`${SIGN_IN}#otp=000000`, { preloadedState: buildState() });
+
+    expect(await screen.findByText('Der Einmal-Code stimmt nicht oder ist abgelaufen.')).toBeInTheDocument();
+    expect(router.state.location).toMatchObject({ pathname: SIGN_IN, hash: '' });
+  });
+
+  it('shows the one-time code as it is typed', async () => {
+    await openSignIn();
+
+    expect(screen.getByLabelText(/^Einmal-Code/, { selector: 'input' })).toHaveAttribute('type', 'text');
+  });
+
+  it('starts with the device password on a frame nobody owns yet', async () => {
+    server.use(...withConnectionMode({ registered: false, server_connected: false, server_last_contact_at: 0 }));
+    await openSignIn();
+
+    expect(await screen.findByText(/noch keinem ShareFrame-Konto zugeordnet/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Passwort/, { selector: 'input' })).toBeInTheDocument();
+  });
+
+  it('switches to the password login when the server cannot be reached', async () => {
+    server.use(...withConnectionMode({ server_connected: false, server_offline_secs: 600, server_last_contact_at: 1_760_000_000 }));
+    await openSignIn();
+
+    expect(await screen.findByText(/Der ShareFrame-Server ist gerade nicht erreichbar/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Passwort/, { selector: 'input' })).toBeInTheDocument();
+  });
+
   it('switches to the password login when the board has no internet', async () => {
     server.use(...withConnectionMode({ internet: false }));
     await openSignIn();

@@ -9,7 +9,7 @@ import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { useAppDispatch, useAppSelector } from '@/store';
 import { loginThunk, selectAuth } from '@/store/auth/auth.Slice';
-import { selectConnectionMode } from '@/store/connectionMode/connectionMode.Slice';
+import { isServerDown, selectConnectionMode } from '@/store/connectionMode/connectionMode.Slice';
 import { removeAllSnackbars } from '@/store/snackbars/snackbars.Slice';
 import { usePiConnection } from '@/context/piConnection/piConnectionContextValue';
 import { useLocation, useNavigate } from 'react-router';
@@ -31,7 +31,8 @@ const SignIn = () => {
   const location = useLocation();
   const { isConnected } = usePiConnection();
   const { isAuthenticated } = useAppSelector(selectAuth);
-  const { internet, loaded, mode, ap_ssid } = useAppSelector(selectConnectionMode);
+  const connection = useAppSelector(selectConnectionMode);
+  const { internet, loaded, mode, ap_ssid, registered } = connection;
   const [chosenMethod, setMethod] = useState<LoginMethod>('otp');
   const [hotspotMethod, setHotspotMethod] = useState<LoginMethod>('setup');
   // On its own hotspot the frame can't reach the server: the setup code from its panel or the device password.
@@ -49,29 +50,50 @@ const SignIn = () => {
     }
   }, [dispatch, signedOut]);
 
-  // Without internet the OTP cannot be verified upstream — default to the
-  // offline password once, without ever overriding a manual toggle.
+  // Why the server can't verify a one-time code right now; null when it can.
+  const otpUnavailable = !loaded ? null
+    : !internet ? "Keine Internetverbindung. Die Anmeldung mit Einmal-Code ist gerade nicht möglich."
+    : registered === false ? "Der Bilderrahmen ist noch keinem ShareFrame-Konto zugeordnet. Melde dich mit dem Geräte-Passwort an."
+    : isServerDown(connection) ? "Der ShareFrame-Server ist gerade nicht erreichbar. Die Anmeldung mit Einmal-Code ist gerade nicht möglich."
+    : null;
+
+  // Defaults to the password once, without ever overriding a manual toggle.
   const autoSwitched = useRef(false);
   useEffect(() => {
-    if (!autoSwitched.current && loaded && !internet) {
+    if (!autoSwitched.current && otpUnavailable) {
       autoSwitched.current = true;
       setMethod('password');
     }
-  }, [loaded, internet]);
+  }, [otpUnavailable]);
 
-  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
+  const signIn = async (credentials: Parameters<typeof loginThunk>[0]) => {
     setLoading(true);
     try {
-      const credentials = method === 'otp' ? { otp: secret }
-        : method === 'setup' ? { setup_code: secret.replace(/\s/g, '') }
-        : { password: secret };
       const result = await dispatch(loginThunk(credentials));
       if (loginThunk.rejected.match(result)) setSecret('');
     } finally {
       setLoading(false);
     }
   };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void signIn(method === 'otp' ? { otp: secret }
+      : method === 'setup' ? { setup_code: secret.replace(/\s/g, '') }
+      : { password: secret });
+  };
+
+  // "Öffnen" on shareframe.de hands over a fresh one-time code in the fragment, which never reaches a server.
+  const linkCodeUsed = useRef(false);
+  useEffect(() => {
+    const code = /^#otp=([^&]+)/.exec(location.hash)?.[1];
+    if (!code || linkCodeUsed.current) return;
+    linkCodeUsed.current = true;
+    autoSwitched.current = true;
+    navigate({ pathname: location.pathname, hash: '' }, { replace: true, state: location.state });
+    void signIn({ otp: decodeURIComponent(code) });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.hash]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -124,9 +146,9 @@ const SignIn = () => {
         <Alert severity="info" sx={{ mt: 2, width: '100%', textAlign: 'left' }}>
           {`Der Bilderrahmen ist mit keinem WLAN verbunden und stellt den Hotspot „${ap_ssid || 'shareframe-board'}“ bereit. Melde dich an und füge danach unter „Netzwerk“ dein WLAN hinzu.`}
         </Alert>
-      ) : loaded && !internet && (
-        <Alert severity="info" sx={{ mt: 2, width: '100%' }}>
-          {"Keine Internetverbindung. Die Anmeldung mit Einmal-Code ist gerade nicht möglich."}
+      ) : otpUnavailable && (
+        <Alert severity="info" sx={{ mt: 2, width: '100%', textAlign: 'left' }}>
+          {otpUnavailable}
         </Alert>
       )}
 
@@ -138,7 +160,7 @@ const SignIn = () => {
           fullWidth
           name={FIELD[method].name}
           label={FIELD[method].label}
-          type={method !== 'setup' && !showPassword ? "password" : "text"}
+          type={method === 'password' && !showPassword ? "password" : "text"}
           id={FIELD[method].name}
           autoComplete={FIELD[method].autoComplete}
           helperText={method === 'setup' ? "Siehst du keinen Code, trenne den Rahmen kurz vom Strom." : undefined}
@@ -148,11 +170,11 @@ const SignIn = () => {
             htmlInput: method === 'otp'
               ? { autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false }
               : method === 'setup' ? { inputMode: 'numeric' } : undefined,
-            input: method === 'setup' ? undefined : {
+            input: method !== 'password' ? undefined : {
               endAdornment: (
                 <InputAdornment position="end">
                   <IconButton
-                    aria-label={`${method === 'otp' ? 'Einmal-Code' : 'Passwort'} ${showPassword ? 'verbergen' : 'anzeigen'}`}
+                    aria-label={`Passwort ${showPassword ? 'verbergen' : 'anzeigen'}`}
                     onClick={() => handleClickShowPassword()}
                     onMouseDown={handleMouseDownPassword}
                     edge="end"
@@ -175,6 +197,11 @@ const SignIn = () => {
         >
           {'Anmelden'}
         </Button>
+        {!isConnected && (
+          <Typography variant="body2" role="status" sx={{ color: 'text.secondary', mt: -1, mb: 2 }}>
+            {"Der Bilderrahmen antwortet gerade nicht. Die Anmeldung geht, sobald er wieder erreichbar ist."}
+          </Typography>
+        )}
 
         <Stack spacing={1} sx={{ alignItems: 'center' }}>
           <Link component="button" type="button" variant="body2" onClick={handleToggleMethod}>

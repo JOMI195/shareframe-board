@@ -43,6 +43,7 @@ export const getSystemInfoUrl = () => `${systemBaseUrl()}/info`;
 export const getSystemHealthUrl = () => `${systemBaseUrl()}/health`;
 export const getRestartPiUrl = () => `${systemBaseUrl()}/restart`;
 export const getShutdownPiUrl = () => `${systemBaseUrl()}/shutdown`;
+export const getExitSafeModeUrl = () => `${systemBaseUrl()}/safe-mode/exit`;
 export const getFactoryResetUrl = () => `${systemBaseUrl()}/factory-reset`;
 export const getFactoryResetCodeUrl = () => `${systemBaseUrl()}/factory-reset/code`;
 export const getFactoryResetCancelUrl = () => `${systemBaseUrl()}/factory-reset/cancel`;

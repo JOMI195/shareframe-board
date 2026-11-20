@@ -85,7 +85,7 @@ describe('connectionMode slice', () => {
 
     expect(state).toEqual({
       mode: 'ap', ssid: '', internet: false, ap_ssid: '', ap_password: '', hostname: '',
-      server_connected: null, server_offline_secs: 0, server_last_contact_at: 0,
+      server_connected: null, registered: null, safe_mode: '', server_offline_secs: 0, server_last_contact_at: 0,
       last_failed_secs_ago: null, last_failed_at: null, loaded: true,
     });
   });

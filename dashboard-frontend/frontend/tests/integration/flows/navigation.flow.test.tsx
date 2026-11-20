@@ -3,7 +3,8 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { renderRoute } from '@tests/helpers/renderRoute';
 import { signedInState } from '@tests/helpers/preloadedState';
 import { makeRelease } from '@tests/fixtures';
-import { boardUnreachable, server, withConnectionMode, withRelease } from '@tests/mocks';
+import * as api from '@/assets/endpoints/api/frame';
+import { boardUnreachable, server, spyOnRequests, withConnectionMode, withRelease } from '@tests/mocks';
 
 const sidebar = () => screen.getByRole('navigation', { name: 'Hauptmenü' });
 
@@ -143,6 +144,15 @@ describe('network status banner', () => {
     expect(within(banner).getByText(/^Letzter Kontakt vor 3 Stunden\./)).toBeInTheDocument();
   });
 
+  it('tells the owner that nobody has added the frame yet', async () => {
+    server.use(...withConnectionMode({ registered: false, server_connected: false, server_offline_secs: 0, server_last_contact_at: 0 }));
+    renderRoute('/', { preloadedState: signedInState() });
+
+    const banner = await screen.findByRole('status');
+    expect(within(banner).getByText('Noch nicht registriert')).toBeInTheDocument();
+    expect(within(banner).getByRole('link', { name: 'shareframe.de' })).toHaveAttribute('href', 'https://www.shareframe.de/');
+  });
+
   it('flags a frame that has never reached the server', async () => {
     server.use(...withConnectionMode({ server_connected: false, server_offline_secs: 0, server_last_contact_at: 0 }));
     renderRoute('/', { preloadedState: signedInState() });
@@ -187,5 +197,27 @@ describe('connection indicator', () => {
     renderRoute('/', { preloadedState: signedInState() });
 
     expect(await screen.findByLabelText(`Verbindung: ${label}`)).toBeInTheDocument();
+  });
+});
+
+describe('safe mode notice', () => {
+  it('says why the panel stays blank and turns the display back on', async () => {
+    const spy = spyOnRequests('post', api.getExitSafeModeUrl());
+    server.use(...withConnectionMode({ safe_mode: 'display-crash' }), spy.handler);
+    const { user } = renderRoute('/', { preloadedState: signedInState() });
+
+    const notice = await screen.findByRole('region', { name: 'Anzeige ausgeschaltet' });
+    expect(within(notice).getByText(/mehrmals abgestürzt/)).toBeInTheDocument();
+    await user.click(within(notice).getByRole('button', { name: 'Anzeige wieder einschalten' }));
+
+    await waitFor(() => expect(spy.calls).toHaveLength(1));
+    expect(await screen.findByText('Die Anzeige wird wieder eingeschaltet.')).toBeInTheDocument();
+  });
+
+  it('stays away while the display runs', async () => {
+    renderRoute('/', { preloadedState: signedInState() });
+    await screen.findByRole('heading', { level: 2, name: 'Diashow' });
+
+    expect(screen.queryByRole('region', { name: 'Anzeige ausgeschaltet' })).not.toBeInTheDocument();
   });
 });

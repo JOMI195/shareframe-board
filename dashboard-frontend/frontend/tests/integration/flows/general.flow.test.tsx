@@ -7,7 +7,7 @@ import { renderRoute } from '@tests/helpers/renderRoute';
 import { signedInState } from '@tests/helpers/preloadedState';
 import { advance, useBoardClock } from '@tests/helpers/time';
 import { makeFrameInfo } from '@tests/fixtures';
-import { apiUrl, failsWith, ok, server, spyOnRequests, withFrameInfo } from '@tests/mocks';
+import { apiUrl, failsWith, ok, server, spyOnRequests, withConnectionMode, withFrameInfo } from '@tests/mocks';
 
 const openGeneral = (expert = false) =>
   renderRoute('/general/', { preloadedState: signedInState({ navigation: { advancedMode: expert } }) });
@@ -228,6 +228,16 @@ describe('power', () => {
 
     await waitFor(() => expect(store.getState().loadingWall.message).toMatch(/startet im Einrichtungsmodus/));
     expect(window.location.reload).not.toHaveBeenCalled();
+  });
+
+  it('asks to turn the display on first while it is off', async () => {
+    const code = spyOnRequests('post', api.getFactoryResetCodeUrl());
+    server.use(...withConnectionMode({ safe_mode: 'remote' }), code.handler);
+    const { dialog } = await openFactoryReset();
+
+    expect(await within(dialog).findByText(/Schalte sie zuerst über „Anzeige wieder einschalten“/)).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Zurücksetzen' })).toBeDisabled();
+    expect(code.calls).toHaveLength(0);
   });
 
   it('does not reset when the dialog is cancelled', async () => {
