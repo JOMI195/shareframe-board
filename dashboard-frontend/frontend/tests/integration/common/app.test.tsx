@@ -34,17 +34,13 @@ describe('App', () => {
 
   afterEach(() => vi.useRealTimers());
 
-  it('shows the splash for three seconds after the session check', async () => {
+  it('shows the splash only until the session is checked', async () => {
     const store = renderApp();
 
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
     await authChecked(store);
-    await advance(2_900);
-    expect(screen.queryByText('Router')).not.toBeInTheDocument();
 
-    await advance(100);
-
-    expect(screen.getByText('Router')).toBeInTheDocument();
+    expect(await screen.findByText('Router')).toBeInTheDocument();
   });
 
   it('rechecks the session when the tab regains focus', async () => {
