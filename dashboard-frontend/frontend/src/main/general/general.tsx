@@ -8,6 +8,7 @@ import { useAppDispatch, useAppSelector } from '@/store';
 import { selectFrameInfoState, fetchFrameInfos } from '@/store/frameInfo/frameInfo.Slice';
 import { openGeneralChangePasswordDialog } from '@/store/dialogs/dialogs.Slice';
 import { getAdvancedMode, toggleAdvancedMode } from '@/store/navigation/navigation.Slice';
+import { selectOnline } from '@/store/connectionMode/connectionMode.Slice';
 import ShareframeInfoCard from '@/common/components/shareframeInfoCard';
 import ChangePasswordDialog from './dialogs/changePasswordDialog';
 import { addAlertSnackbar } from '@/store/snackbars/snackbars.Slice';
@@ -79,6 +80,7 @@ const General = () => {
     const navigate = useNavigate();
     const info = useAppSelector(selectFrameInfoState).frameInfo;
     const expertMode = useAppSelector(getAdvancedMode);
+    const online = useAppSelector(selectOnline);
     const [sendingDiagnostics, setSendingDiagnostics] = useState(false);
 
     const sendDiagnostics = async () => {
@@ -182,7 +184,8 @@ const General = () => {
                     sections={[
                         {
                             label: "Diagnose",
-                            content: "Sendet Protokolle und Systemzustand an den Support. Ohne Passwörter, WLAN-Zugangsdaten und Fotos.",
+                            content: "Sendet Protokolle und Systemzustand an den Support. Ohne Passwörter, WLAN-Zugangsdaten und Fotos."
+                                + (online ? "" : " Braucht eine Internetverbindung."),
                         },
                     ]}
                     actions={
@@ -190,7 +193,7 @@ const General = () => {
                             variant="contained"
                             color="primary"
                             startIcon={<SupportAgentIcon />}
-                            disabled={sendingDiagnostics}
+                            disabled={sendingDiagnostics || !online}
                             onClick={sendDiagnostics}
                         >
                             {sendingDiagnostics ? "Wird gesendet …" : "Diagnose senden"}

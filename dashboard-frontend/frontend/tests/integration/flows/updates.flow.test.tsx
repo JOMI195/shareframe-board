@@ -1,19 +1,26 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import * as api from '@/assets/endpoints/api/frame';
 import { renderRoute } from '@tests/helpers/renderRoute';
 import { signedInState } from '@tests/helpers/preloadedState';
+import { advance, useBoardClock } from '@tests/helpers/time';
 import { makeRelease, makeUpdateHistoryEntry, makeUpdateStatus } from '@tests/fixtures';
 import {
+  apMode,
   failsWith,
   server,
   spyOnRequests,
   withRelease,
   withUpdateHistory,
+  withConnectionMode,
   withUpdateStatus,
 } from '@tests/mocks';
 
 const openUpdates = () => renderRoute('/updates/', { preloadedState: signedInState() });
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('updates', () => {
   it('shows the installed version and that it is up to date', async () => {
@@ -41,6 +48,35 @@ describe('updates', () => {
     openUpdates();
 
     expect(await screen.findByText('Updates konnten nicht gesucht werden')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['on the hotspot', apMode(), { mode: 'ap', ssid: '', internet: false } as const],
+    ['without internet', withConnectionMode({ internet: false }), { internet: false }],
+  ])('does not look for updates %s', async (_, connection, preloaded) => {
+    const latest = spyOnRequests('get', api.getLatestReleaseUrl());
+    server.use(...connection, latest.handler);
+    renderRoute('/updates/', { preloadedState: signedInState({ connectionMode: preloaded }) });
+
+    expect(await screen.findByText('Ohne Internet kann nicht nach Updates gesucht werden.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Auf Updates prüfen' })).toBeDisabled();
+    expect(latest.calls).toHaveLength(0);
+    expect(screen.queryByText('Updates konnten nicht gesucht werden')).not.toBeInTheDocument();
+  });
+
+  it('looks for updates once the frame is online', async () => {
+    const latest = spyOnRequests('get', api.getLatestReleaseUrl(), () =>
+      Response.json({ success: true, message: '', data: null }),
+    );
+    useBoardClock();
+    server.use(...apMode(), latest.handler);
+    renderRoute('/updates/', { preloadedState: signedInState({ connectionMode: { mode: 'ap', ssid: '', internet: false } }) });
+    expect(await screen.findByText('Keine Internetverbindung')).toBeInTheDocument();
+
+    server.use(...withConnectionMode({}));
+    await advance(10_000);
+    await waitFor(() => expect(latest.calls).toHaveLength(1));
+    expect(await screen.findByText('Keine Updates verfügbar')).toBeInTheDocument();
   });
 
   it('lists the bullet points of the release notes', async () => {

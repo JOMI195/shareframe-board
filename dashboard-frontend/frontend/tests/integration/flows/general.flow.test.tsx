@@ -7,7 +7,7 @@ import { renderRoute } from '@tests/helpers/renderRoute';
 import { signedInState } from '@tests/helpers/preloadedState';
 import { advance, useBoardClock } from '@tests/helpers/time';
 import { makeFrameInfo } from '@tests/fixtures';
-import { apiUrl, failsWith, ok, server, spyOnRequests, withConnectionMode, withFrameInfo } from '@tests/mocks';
+import { apiUrl, apMode, failsWith, ok, server, spyOnRequests, withConnectionMode, withFrameInfo } from '@tests/mocks';
 
 const openGeneral = (expert = false) =>
   renderRoute('/general/', { preloadedState: signedInState({ navigation: { advancedMode: expert } }) });
@@ -343,6 +343,14 @@ describe('diagnostics', () => {
     expect(await screen.findByRole('button', { name: 'Wird gesendet …' })).toBeDisabled();
     release();
     expect(await screen.findByText('Diagnose an den Support gesendet')).toBeInTheDocument();
+  });
+
+  it('needs internet to send', async () => {
+    server.use(...apMode());
+    renderRoute('/general/', { preloadedState: signedInState({ connectionMode: { mode: 'ap', ssid: '', internet: false } }) });
+
+    expect(await screen.findByRole('button', { name: 'Diagnose senden' })).toBeDisabled();
+    expect(screen.getByText(/Braucht eine Internetverbindung/)).toBeInTheDocument();
   });
 
   it('a failed upload says it failed', async () => {
