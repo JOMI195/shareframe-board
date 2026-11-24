@@ -65,7 +65,7 @@ const AuthenticationLayout = () => {
             lightLogoSrc="/logo-light-full-shareframe.svg"
             clickable={false}
             alt="ShareFrame"
-            maxWidth={280}
+            maxWidth={220}
           />
         </Stack>
         <Outlet />
