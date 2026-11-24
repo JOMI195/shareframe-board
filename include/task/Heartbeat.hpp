@@ -8,7 +8,7 @@ class AuthTokenManager;
 class IpcClient;
 class IImageRepository;
 
-/// Periodically POSTs a heartbeat to the server with the frame's local IP,
+/// Periodically POSTs a heartbeat to the server with the frame's local IP (when known),
 /// version, process health, stored image count, and system metrics (from shareframe-sysinfo).
 /// Runs as its own process (shareframe-heartbeat).
 class Heartbeat : public PeriodicTask

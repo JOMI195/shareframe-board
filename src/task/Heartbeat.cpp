@@ -37,13 +37,6 @@ int Heartbeat::intervalSecs() const
 
 void Heartbeat::execute()
 {
-    const auto localIp = _getLocalIp();
-    if (localIp.empty())
-    {
-        logger_->warn("Could not determine local IP address; skipping heartbeat");
-        return;
-    }
-
     const bool wsRunning        = health::isRunning(wsIpc_);
     const bool displayRunning   = health::isRunning(displayIpc_);
     const bool dashboardRunning = health::isRunning(dashboardIpc_);
@@ -53,7 +46,6 @@ void Heartbeat::execute()
     nlohmann::json payload = {
         // Identity
         {"serial_number", cfg_.frameId},
-        {"local_ip_address", localIp},
         {"version", cfg_.version},
         {"app_sha", shareframe::kAppSha},
         // Service health
@@ -64,6 +56,11 @@ void Heartbeat::execute()
         // Content
         {"image_count", static_cast<int64_t>(images_.getAllIds().size())},
     };
+
+    if (const auto localIp = _getLocalIp(); !localIp.empty())
+        payload["local_ip_address"] = localIp;
+    else
+        logger_->debug("Could not determine local IP address; sending heartbeat without it");
 
     const auto sysInfo = _getSysInfo();
     static const std::vector<std::string> sysInfoKeys = {
