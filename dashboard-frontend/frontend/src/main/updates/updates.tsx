@@ -14,6 +14,8 @@ import { selectUpdatesState, fetchUpdateStatus, fetchLatestRelease } from '@/sto
 import { openUpdatesConfirmUpdateDialog } from '@/store/dialogs/dialogs.Slice';
 import { addLoadingSnackbar, removeLoadingSnackbar } from '@/store/snackbars/snackbars.Slice';
 import { usePiConnection } from '@/context/piConnection/piConnectionContextValue';
+import { selectOnline } from '@/store/connectionMode/connectionMode.Slice';
+import CloudOffIcon from '@mui/icons-material/CloudOff';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import UpdateIcon from '@mui/icons-material/Update';
 import ErrorIcon from '@mui/icons-material/Error';
@@ -46,6 +48,7 @@ const Updates = () => {
     const { latest_release, update_status, loading } = useAppSelector(selectUpdatesState);
     const { frameInfo } = useAppSelector(selectFrameInfoState);
     const { isConnected } = usePiConnection();
+    const online = useAppSelector(selectOnline);
 
     const isNewVersion = latest_release?.is_newer ?? false;
     const updateActive = update_status != null
@@ -287,7 +290,7 @@ const Updates = () => {
                                         color="primary"
                                         startIcon={<BuildIcon />}
                                         onClick={handleConfirmUpdate}
-                                        disabled={loading || !isConnected || updateBusy}
+                                        disabled={loading || !isConnected || !online || updateBusy}
                                     >
                                         Jetzt installieren
                                     </Button>
@@ -308,13 +311,17 @@ const Updates = () => {
                                                         display: "flex",
                                                         alignItems: "center"
                                                     }}>
-                                                    <CheckCircleIcon color='success' sx={{ mr: 1 }} />Keine Updates verfügbar
+                                                    {online
+                                                        ? <><CheckCircleIcon color='success' sx={{ mr: 1 }} />Keine Updates verfügbar</>
+                                                        : <><CloudOffIcon sx={{ mr: 1 }} />Keine Internetverbindung</>}
                                                 </Typography>
                                             )
                                         }
                                     },
                                     {
-                                        content: "Der Bilderrahmen ist auf dem neuesten Stand."
+                                        content: online
+                                            ? "Der Bilderrahmen ist auf dem neuesten Stand."
+                                            : "Ohne Internet kann nicht nach Updates gesucht werden."
                                     },
                                 ]}
                                 actions={
@@ -323,7 +330,7 @@ const Updates = () => {
                                         color="primary"
                                         startIcon={<RefreshIcon />}
                                         onClick={handleFetchLatestRelease}
-                                        disabled={loading || !isConnected}
+                                        disabled={loading || !isConnected || !online}
                                     >
                                         Auf Updates prüfen
                                     </Button>

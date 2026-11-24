@@ -12,6 +12,7 @@ import { fetchLatestRelease } from "@/store/updates/updates.Slice";
 import Sidebar from "./sidebar/sidebar";
 import PowerDialogs from "@/common/components/powerDialogs";
 import { getSidebar, routeChanged } from "@/store/navigation/navigation.Slice";
+import { selectOnline } from "@/store/connectionMode/connectionMode.Slice";
 import HiddenPageTitle from "@/common/components/hiddenPageTitle";
 import { usePageTitle } from "@/hooks/navigation/usePageTitle";
 import { SIDEBAR_ICON_WIDTH, SIDEBAR_WIDTH } from "./sidebar/sidebarWidth";
@@ -36,6 +37,7 @@ const MainLayout = () => {
     const sidebarOpen = useAppSelector(getSidebar).open;
     const mainRef = useRef<HTMLElement>(null);
     const pageTitle = usePageTitle();
+    const online = useAppSelector(selectOnline);
 
     const { pathname } = useLocation();
     const focusedPathname = useRef(pathname);
@@ -65,8 +67,11 @@ const MainLayout = () => {
         dispatch(fetchDisplayImagesLoopInterval());
         dispatch(fetchNightMode());
         dispatch(fetchFrameInfos());
-        dispatch(fetchLatestRelease());
     }, [dispatch]);
+
+    useEffect(() => {
+        if (online) dispatch(fetchLatestRelease());
+    }, [online, dispatch]);
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>

@@ -97,6 +97,8 @@ export const connectionModeSlice = createSlice({
 
 export const selectConnectionMode = (state: RootState) => state.connectionMode;
 
+export const selectOnline = ({ connectionMode: c }: RootState) => c.loaded && c.mode === 'connected' && c.internet;
+
 // A reconnect normally takes seconds; only a longer gap counts as the server being down.
 const SERVER_GRACE_SECS = 120;
 
