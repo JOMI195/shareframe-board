@@ -178,7 +178,7 @@ TEST_F(DisplayImageLoopTest, PlaybackOrderDecidesWhichPictureComesNext)
     settings.setPlaybackOrder(PlaybackMode::NewestFirst, {});
     start();
     ASSERT_TRUE(waitFor([&] { return panel().value("source", "").ends_with("/2.jpg"); }));
-    EXPECT_EQ(loop.currentImageId(), 2);
+    EXPECT_TRUE(waitFor([&] { return loop.currentImageId() == 2; }));
 
     bus.publish<Topic::SKIP_IMAGE>({});
     ASSERT_TRUE(waitFor([&] { return panel().value("source", "").ends_with("/3.jpg"); }));
@@ -202,7 +202,7 @@ TEST_F(DisplayImageLoopTest, ShowNowPaintsTheRequestedPictureAndContinuesFromIt)
 
     bus.publish<Topic::SHOW_IMAGE>({3});
     ASSERT_TRUE(waitFor([&] { return panel().value("source", "").ends_with("/3.jpg"); }));
-    EXPECT_EQ(loop.currentImageId(), 3);
+    EXPECT_TRUE(waitFor([&] { return loop.currentImageId() == 3; }));
 
     bus.publish<Topic::SKIP_IMAGE>({});
     EXPECT_TRUE(waitFor([&] { return panel().value("source", "").ends_with("/1.jpg"); }));

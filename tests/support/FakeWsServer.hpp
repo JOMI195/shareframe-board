@@ -1,9 +1,14 @@
 #pragma once
+#include <arpa/inet.h>
 #include <ixwebsocket/IXHttpServer.h>
 #include <map>
 #include <mutex>
+#include <netinet/in.h>
 #include <random>
+#include <stdexcept>
 #include <string>
+#include <sys/socket.h>
+#include <unistd.h>
 #include <vector>
 
 /// Local server standing in for the Shareframe frames socket, with canned HTTP answers per
@@ -14,7 +19,11 @@ public:
     FakeWsServer()
     {
         std::random_device rd;
-        port_ = 20000 + static_cast<int>(rd() % 30000);
+        for (int attempt = 0; attempt < 20 && port_ == 0; ++attempt)
+            if (const int candidate = 20000 + static_cast<int>(rd() % 12768); _isFree(candidate))
+                port_ = candidate;
+        if (port_ == 0)
+            throw std::runtime_error("FakeWsServer: no free port");
         server_ = std::make_unique<ix::HttpServer>(port_, "127.0.0.1");
         server_->setOnConnectionCallback([this](const ix::HttpRequestPtr& req, const std::shared_ptr<ix::ConnectionState>&)
         {
@@ -84,6 +93,20 @@ public:
     [[nodiscard]] std::string baseUrl() const { return "127.0.0.1:" + std::to_string(port_); }
 
 private:
+    static bool _isFree(const int port)
+    {
+        const int fd = ::socket(AF_INET, SOCK_STREAM, 0);
+        constexpr int on = 1;
+        ::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof on);
+        sockaddr_in addr{};
+        addr.sin_family = AF_INET;
+        addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        addr.sin_port = htons(static_cast<uint16_t>(port));
+        const bool free = ::bind(fd, reinterpret_cast<sockaddr*>(&addr), sizeof addr) == 0;
+        ::close(fd);
+        return free;
+    }
+
     int port_ = 0;
     std::unique_ptr<ix::HttpServer> server_;
     mutable std::mutex mtx_;
