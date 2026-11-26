@@ -41,10 +41,11 @@ const ThumbStrip: React.FC<ThumbStripProps> = ({
         {imageStatuses.map((imageStatus, index) => {
             const uploaded = imageStatus.status === 'uploaded';
             const current = currentImageIndex === index;
+            const previewError = previewErrors[imageStatus.id];
             return (
                 <Box component="li" key={imageStatus.id} sx={{ position: 'relative', flexShrink: 0, pt: 0.75, pr: 0.75 }}>
                     <ButtonBase
-                        aria-label={imageStatus.file.name}
+                        aria-label={previewError ? `${imageStatus.file.name}: ${previewError}` : imageStatus.file.name}
                         aria-current={current || undefined}
                         disabled={uploaded}
                         onClick={() => onSelect(index)}
@@ -61,7 +62,7 @@ const ThumbStrip: React.FC<ThumbStripProps> = ({
                             <ImagePreviewThumb
                                 src={imagePreviews[imageStatus.id]}
                                 alt=""
-                                error={previewErrors[imageStatus.id]}
+                                error={previewError}
                                 onError={() => markPreviewBroken(imageStatus.id, PREVIEW_ERROR_MESSAGE)}
                                 size={THUMB_SIZE}
                             />

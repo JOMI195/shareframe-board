@@ -146,7 +146,9 @@ describe('slideshow images', () => {
 
     await user.click(screen.getByRole('listitem', { name: /Foto von bob/ }));
 
-    expect(await within(await screen.findByRole('dialog')).findByRole('button', { name: 'Jetzt anzeigen' })).toBeDisabled();
+    const dialog = await screen.findByRole('dialog');
+    expect(await within(dialog).findByRole('button', { name: 'Jetzt anzeigen' })).toBeDisabled();
+    expect(within(dialog).getByText('Wird bereits angezeigt')).toBeVisible();
   });
 
   it('cannot show a picture while the slideshow is paused', async () => {
@@ -155,7 +157,9 @@ describe('slideshow images', () => {
 
     await user.click(screen.getByRole('listitem', { name: /Foto von carol/ }));
 
-    expect(await within(await screen.findByRole('dialog')).findByRole('button', { name: 'Jetzt anzeigen' })).toBeDisabled();
+    const dialog = await screen.findByRole('dialog');
+    expect(await within(dialog).findByRole('button', { name: 'Jetzt anzeigen' })).toBeDisabled();
+    expect(within(dialog).getByText('Diashow pausiert')).toBeVisible();
   });
 
   it('says to retry when the panel is busy refreshing', async () => {
