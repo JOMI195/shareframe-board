@@ -73,6 +73,19 @@ test.describe('navigation on a phone', () => {
     }
   });
 
+  test('the top bar keeps the full logo and spells out the system status on a tap', async ({ page }) => {
+    await signIn(page);
+    const logo = page.getByRole('img', { name: 'ShareFrame – Start' });
+    await expect.poll(async () => (await logo.boundingBox())?.width).toBe(130);
+
+    await page.getByRole('button', { name: /^System: Online/ }).click();
+
+    const popover = page.getByRole('dialog', { name: 'System' });
+    await expect(popover.getByText('Mit „E2E-WiFi“ verbunden')).toBeInViewport();
+    await expect(popover.getByText('Bilderrahmen erreichbar')).toBeVisible();
+    await expectNoHorizontalScroll(page);
+  });
+
   test('the skip link moves the focus to the page content', async ({ page }) => {
     await signIn(page);
 

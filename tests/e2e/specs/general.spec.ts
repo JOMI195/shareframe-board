@@ -37,7 +37,7 @@ test('a changed password replaces the initial one', async ({ page, board, reques
 
 test('restarting from the power menu reboots the board', async ({ page }) => {
   await signIn(page);
-  await page.getByRole('button', { name: 'Energieoptionen' }).click();
+  await page.getByRole('navigation', { name: 'Hauptmenü' }).getByRole('button', { name: /^Energie/ }).click();
   await page.getByRole('menuitem', { name: 'Neu starten' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Neu starten' }).click();
   await expectShimCall('reboot');
@@ -46,7 +46,7 @@ test('restarting from the power menu reboots the board', async ({ page }) => {
 
 test('shutting down blanks the panel before powering off', async ({ page }) => {
   await signIn(page);
-  await page.getByRole('button', { name: 'Energieoptionen' }).click();
+  await page.getByRole('navigation', { name: 'Hauptmenü' }).getByRole('button', { name: /^Energie/ }).click();
   await page.getByRole('menuitem', { name: 'Herunterfahren' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Herunterfahren' }).click();
   await waitForPanel(isCleared, 'panel cleared before shutdown');

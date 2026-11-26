@@ -140,7 +140,8 @@ describe('power', () => {
 
   const openPowerMenu = async () => {
     const view = openGeneral();
-    await view.user.click(await screen.findByRole('button', { name: 'Energieoptionen' }));
+    await view.user.click(await screen.findByRole('button', { name: 'Menü öffnen' }));
+    await view.user.click(within(screen.getByRole('navigation', { name: 'Hauptmenü' })).getByRole('button', { name: 'Energie' }));
     return view;
   };
 

@@ -81,35 +81,66 @@ describe('navigation', () => {
   });
 });
 
-describe('notifications', () => {
-  const openNotifications = async (badge = '') => {
+describe('system status', () => {
+  const openSystem = async (label: string | RegExp = /^System/) => {
     const view = renderRoute('/', { preloadedState: signedInState() });
-    const button = await screen.findByRole('button', { name: /^Benachrichtigungen/ });
-    if (badge) await waitFor(() => expect(button).toHaveTextContent(badge));
-    await view.user.click(button);
-    return within(await screen.findByRole('menu'));
+    await view.user.click(await screen.findByRole('button', { name: label }));
+    return { ...view, popover: within(await screen.findByRole('dialog', { name: 'System' })) };
   };
 
-  it('has nothing to report on a healthy, current board', async () => {
-    const menu = await openNotifications();
+  it('shows network, server and board on a healthy, current board', async () => {
+    const { popover } = await openSystem('System: Online');
 
-    expect(menu.getByText('Keine Benachrichtigungen verfügbar')).toBeInTheDocument();
+    expect(popover.getByText('Mit „HomeNet“ verbunden')).toBeInTheDocument();
+    expect(popover.getByText('Mit dem Server verbunden')).toBeInTheDocument();
+    expect(popover.getByText('Bilderrahmen erreichbar')).toBeInTheDocument();
+    expect(popover.queryByText(/Neue Version/)).not.toBeInTheDocument();
   });
 
-  it('announces a newer version', async () => {
+  it.each([
+    [{}, 'Online'],
+    [{ mode: 'connected' as const, internet: false }, 'Kein Internet'],
+    [{ mode: 'connecting' as const }, 'Verbinde …'],
+    [{ mode: 'ap' as const, internet: false }, 'Hotspot'],
+  ])('names %o as %s in the header', async (mode, label) => {
+    server.use(...withConnectionMode(mode));
+    renderRoute('/', { preloadedState: signedInState() });
+
+    expect(await screen.findByRole('button', { name: new RegExp(`^System: ${label}`) })).toBeInTheDocument();
+  });
+
+  it('spells out the hotspot without a hover', async () => {
+    server.use(...withConnectionMode({ mode: 'ap', internet: false, ap_ssid: 'sf-1' }));
+
+    const { popover } = await openSystem('System: Hotspot');
+
+    expect(popover.getByText('Rahmen stellt den Hotspot „sf-1“ bereit')).toBeInTheDocument();
+  });
+
+  it('says how long the server has been unreachable', async () => {
+    server.use(...withConnectionMode({ server_connected: false, server_offline_secs: 3 * 3600, server_last_contact_at: 1_760_000_000 }));
+
+    const { popover } = await openSystem('System: Online (1 Hinweis)');
+
+    expect(popover.getByText('Server nicht erreichbar')).toBeInTheDocument();
+    expect(popover.getByText('Letzter Kontakt vor 3 Stunden')).toBeInTheDocument();
+  });
+
+  it('announces a newer version and opens the updates page', async () => {
     server.use(...withRelease(makeRelease({ version: '9.0.0' })));
 
-    const menu = await openNotifications('1');
+    const { popover, user, router } = await openSystem('System: Online (1 Hinweis)');
+    await user.click(popover.getByRole('button', { name: /Neue Version \(9\.0\.0\) verfügbar/ }));
 
-    expect(menu.getByText('Neue Version (9.0.0) verfügbar')).toBeInTheDocument();
+    await waitFor(() => expect(router.state.location.pathname).toBe('/updates/'));
   });
 
   it('warns when the board does not answer', async () => {
     server.use(...boardUnreachable());
 
-    const menu = await openNotifications('1');
+    const { popover } = await openSystem('System: Online (1 Hinweis)');
 
-    expect(menu.getByText('Keine Verbindung zum Bilderrahmen')).toBeInTheDocument();
+    expect(popover.getByText('Keine Verbindung zum Bilderrahmen')).toBeInTheDocument();
   });
 });
 
@@ -183,20 +214,6 @@ describe('hotspot notice', () => {
     await router.navigate('/network/');
     await screen.findByRole('heading', { level: 2, name: 'WLAN einrichten' });
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
-  });
-});
-
-describe('connection indicator', () => {
-  it.each([
-    [{}, 'Online'],
-    [{ mode: 'connected' as const, internet: false }, 'Kein Internet'],
-    [{ mode: 'connecting' as const }, 'Verbinde …'],
-    [{ mode: 'ap' as const, internet: false }, 'Hotspot'],
-  ])('shows %o as %s in the header', async (mode, label) => {
-    server.use(...withConnectionMode(mode));
-    renderRoute('/', { preloadedState: signedInState() });
-
-    expect(await screen.findByLabelText(`Verbindung: ${label}`)).toBeInTheDocument();
   });
 });
 

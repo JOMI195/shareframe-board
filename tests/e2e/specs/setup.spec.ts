@@ -23,7 +23,7 @@ const signInOnHotspot = async (page: import('@playwright/test').Page) => {
 test('on the hotspot the owner signs in with the device password and lands on the network settings', async ({ page }) => {
   await signInOnHotspot(page);
 
-  await expect(page.getByLabel('Verbindung: Hotspot')).toBeVisible();
+  await expect(page.getByRole('button', { name: /^System: Hotspot/ })).toBeVisible();
   await expect(card(page, 'WLAN einrichten')).toBeVisible();
 });
 
