@@ -22,7 +22,7 @@ import CloudOffOutlinedIcon from '@mui/icons-material/CloudOffOutlined';
 import AddLinkIcon from '@mui/icons-material/AddLink';
 import FilterFramesIcon from '@mui/icons-material/FilterFrames';
 import UpdateIcon from '@mui/icons-material/Update';
-import DeveloperBoardIcon from '@mui/icons-material/DeveloperBoard';
+import InfoIcon from '@mui/icons-material/Info';
 import { useNavigate } from 'react-router';
 import { useAppSelector } from '@/store';
 import { ConnectionModeState, isServerDown, selectConnectionMode } from '@/store/connectionMode/connectionMode.Slice';
@@ -112,7 +112,7 @@ const SystemStatusMenu = () => {
                     sx={{ width: 44, height: 44 }}
                 >
                     <Badge badgeContent={badgeNumber > 0 ? badgeNumber : undefined} color="error">
-                        <DeveloperBoardIcon color={triggerColor} />
+                        <InfoIcon color={triggerColor} />
                     </Badge>
                 </IconButton>
             </Tooltip>
