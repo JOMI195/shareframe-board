@@ -8,6 +8,7 @@ import {
     DialogContent,
     Theme,
     SxProps,
+    Typography,
 } from "@mui/material";
 import { SlideTransition, ZoomTransition } from "./dialogTransitions";
 import { DialogAction } from '@/types';
@@ -50,6 +51,8 @@ const ShareframeMainDialog: React.FC<ReusableDialogProps> = ({
             .map((action) => ({ ...action, disabled: actionsDisabled || action.disabled }))
         : [];
     const floatingActions = !isDesktop && actions.length > 0;
+    // Tooltips on a disabled button never show on touch screens.
+    const blockedReason = actionsShown && actionPrimary?.disabled ? actionPrimary.tooltip : undefined;
 
     return (
         <AppDialog
@@ -82,6 +85,11 @@ const ShareframeMainDialog: React.FC<ReusableDialogProps> = ({
                 }}
             >
                 <PageActionsBar actions={actions} contained sx={{ mb: 2 }} />
+                {blockedReason && (
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2, textAlign: isDesktop ? 'right' : 'left' }}>
+                        {blockedReason}
+                    </Typography>
+                )}
                 <Box
                     sx={{
                         display: "flex",

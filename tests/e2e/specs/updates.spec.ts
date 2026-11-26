@@ -21,10 +21,10 @@ test('an older release is not offered', async ({ page, server }) => {
 test('a newer release is announced with its notes', async ({ page, server }) => {
   await server.offerRelease({ version: '9.9.0', release_notes: 'Schärfere Bilder' });
   await signIn(page);
-  await page.getByRole('button', { name: 'Benachrichtigungen' }).click();
-  await expect(page.getByRole('menu')).toContainText('Neue Version (9.9.0) verfügbar');
+  await page.getByRole('button', { name: /^System: .*Hinweis/ }).click();
+  await page.getByRole('dialog', { name: 'System' }).getByRole('button', { name: /Neue Version \(9\.9\.0\) verfügbar/ }).click();
 
-  await page.goto('/updates/');
+  await expect(page).toHaveURL(/\/updates\/$/);
   await expect(page.getByText('Neue Version verfügbar')).toBeVisible();
   await expect(page.getByText('Schärfere Bilder')).toBeVisible();
 });

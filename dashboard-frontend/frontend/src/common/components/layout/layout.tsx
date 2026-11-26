@@ -84,6 +84,7 @@ const MainLayout = () => {
                     top: -48,
                     zIndex: (theme) => theme.zIndex.tooltip,
                     p: 1,
+                    whiteSpace: 'nowrap',
                     bgcolor: 'background.paper',
                     borderRadius: 1,
                     '&:focus': { top: 8 },

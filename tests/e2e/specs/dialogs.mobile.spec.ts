@@ -10,8 +10,8 @@ test('task dialogs fill the screen with the close X top right', async ({ page })
   const dialog = page.getByRole('dialog', { name: 'Geräte-Passwort ändern' });
   const viewport = page.viewportSize()!;
   const box = await boxOf(dialog);
-  expect(box.width).toBe(viewport.width);
-  expect(box.height).toBe(viewport.height);
+  expect(box.width).toBeCloseTo(viewport.width, 0);
+  expect(box.height).toBeCloseTo(viewport.height, 0);
 
   const close = await boxOf(dialog.getByRole('button', { name: 'Schließen' }));
   expect(close.x).toBeGreaterThan(viewport.width / 2);

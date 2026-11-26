@@ -73,11 +73,26 @@ test.describe('navigation on a phone', () => {
     }
   });
 
-  test('the skip link moves the focus to the page content', async ({ page }) => {
+  test('the top bar keeps the full logo and spells out the system status on a tap', async ({ page }) => {
     await signIn(page);
+    const logo = page.getByRole('img', { name: 'ShareFrame – Start' });
+    await expect.poll(async () => (await logo.boundingBox())?.width).toBe(130);
+
+    await page.getByRole('button', { name: /^System: Online/ }).click();
+
+    const popover = page.getByRole('dialog', { name: 'System' });
+    await expect(popover.getByText('Mit „E2E-WiFi“ verbunden')).toBeInViewport();
+    await expect(popover.getByText('Bilderrahmen erreichbar')).toBeVisible();
+    await expectNoHorizontalScroll(page);
+  });
+
+  test('the skip link moves the focus to the page content', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await signIn(page);
+    const skip = page.getByRole('link', { name: 'Zum Inhalt springen' });
+    await expect(skip).not.toBeInViewport();
 
     await page.keyboard.press('Tab');
-    const skip = page.getByRole('link', { name: 'Zum Inhalt springen' });
     await expect(skip).toBeFocused();
     await expect(skip).toBeInViewport();
 
