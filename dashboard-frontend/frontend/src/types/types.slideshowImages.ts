@@ -16,4 +16,8 @@ export interface INowShowing {
     state: 'empty' | 'image' | 'cleared';
     imageId: number | null;
     sender: string | null;
+    /** What the picture on the panel is; null unless state is 'image'. */
+    kind: 'sent' | 'default' | 'system' | null;
+    /** Name of the default image shown, when it can be fetched from the board. */
+    defaultImage: string | null;
 }

@@ -57,6 +57,8 @@ export const checkSlideshowStatusThunk = createAsyncThunk(
                     state: shown.state as INowShowing['state'],
                     imageId: shown.image_id > 0 ? shown.image_id as number : null,
                     sender: shown.sender ? shown.sender as string : null,
+                    kind: ['sent', 'default', 'system'].includes(shown.kind) ? shown.kind as INowShowing['kind'] : null,
+                    defaultImage: shown.default_image ? shown.default_image as string : null,
                 } : null,
                 active: payload.data.active as boolean,
                 loopStarted: payload.data.loop_started as boolean ?? false,
