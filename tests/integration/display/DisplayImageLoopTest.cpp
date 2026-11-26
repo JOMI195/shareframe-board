@@ -22,6 +22,7 @@ protected:
         cfg.display.minRefreshSecs = 0;
         cfg.display.mockOutputDir = (db.dir() / "panel").string();
         cfg.display.defaultImagesPath = std::string(SHAREFRAME_ASSETS_DIR) + "/image/default";
+        cfg.display.defaultImagesSavePath = (db.dir() / "default-images").string();
         // The migrated DB holds new pictures back from 1 to 6, whatever the wall clock says here.
         settings.setNightMode(false, 1, 6, 3600, NightStyle::Slower);
     }
@@ -81,6 +82,19 @@ TEST_F(DisplayImageLoopTest, ShowsDefaultImagesWithoutUserPictures)
     start();
     ASSERT_TRUE(waitFor([&] { return panel().value("source", "").find("/image/default/") != std::string::npos; }));
     EXPECT_TRUE(loop.isReady());
+}
+
+TEST_F(DisplayImageLoopTest, TheOwnersDefaultImagesReplaceTheBundledOnes)
+{
+    const std::filesystem::path own = cfg.display.defaultImagesSavePath;
+    std::filesystem::create_directories(own);
+    for (const auto* name : {"a.jpg", "b.jpg", "c.jpg"})
+        std::filesystem::copy_file(std::string(SHAREFRAME_ASSETS_DIR) + "/image/loading/logo-frame-generic-shareframe.jpg",
+                                   own / name);
+    start();
+
+    ASSERT_TRUE(waitFor([&] { return seq() >= 1; }));
+    EXPECT_EQ(std::filesystem::path(source()).parent_path(), own);
 }
 
 TEST_F(DisplayImageLoopTest, SkipAdvancesToNextDefaultImage)

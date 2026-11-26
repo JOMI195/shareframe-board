@@ -175,6 +175,7 @@ void ConfigLoader::resolvePaths(AppConfig& cfg) {
     resolveField(cfg.image.imageSavePath,       base);
     resolveField(cfg.display.loadingImagePath,  base);
     resolveField(cfg.display.defaultImagesPath, base);
+    resolveField(cfg.display.defaultImagesSavePath, base);
     resolveField(cfg.display.wifiModePath,      base);
     resolveField(cfg.display.setupCodePath,     base);
     resolveField(cfg.display.wifiJoinedPath,    base);

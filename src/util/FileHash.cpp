@@ -3,6 +3,22 @@
 #include <fstream>
 #include <openssl/evp.h>
 
+namespace
+{
+std::string toHex(const unsigned char* digest, const size_t size)
+{
+    static constexpr char hex[] = "0123456789abcdef";
+    std::string out;
+    out.reserve(size * 2);
+    for (size_t i = 0; i < size; ++i)
+    {
+        out.push_back(hex[digest[i] >> 4]);
+        out.push_back(hex[digest[i] & 0xf]);
+    }
+    return out;
+}
+} // namespace
+
 std::string FileHash::sha256File(const std::string& path)
 {
     std::ifstream f(path, std::ios::binary);
@@ -35,13 +51,14 @@ std::string FileHash::sha256File(const std::string& path)
     if (!ok)
         return "";
 
-    static constexpr char hex[] = "0123456789abcdef";
-    std::string out;
-    out.reserve(64);
-    for (const unsigned char b : digest)
-    {
-        out.push_back(hex[b >> 4]);
-        out.push_back(hex[b & 0xf]);
-    }
-    return out;
+    return toHex(digest.data(), digest.size());
+}
+
+std::string FileHash::sha256(const std::string_view bytes)
+{
+    std::array<unsigned char, 32> digest{};
+    unsigned int len = 0;
+    if (EVP_Digest(bytes.data(), bytes.size(), digest.data(), &len, EVP_sha256(), nullptr) != 1 || len != digest.size())
+        return "";
+    return toHex(digest.data(), digest.size());
 }

@@ -2,6 +2,7 @@
 #include "display/PanelBadge.hpp"
 #include "display/PhotoRenderer.hpp"
 #include "events/Messages.hpp"
+#include "image/DefaultImages.hpp"
 #include "settings/RuntimeSettings.hpp"
 #include <algorithm>
 #include <chrono>
@@ -101,24 +102,24 @@ void DisplayImageLoop::_onImageRemoved(const std::vector<int64_t>& removedIds)
 
 std::vector<std::filesystem::path> DisplayImageLoop::_loadDefaultImages() const
 {
-    std::vector<std::filesystem::path> paths;
-    const auto& dir = cfg_.display.defaultImagesPath;
-
-    if (!std::filesystem::exists(dir))
-    {
-        logger_->warn("Default images directory not found: {}", dir);
-        return paths;
-    }
-
-    for (const auto& entry : std::filesystem::directory_iterator(dir))
-    {
-        if (entry.is_regular_file())
-            paths.push_back(entry.path());
-    }
-
-    std::ranges::sort(paths);
-    logger_->debug("Loaded {} default images from {}", paths.size(), dir);
+    auto paths = DefaultImages::playable(cfg_.display.defaultImagesSavePath, cfg_.display.defaultImagesPath);
+    if (paths.empty())
+        logger_->warn("No default images in {} or {}", cfg_.display.defaultImagesSavePath,
+                      cfg_.display.defaultImagesPath);
     return paths;
+}
+
+std::optional<std::string> DisplayImageLoop::defaultImageName(const std::filesystem::path& source) const
+{
+    const auto in = [&](const std::filesystem::path& dir)
+    {
+        return (dir / source.filename()).lexically_normal() == source.lexically_normal();
+    };
+    if (in(cfg_.display.defaultImagesSavePath) && DefaultImages::isValidName(source.filename().string()))
+        return source.filename().string();
+    if (in(cfg_.display.defaultImagesPath))
+        return "";
+    return std::nullopt;
 }
 
 std::vector<Image> DisplayImageLoop::_showablePictures() const

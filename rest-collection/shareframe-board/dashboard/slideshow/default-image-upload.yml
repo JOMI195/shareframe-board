@@ -1,0 +1,21 @@
+info:
+  name: default-image-upload
+  type: http
+  seq: 10
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/frame/default-images"
+  body:
+    type: file
+    data: []
+  headers:
+    Cookie: "session={{sessionCookie}}"
+    Content-Type: image/jpeg
+  auth: none
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

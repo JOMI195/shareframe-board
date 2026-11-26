@@ -1,7 +1,6 @@
 #include "image/ImageManager.hpp"
-#include "image/PictureLimits.hpp"
+#include "image/PictureCheck.hpp"
 #include <openssl/evp.h>
-#include <stb_image.h>
 #include <spdlog/spdlog.h>
 #include <cctype>
 #include <ctime>
@@ -98,32 +97,11 @@ std::optional<Image> ImageManager::saveImage(
 
 bool ImageManager::_acceptable(int64_t sentImageId, const std::vector<uint8_t>& bytes) const
 {
-    if (bytes.size() > picture::kMaxFileBytes)
-    {
-        spdlog::error("Picture {} refused: {} bytes is over the limit", sentImageId, bytes.size());
-        return false;
-    }
-    int width = 0, height = 0, comp = 0;
-    if (!stbi_info_from_memory(bytes.data(), static_cast<int>(bytes.size()), &width, &height, &comp))
-    {
-        spdlog::error("Picture {} refused: not a JPEG or PNG ({})", sentImageId, stbi_failure_reason());
-        return false;
-    }
-    if (int64_t{width} * height > picture::kMaxPixels)
-    {
-        spdlog::error("Picture {} refused: {}x{} is over the pixel limit", sentImageId, width, height);
-        return false;
-    }
-    std::error_code ec;
-    const auto space = std::filesystem::space(_savePath, ec);
-    const auto reserve = static_cast<std::uintmax_t>(_cfg.image.minFreeMb) * 1024 * 1024;
-    if (!ec && space.available < bytes.size() + reserve)
-    {
-        spdlog::error("Picture {} refused: only {} MB free on the picture storage", sentImageId,
-                      space.available / (1024 * 1024));
-        return false;
-    }
-    return true;
+    const auto verdict = picture::check(bytes, _savePath, _cfg.image.minFreeMb);
+    if (verdict == picture::Verdict::Ok)
+        return true;
+    spdlog::error("Picture {} refused ({} bytes): {}", sentImageId, bytes.size(), picture::describe(verdict));
+    return false;
 }
 
 void ImageManager::removeImages(const std::vector<int64_t>& ids) const

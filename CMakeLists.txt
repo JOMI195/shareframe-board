@@ -169,6 +169,10 @@ set(COMMON_SOURCES
         src/ipc/NngRepServer.cpp
         src/ipc/EventPublisher.cpp
         src/ipc/EventSubscriber.cpp
+        src/display/PhotoRenderer.cpp
+        src/image/PictureCheck.cpp
+        src/image/PanelSimilarity.cpp
+        src/image/DefaultImages.cpp
 )
 # App identity baked into every binary. -DSHAREFRAME_APP_SHA comes from the
 # Buildroot package (which reads the sibling checkout's .git); a host build
@@ -215,7 +219,6 @@ target_link_libraries(shareframe-websocket PRIVATE shareframe-websocket-lib)
 set(DISPLAY_SOURCES
         src/display/DisplayIpc.cpp
         src/display/DisplayManager.cpp
-        src/display/PhotoRenderer.cpp
         src/display/ApNetworkSetupScreenRenderer.cpp
         src/display/QrLayout.cpp
         src/display/RegistrationScreenRenderer.cpp
@@ -247,6 +250,7 @@ set(DASHBOARD_SOURCES
         src/dashboard/WifiHandlers.cpp
         src/dashboard/FrameHandlers.cpp
         src/dashboard/SlideshowImageHandlers.cpp
+        src/dashboard/DefaultImageHandlers.cpp
         src/dashboard/SystemHandlers.cpp
         src/dashboard/ServiceHandlers.cpp
         src/dashboard/UpdateHandlers.cpp

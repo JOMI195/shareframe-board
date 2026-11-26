@@ -28,14 +28,17 @@ DashboardServer::DashboardServer(AppConfig& cfg, IpcClient& ipc,
       server_(cfg.dashboardApplication.port, cfg.dashboardApplication.host),
       logger_(spdlog::default_logger()->clone("DashboardServer")),
       diagnostics_(cfg, http, authTokenManager),
+      defaultImages_(cfg.display.defaultImagesSavePath, cfg.display.defaultImagesPath, cfg.image.minFreeMb),
       wifiHandlers_(wifi, wsIpc, cfg.display.safeModePath),
       frameHandlers_(ipc, cfg),
       slideshowImageHandlers_(ipc, images),
+      defaultImageHandlers_(defaultImages_),
       systemHandlers_(cfg, wifi, diagnostics_, ipc),
       serviceHandlers_(cfg),
       updateHandlers_(updateIpc),
       factoryResetHandlers_(ipc, updateIpc)
 {
+    defaultImages_.ensureSeeded();
     _initRoutes();
 }
 
@@ -102,6 +105,10 @@ void DashboardServer::_initRoutes()
         {"POST", "/api/frame/slideshow/order",    [this](auto& req, auto&) { return slideshowImageHandlers_.handleUpdateOrder(req); }},
         {"GET",  "/api/frame/slideshow/images",             [this](auto& req, auto&) { return slideshowImageHandlers_.handleList(req); }},
         {"GET",  "/api/frame/images/file",        [this](auto& req, auto& qp) { return slideshowImageHandlers_.handleFile(req, qp); }},
+        {"GET",  "/api/frame/default-images",        [this](auto& req, auto&) { return defaultImageHandlers_.handleList(req); }},
+        {"GET",  "/api/frame/default-images/file",   [this](auto& req, auto& qp) { return defaultImageHandlers_.handleFile(req, qp); }},
+        {"POST", "/api/frame/default-images",        [this](auto& req, auto&) { return defaultImageHandlers_.handleUpload(req); }},
+        {"POST", "/api/frame/default-images/delete", [this](auto& req, auto&) { return defaultImageHandlers_.handleRemove(req); }},
 
         // WiFi / Connection
         {"GET",  "/api/connection/status",         [this](auto& req, auto&) { return wifiHandlers_.handleStatus(req); }},

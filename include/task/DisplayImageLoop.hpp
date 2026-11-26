@@ -46,6 +46,10 @@ public:
     /// Id of the user picture shown last, 0 while none was shown.
     [[nodiscard]] int64_t currentImageId() const { return currentImageId_.load(); }
 
+    /// Whether `source` is one of the default images: its name when it can be fetched from the owner's set,
+    /// "" for a bundled one, nullopt for anything else.
+    [[nodiscard]] std::optional<std::string> defaultImageName(const std::filesystem::path& source) const;
+
     /// The current shuffle cycle, in play order.
     [[nodiscard]] std::vector<int64_t> shuffleOrder() const;
 
