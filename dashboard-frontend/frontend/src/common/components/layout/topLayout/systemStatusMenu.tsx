@@ -47,8 +47,8 @@ const networkStatus = ({ mode, ssid, internet, ap_ssid }: ConnectionModeState): 
                 : { label: 'Kein Internet', detail: ssid ? `Mit „${ssid}“ verbunden, aber ohne Internet` : 'Keine Internetverbindung', color: 'warning', Icon: SignalWifiStatusbarConnectedNoInternet4Icon };
 
 const serverStatus = (connection: ConnectionModeState): StatusRow | null => {
-    const { server_connected, registered, server_last_contact_at, server_offline_secs } = connection;
-    if (server_connected === null) return null;
+    const { mode, internet, server_connected, registered, server_last_contact_at, server_offline_secs } = connection;
+    if (mode !== 'connected' || !internet || server_connected === null) return null;
     if (registered === false) return { label: 'Noch nicht registriert', detail: 'Auf shareframe.de unter „Bilderrahmen hinzufügen“ hinzufügen', color: 'info', Icon: AddLinkIcon };
     if (server_connected) return { label: 'Mit dem Server verbunden', color: 'success', Icon: CloudDoneOutlinedIcon };
     if (!isServerDown(connection)) return { label: 'Verbindet mit dem Server …', color: 'inherit', Icon: CloudSyncOutlinedIcon };
@@ -74,7 +74,8 @@ const SystemStatusMenu = () => {
     const open = Boolean(anchorEl);
 
     const connection = useAppSelector(selectConnectionMode);
-    const { isConnected } = usePiConnection();
+    const { isConnected, checked } = usePiConnection();
+    const boardDown = checked && !isConnected;
     const { latest_release } = useAppSelector(selectUpdatesState);
     const isNewVersion = latest_release?.is_newer ?? false;
 
@@ -82,16 +83,18 @@ const SystemStatusMenu = () => {
     const server = connection.loaded ? serverStatus(connection) : null;
     const board: StatusRow = isConnected
         ? { label: 'Bilderrahmen erreichbar', color: 'success', Icon: FilterFramesIcon }
-        : { label: 'Keine Verbindung zum Bilderrahmen', color: 'error', Icon: FilterFramesIcon };
+        : boardDown
+            ? { label: 'Keine Verbindung zum Bilderrahmen', color: 'error', Icon: FilterFramesIcon }
+            : { label: 'Bilderrahmen wird geprüft …', color: 'inherit', Icon: FilterFramesIcon };
 
     const badgeNumber = getBadgeNumber(
-        !isConnected,
+        boardDown,
         network?.color === 'warning' || server?.color === 'warning',
         isNewVersion,
     );
 
     const TriggerIcon = network?.Icon ?? WifiFindIcon;
-    const triggerColor = !isConnected ? 'error' : network?.color === 'warning' ? 'warning' : 'inherit';
+    const triggerColor = boardDown ? 'error' : network?.color === 'warning' ? 'warning' : 'inherit';
     const statusLabel = network ? `System: ${network.label}` : 'System';
     const triggerLabel = badgeNumber > 0 ? `${statusLabel} (${badgeNumber} ${badgeNumber === 1 ? 'Hinweis' : 'Hinweise'})` : statusLabel;
 

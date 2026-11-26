@@ -6,6 +6,7 @@ import { pollWhileVisible } from '@/common/utils/poll';
 
 export const PiConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [isConnected, setIsConnected] = useState<boolean>(false);
+    const [checked, setChecked] = useState(false);
 
     // The dashboard *is* the board, so "reachable" == the server answered.
     const checkPiConnection = useCallback(() =>
@@ -15,7 +16,8 @@ export const PiConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             .catch((error) => {
                 console.error('Error checking Pi connection:', error);
                 setIsConnected(false);
-            }), []);
+            })
+            .finally(() => setChecked(true)), []);
 
     // Periodically check connection
     useEffect(() => {
@@ -26,6 +28,7 @@ export const PiConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         <PiConnectionContext.Provider
             value={{
                 isConnected,
+                checked,
                 checkPiConnection
             }}
         >

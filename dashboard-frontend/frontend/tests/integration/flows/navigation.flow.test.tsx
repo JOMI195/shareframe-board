@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { delay, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
 import { renderRoute } from '@tests/helpers/renderRoute';
 import { signedInState } from '@tests/helpers/preloadedState';
 import { makeRelease } from '@tests/fixtures';
 import * as api from '@/assets/endpoints/api/frame';
-import { boardUnreachable, server, spyOnRequests, withConnectionMode, withRelease } from '@tests/mocks';
+import { apiUrl, boardUnreachable, server, spyOnRequests, withConnectionMode, withRelease } from '@tests/mocks';
 
 const sidebar = () => screen.getByRole('navigation', { name: 'Hauptmenü' });
 
@@ -115,6 +116,7 @@ describe('system status', () => {
     const { popover } = await openSystem('System: Hotspot');
 
     expect(popover.getByText('Rahmen stellt den Hotspot „sf-1“ bereit')).toBeInTheDocument();
+    expect(popover.queryByText(/Server/)).not.toBeInTheDocument();
   });
 
   it('says how long the server has been unreachable', async () => {
@@ -133,6 +135,14 @@ describe('system status', () => {
     await user.click(popover.getByRole('button', { name: /Neue Version \(9\.0\.0\) verfügbar/ }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/updates/'));
+  });
+
+  it('does not warn about the board before it was asked', async () => {
+    server.use(http.get(apiUrl(api.getSystemHealthUrl()), () => delay('infinite')));
+
+    const { popover } = await openSystem('System: Online');
+
+    expect(popover.getByText('Bilderrahmen wird geprüft …')).toBeInTheDocument();
   });
 
   it('warns when the board does not answer', async () => {
