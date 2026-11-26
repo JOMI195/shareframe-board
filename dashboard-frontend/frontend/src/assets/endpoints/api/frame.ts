@@ -33,6 +33,9 @@ export const getDisplayCustomizationUrl = () => `${frameBaseUrl()}/display/custo
 export const getSlideshowOrderUrl = () => `${frameBaseUrl()}/slideshow/order`;
 export const getSlideshowImagesUrl = () => `${frameBaseUrl()}/slideshow/images`;
 export const getImageFileUrl = (id: number) => `${frameBaseUrl()}/images/file?id=${id}`;
+export const getDefaultImagesUrl = () => `${frameBaseUrl()}/default-images`;
+export const getDefaultImageFileUrl = (name: string) => `${getDefaultImagesUrl()}/file?name=${encodeURIComponent(name)}`;
+export const getRemoveDefaultImageUrl = () => `${getDefaultImagesUrl()}/delete`;
 
 // Service management
 const servicesBaseUrl = () => `${apiBaseUrl()}/services`;
