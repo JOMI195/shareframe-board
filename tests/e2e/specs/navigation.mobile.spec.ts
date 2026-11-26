@@ -87,10 +87,12 @@ test.describe('navigation on a phone', () => {
   });
 
   test('the skip link moves the focus to the page content', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
     await signIn(page);
+    const skip = page.getByRole('link', { name: 'Zum Inhalt springen' });
+    await expect(skip).not.toBeInViewport();
 
     await page.keyboard.press('Tab');
-    const skip = page.getByRole('link', { name: 'Zum Inhalt springen' });
     await expect(skip).toBeFocused();
     await expect(skip).toBeInViewport();
 
