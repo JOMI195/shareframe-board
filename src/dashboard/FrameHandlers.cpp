@@ -55,6 +55,8 @@ ix::HttpResponsePtr FrameHandlers::handleStatus(const ix::HttpRequestPtr& /*req*
             {"state", screenResult ? screenResult->value("state", "empty") : "empty"},
             {"image_id", screenResult ? screenResult->value("image_id", int64_t{0}) : 0},
             {"sender", screenResult ? screenResult->value("sender", "") : ""},
+            {"kind", screenResult ? screenResult->value("kind", "") : ""},
+            {"default_image", screenResult ? screenResult->value("default_image", "") : ""},
         }}
     });
 }
