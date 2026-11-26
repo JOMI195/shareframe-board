@@ -22,6 +22,7 @@ import CloudOffOutlinedIcon from '@mui/icons-material/CloudOffOutlined';
 import AddLinkIcon from '@mui/icons-material/AddLink';
 import FilterFramesIcon from '@mui/icons-material/FilterFrames';
 import UpdateIcon from '@mui/icons-material/Update';
+import DeveloperBoardIcon from '@mui/icons-material/DeveloperBoard';
 import { useNavigate } from 'react-router';
 import { useAppSelector } from '@/store';
 import { ConnectionModeState, isServerDown, selectConnectionMode } from '@/store/connectionMode/connectionMode.Slice';
@@ -87,14 +88,9 @@ const SystemStatusMenu = () => {
             ? { label: 'Keine Verbindung zum Bilderrahmen', color: 'error', Icon: FilterFramesIcon }
             : { label: 'Bilderrahmen wird geprüft …', color: 'inherit', Icon: FilterFramesIcon };
 
-    const badgeNumber = getBadgeNumber(
-        boardDown,
-        network?.color === 'warning' || server?.color === 'warning',
-        isNewVersion,
-    );
-
-    const TriggerIcon = network?.Icon ?? WifiFindIcon;
-    const triggerColor = boardDown ? 'error' : network?.color === 'warning' ? 'warning' : 'inherit';
+    const hasWarning = network?.color === 'warning' || server?.color === 'warning';
+    const badgeNumber = getBadgeNumber(boardDown, hasWarning, isNewVersion);
+    const triggerColor = boardDown ? 'error' : hasWarning ? 'warning' : 'inherit';
     const statusLabel = network ? `System: ${network.label}` : 'System';
     const triggerLabel = badgeNumber > 0 ? `${statusLabel} (${badgeNumber} ${badgeNumber === 1 ? 'Hinweis' : 'Hinweise'})` : statusLabel;
 
@@ -116,7 +112,7 @@ const SystemStatusMenu = () => {
                     sx={{ width: 44, height: 44 }}
                 >
                     <Badge badgeContent={badgeNumber > 0 ? badgeNumber : undefined} color="error">
-                        <TriggerIcon color={triggerColor} />
+                        <DeveloperBoardIcon color={triggerColor} />
                     </Badge>
                 </IconButton>
             </Tooltip>
