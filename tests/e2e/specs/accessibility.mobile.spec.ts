@@ -12,7 +12,7 @@ const violationsOn = async (page: Page) => {
 };
 
 const appPages = [
-  '/', '/slideshow/', '/customization/', '/network/', '/network/add/', '/updates/',
+  '/', '/slideshow/', '/default-images/', '/customization/', '/network/', '/network/add/', '/updates/',
   '/services/', '/services/display', '/general/', '/general/factory-reset/', '/display-health/', '/update-history/', '/logs/',
 ];
 

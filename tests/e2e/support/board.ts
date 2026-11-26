@@ -58,7 +58,9 @@ export async function waitForPanel(predicate: (p: Panel) => boolean, message: st
 }
 
 export const showsImage = (id: number) => (p: Panel) => p.state === 'image' && p.source.endsWith(`_${id}.jpg`);
-export const showsDefault = (p: Panel) => p.state === 'image' && p.source.includes('/assets/image/default/');
+// The bundled set, or the owner's copy of it on /data.
+export const showsDefault = (p: Panel) =>
+  p.state === 'image' && (p.source.includes('/assets/image/default/') || p.source.includes('/default-images/'));
 export const isCleared = (p: Panel) => p.state === 'cleared';
 export const showsApSetup = (p: Panel) => p.state === 'image' && p.source === 'ap-setup';
 export const showsRegistration = (p: Panel) => p.state === 'image' && p.source === 'registration';
@@ -121,6 +123,7 @@ export async function resetBoardState() {
   const own = (f: string) => path.join(STATE_DIR, 'shareframe', f);
   for (const stale of [retryFlag, path.join(STATE_DIR, 'factory-reset'), own('remote-reboot-at'), own('safe-mode-remote'), own('update-history.jsonl')])
     await rm(stale, { force: true });
+  await rm(own('default-images'), { recursive: true, force: true });
   const rauc = path.join(STATE_DIR, 'rauc');
   for (const f of await readdir(rauc).catch(() => [])) await rm(path.join(rauc, f), { recursive: true, force: true });
   await writeFile(path.join(STATE_DIR, 'shim-calls.log'), '');
@@ -297,6 +300,21 @@ export class BoardApi {
     await expect
       .poll(async () => (await this.postRaw('/api/frame/slideshow/skip')).status(), { message: 'skip accepted' })
       .toBe(200);
+  }
+
+  /** Adds a default image straight through the API, the way the dashboard sends one. */
+  async uploadDefaultImage(fixture: string): Promise<string> {
+    const before = await this.defaultImageNames();
+    const res = await this.request.post('/api/frame/default-images', {
+      data: await readFile(path.join(FIXTURES, fixture)),
+      headers: { 'Content-Type': 'image/jpeg' },
+    });
+    expect(res.ok(), await res.text()).toBe(true);
+    return (await this.defaultImageNames()).find((name) => !before.includes(name))!;
+  }
+
+  async defaultImageNames(): Promise<string[]> {
+    return (await this.get('/api/frame/default-images')).images.map((image: { name: string }) => image.name);
   }
 
   slideshowStatus() {

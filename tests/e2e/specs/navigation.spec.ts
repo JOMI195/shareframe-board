@@ -6,6 +6,7 @@ import { expectNoClippedCards } from '../support/layout';
 const pages: [string, string | RegExp][] = [
   ['/', 'Diashow'],
   ['/slideshow/', 'Wiedergabereihenfolge'],
+  ['/default-images/', '3 von höchstens 10 Standardbildern'],
   ['/customization/', 'Name des Absenders anzeigen'],
   ['/network/', 'Aktuelles Netzwerk'],
   ['/updates/', 'Keine Updates verfügbar'],
