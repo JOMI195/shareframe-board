@@ -30,6 +30,8 @@ interval_secs = 900
 min_refresh_secs = 1
 loading_image_path = "/usr/share/shareframe/assets/image/loading"
 default_images_path = "/usr/share/shareframe/assets/image/default"
+# On /state, so specs can wipe it; the board restores the bundled set on the next request.
+default_images_save_path = "/data/shareframe/default-images"
 wifi_joined_path = "/data/wifi-joined"
 registered_once_path = "/data/registered-once"
 setup_font_path = "/usr/share/shareframe/assets/font/DejaVuSans.ttf"

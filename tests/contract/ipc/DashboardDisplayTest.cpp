@@ -297,13 +297,32 @@ TEST_F(DashboardDisplayTest, StatusNamesThePictureOnThePanel)
     EXPECT_EQ(now()["state"], "image");
     EXPECT_EQ(now()["image_id"], 7);
     EXPECT_EQ(now()["sender"], "sender7");
+    EXPECT_EQ(now()["kind"], "sent");
     EXPECT_EQ(now()["seq"], 1);
 
     cfg.display.minRefreshSecs = 0;
+    const auto paint = [&](const std::string& source)
+    {
+        ASSERT_TRUE(display.displayBuffer(std::vector<uint8_t>(DisplayManager::BUFFER_SIZE, 0xFF), source, {},
+                                          RefreshPolicy::Immediate));
+    };
+    const std::string own = std::string(64, 'a') + ".jpg";
+    paint((std::filesystem::path(cfg.display.defaultImagesSavePath) / own).string());
+    EXPECT_EQ(now()["kind"], "default");
+    EXPECT_EQ(now()["default_image"], own);
+    EXPECT_EQ(now()["image_id"], 0);
+
+    paint((std::filesystem::path(cfg.display.defaultImagesPath) / "sample_1.JPG").string());
+    EXPECT_EQ(now()["kind"], "default");
+    EXPECT_EQ(now()["default_image"], "");
+
+    paint("ap-setup");
+    EXPECT_EQ(now()["kind"], "system");
+
     display.clear();
     EXPECT_EQ(now()["state"], "cleared");
     EXPECT_EQ(now()["image_id"], 0);
-    EXPECT_EQ(now()["seq"], 2);
+    EXPECT_EQ(now()["seq"], 5);
 }
 
 TEST_F(DashboardDisplayTest, RebootShowsTheStatusScreen)

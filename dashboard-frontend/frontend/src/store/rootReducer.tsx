@@ -16,6 +16,7 @@ import dialogsReducer from "./dialogs/dialogs.Slice";
 import servicesReducer from "./services/services.Slice";
 import slideshowImagesReducer from "./slideshowImages/slideshowImages.Slice";
 import displayCustomizationReducer from "./displayCustomization/displayCustomization.Slice";
+import defaultImagesReducer from "./defaultImages/defaultImages.Slice";
 
 const rootReducer = combineReducers({
   snackbars: snackbarsReducer,
@@ -35,6 +36,7 @@ const rootReducer = combineReducers({
   services: servicesReducer,
   slideshowImages: slideshowImagesReducer,
   displayCustomization: displayCustomizationReducer,
+  defaultImages: defaultImagesReducer,
 });
 
 export default rootReducer;

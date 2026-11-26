@@ -1,0 +1,23 @@
+info:
+  name: default-image-delete
+  type: http
+  seq: 11
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/frame/default-images/delete"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "<sha256>.jpg"
+      }
+  headers:
+    Cookie: "session={{sessionCookie}}"
+  auth: none
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

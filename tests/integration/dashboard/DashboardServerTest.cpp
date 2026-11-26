@@ -51,6 +51,8 @@ protected:
         cfg.secrets.dashboardInitialPassword = "initial-pass";
         cfg.display.setupCodePath = (db.dir() / "setup-code").string();
         cfg.display.safeModePath = (db.dir() / "safe-mode").string();
+        cfg.display.defaultImagesSavePath = (db.dir() / "default-images").string();
+        cfg.display.defaultImagesPath = std::string(SHAREFRAME_ASSETS_DIR) + "/image/default";
         cfg.baseUrl = backend.baseUrl();
         wifiMode("connected");
         shims.add("shareframe-factory-reset", "exit 0");

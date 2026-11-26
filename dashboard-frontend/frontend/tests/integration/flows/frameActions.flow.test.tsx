@@ -42,7 +42,7 @@ describe('frame actions', () => {
     const file = spyOnRequests('get', api.getImageFileUrl(0).split('?')[0],
       () => new HttpResponse(new Uint8Array([0xff, 0xd8]), { headers: { 'Content-Type': 'image/jpeg' } }));
     server.use(file.handler, ...withSlideshowStatus({
-      now_showing: { seq: 4, state: 'image', image_id: 12, sender: 'bob' },
+      now_showing: { seq: 4, state: 'image', image_id: 12, sender: 'bob', kind: 'sent', default_image: '' },
     }));
     await openHome();
 
@@ -51,10 +51,32 @@ describe('frame actions', () => {
     expect(await within(shown).findByRole('img', { name: 'Aktuell angezeigtes Foto' })).toBeInTheDocument();
     expect(new URL(file.calls[0].url).searchParams.get('id')).toBe('12');
 
-    server.use(...withSlideshowStatus({ now_showing: { seq: 5, state: 'cleared', image_id: 0, sender: '' } }));
+    server.use(...withSlideshowStatus({ now_showing: { seq: 5, state: 'cleared', image_id: 0, sender: '', kind: '', default_image: '' } }));
     await advance(5_000);
 
     expect(await within(shown).findByText('Display geleert')).toBeInTheDocument();
+    expect(within(shown).queryByRole('img')).not.toBeInTheDocument();
+  });
+
+  it('shows the default image on the panel and tells it apart from a system screen', async () => {
+    const name = `${'a'.repeat(64)}.jpg`;
+    const file = spyOnRequests('get', api.getDefaultImagesUrl() + '/file',
+      () => new HttpResponse(new Uint8Array([0xff, 0xd8]), { headers: { 'Content-Type': 'image/jpeg' } }));
+    server.use(file.handler, ...withSlideshowStatus({
+      now_showing: { seq: 4, state: 'image', image_id: 0, sender: '', kind: 'default', default_image: name },
+    }));
+    await openHome();
+
+    const shown = card('Aktuell angezeigt');
+    expect(within(shown).getByText('Standardbild, solange keine Fotos geschickt wurden')).toBeInTheDocument();
+    expect(await within(shown).findByRole('img', { name: 'Aktuell angezeigtes Standardbild' })).toBeInTheDocument();
+    expect(new URL(file.calls[0].url).searchParams.get('name')).toBe(name);
+    expect(within(shown).getByRole('link', { name: 'Zu den Standardbildern' })).toBeInTheDocument();
+
+    server.use(...withSlideshowStatus({ now_showing: { seq: 5, state: 'image', image_id: 0, sender: '', kind: 'system', default_image: '' } }));
+    await advance(5_000);
+
+    expect(await within(shown).findByText('Systemanzeige')).toBeInTheDocument();
     expect(within(shown).queryByRole('img')).not.toBeInTheDocument();
   });
 

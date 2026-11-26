@@ -82,7 +82,7 @@ describe('frameLogs slice', () => {
 describe('slideshowStatus slice', () => {
   const payload = {
     active: true, loopStarted: true, isRefreshing: true, imageCount: 4, secondsUntilNext: 30, refreshReadyInSecs: 0,
-    nowShowing: { seq: 3, state: 'image' as const, imageId: 7, sender: 'alice' },
+    nowShowing: { seq: 3, state: 'image' as const, imageId: 7, sender: 'alice', kind: 'sent' as const, defaultImage: null },
   };
 
   it('applies a status check', () => {

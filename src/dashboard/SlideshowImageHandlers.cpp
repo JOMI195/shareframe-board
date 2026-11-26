@@ -4,31 +4,9 @@
 #include "ipc/IpcProtocol.hpp"
 #include "settings/PlaybackOrder.hpp"
 #include <algorithm>
-#include <fstream>
-#include <sstream>
 #include <stb_image.h>
 
 using namespace dashboard;
-
-namespace
-{
-std::optional<std::string> readFile(const std::filesystem::path& path)
-{
-    std::ifstream file(path, std::ios::binary);
-    if (!file)
-        return std::nullopt;
-    std::ostringstream out;
-    out << file.rdbuf();
-    return out.str();
-}
-
-std::string imageContentType(const std::string& bytes)
-{
-    if (bytes.starts_with("\x89PNG"))
-        return "image/png";
-    return "image/jpeg";
-}
-} // namespace
 
 SlideshowImageHandlers::SlideshowImageHandlers(IpcClient& ipc, IImageRepository& images)
     : ipc_(ipc), images_(images), logger_(spdlog::default_logger()->clone("SlideshowImageHandlers"))
@@ -106,9 +84,8 @@ ix::HttpResponsePtr SlideshowImageHandlers::handleFile(const ix::HttpRequestPtr&
         logger_->warn("Picture {} has no readable file: {}", id, found.front().imagePath.string());
         return errorResponse(404, "Not Found", "Picture file missing");
     }
-    const auto type = imageContentType(*bytes);
     // Ids are never reused for another picture, so the bytes behind one never change.
-    return binaryResponse(type, std::move(*bytes), "private, max-age=86400");
+    return pictureResponse(std::move(*bytes), "private, max-age=86400");
 }
 
 ix::HttpResponsePtr SlideshowImageHandlers::handleUpdateOrder(const ix::HttpRequestPtr& req) const

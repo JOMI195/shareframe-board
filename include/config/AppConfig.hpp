@@ -57,7 +57,10 @@ struct DisplayConfig
     int intervalSecs = 900;
     int minRefreshSecs = 120;
     std::string loadingImagePath = "assets/image/loading";
+    // Bundled, read-only: the factory state of the default images.
     std::string defaultImagesPath = "assets/image/default";
+    // The owner's default images, shown while the frame has none of its own.
+    std::string defaultImagesSavePath = "default-images";
     int clearTargetHour = 2;
     // Quiet hours: the rotation slows to a longer interval, holds the current
     // picture or pauses the panel until the window ends, to save panel wear.

@@ -29,6 +29,21 @@ test('the now-showing card shows the picture on the panel', async ({ page, serve
   expect((await file).headers()['content-type']).toBe('image/jpeg');
 });
 
+test('the now-showing card shows the default image on the panel', async ({ page, board }) => {
+  // The specs wipe the set between tests; asking for it restores it, and a skip puts one of it up.
+  const names = await board.defaultImageNames();
+  await board.skip();
+  const panel = await waitForPanel((p) => names.some((name) => p.source.endsWith(`/${name}`)), 'a default image from the set');
+  const name = panel.source.split('/').pop()!;
+
+  const file = page.waitForResponse((res) => res.url().includes(`/api/frame/default-images/file?name=${name}`) && res.ok());
+  await signIn(page);
+  const preview = card(page, 'Aktuell angezeigt');
+  await expect(preview.getByText('Standardbild, solange keine Fotos geschickt wurden')).toBeVisible();
+  await expect(preview.getByRole('img', { name: 'Aktuell angezeigtes Standardbild' })).toBeVisible();
+  await file;
+});
+
 test('skipping changes the panel', async ({ page, server }, testInfo) => {
   const a = await server.sendPicture('left-black.jpg');
   await waitForPanel(showsImage(a), `picture ${a} on panel`);

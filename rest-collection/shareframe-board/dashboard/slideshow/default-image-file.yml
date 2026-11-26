@@ -1,0 +1,17 @@
+info:
+  name: default-image-file
+  type: http
+  seq: 9
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/frame/default-images/file?name=<sha256>.jpg"
+  headers:
+    Cookie: "session={{sessionCookie}}"
+  auth: none
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

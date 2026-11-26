@@ -3,6 +3,7 @@ import { expectNoClippedCards, expectNoEmptyCardSpace, expectNoHorizontalScroll 
 
 const mainPages = [
   { name: 'Diashow', url: /\/slideshow\/$/ },
+  { name: 'Standardbilder', url: /\/default-images\/$/ },
   { name: 'Anpassung', url: /\/customization\/$/ },
   { name: 'Netzwerk', url: /\/network\/$/ },
   { name: 'Updates', url: /\/updates\/$/ },

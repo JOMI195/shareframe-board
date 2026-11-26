@@ -22,6 +22,8 @@ export interface SlideshowStatusPayload {
     state: 'empty' | 'image' | 'cleared';
     image_id: number;
     sender: string;
+    kind: 'sent' | 'default' | 'system' | '';
+    default_image: string;
   };
 }
 
@@ -34,6 +36,6 @@ export const makeSlideshowStatus = (over: Partial<SlideshowStatusPayload> = {}):
   seconds_until_next: 300,
   refresh_ready_in_secs: 0,
   night_mode: { enabled: false, start_hour: 2, end_hour: 5, interval_seconds: 3600, style: 'slower', active_now: false },
-  now_showing: { seq: 1, state: 'image', image_id: 0, sender: '' },
+  now_showing: { seq: 1, state: 'image', image_id: 0, sender: '', kind: 'system', default_image: '' },
   ...over,
 });

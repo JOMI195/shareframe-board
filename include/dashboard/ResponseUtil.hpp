@@ -1,6 +1,10 @@
 #pragma once
 #include <ixwebsocket/IXHttpServer.h>
 #include <nlohmann/json.hpp>
+#include <filesystem>
+#include <fstream>
+#include <optional>
+#include <sstream>
 
 namespace dashboard {
 
@@ -45,6 +49,23 @@ inline ix::HttpResponsePtr binaryResponse(const std::string& contentType, std::s
     headers["Cache-Control"] = cacheControl;
     return std::make_shared<ix::HttpResponse>(
         200, "OK", ix::HttpErrorCode::Ok, headers, std::move(body));
+}
+
+inline std::optional<std::string> readFile(const std::filesystem::path& path)
+{
+    std::ifstream file(path, std::ios::binary);
+    if (!file)
+        return std::nullopt;
+    std::ostringstream out;
+    out << file.rdbuf();
+    return out.str();
+}
+
+/// A stored JPEG or PNG; the type comes from the bytes, not the file name.
+inline ix::HttpResponsePtr pictureResponse(std::string bytes, const std::string& cacheControl)
+{
+    const auto type = bytes.starts_with("\x89PNG") ? "image/png" : "image/jpeg";
+    return binaryResponse(type, std::move(bytes), cacheControl);
 }
 
 } // namespace dashboard

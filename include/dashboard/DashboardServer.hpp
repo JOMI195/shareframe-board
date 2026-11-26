@@ -3,6 +3,7 @@
 #include "dashboard/FactoryResetHandlers.hpp"
 #include "dashboard/FrameHandlers.hpp"
 #include "dashboard/SlideshowImageHandlers.hpp"
+#include "dashboard/DefaultImageHandlers.hpp"
 #include "dashboard/LoginThrottle.hpp"
 #include "dashboard/ServiceHandlers.hpp"
 #include "dashboard/SessionManager.hpp"
@@ -90,11 +91,13 @@ private:
     std::shared_ptr<spdlog::logger> logger_;
 
     DiagnosticsUploader diagnostics_;
+    DefaultImages defaultImages_;
 
     // Handler classes
     WifiHandlers wifiHandlers_;
     FrameHandlers frameHandlers_;
     SlideshowImageHandlers slideshowImageHandlers_;
+    DefaultImageHandlers defaultImageHandlers_;
     SystemHandlers systemHandlers_;
     ServiceHandlers serviceHandlers_;
     UpdateHandlers updateHandlers_;

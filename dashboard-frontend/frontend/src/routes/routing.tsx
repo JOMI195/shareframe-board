@@ -1,7 +1,7 @@
 import MainLayout from '@/common/components/layout/layout';
 import Snackbars from '@/common/components/snackbars/snackbars';
 import ProtectedRoute from '@/common/components/protectedRoute';
-import { getHomeUrl, getSlideshowPageUrl, getCustomizationUrl, getGeneralSettingsUrl, getDisplayHealthUrl, getLogsUrl, getNetworkUrl, getUpdatesyUrl, getUpdateHistoryPageUrl, getServicesOverviewUrl, getServiceDetailUrl, getFactoryResetUrl, getAddNetworkUrl } from '@/assets/endpoints/app/appEndpoints';
+import { getHomeUrl, getSlideshowPageUrl, getDefaultImagesPageUrl, getCustomizationUrl, getGeneralSettingsUrl, getDisplayHealthUrl, getLogsUrl, getNetworkUrl, getUpdatesyUrl, getUpdateHistoryPageUrl, getServicesOverviewUrl, getServiceDetailUrl, getFactoryResetUrl, getAddNetworkUrl } from '@/assets/endpoints/app/appEndpoints';
 import FrameActions from '@/main/frame/frameActions';
 import { ServiceType } from '@/types';
 import NotFound from '@/common/components/error/notFound/notFound';
@@ -83,6 +83,11 @@ export const routes = [
                         path: getSlideshowPageUrl(),
                         handle: { title: 'Diashow' },
                         ...lazyPage(() => import('@/main/slideshowImages/slideshowImages')),
+                      },
+                      {
+                        path: getDefaultImagesPageUrl(),
+                        handle: { title: 'Standardbilder' },
+                        ...lazyPage(() => import('@/main/defaultImages/defaultImages')),
                       },
                       {
                         path: getCustomizationUrl(),

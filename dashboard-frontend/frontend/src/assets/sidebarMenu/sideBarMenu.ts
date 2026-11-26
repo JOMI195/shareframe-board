@@ -13,9 +13,11 @@ import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import TuneIcon from '@mui/icons-material/Tune';
+import WallpaperIcon from '@mui/icons-material/Wallpaper';
 import {
     getHomeUrl,
     getSlideshowPageUrl,
+    getDefaultImagesPageUrl,
     getCustomizationUrl,
     getGeneralSettingsUrl,
     getDisplayHealthUrl,
@@ -35,6 +37,7 @@ export const sidebarSections: ISidebarSection[] = [
         items: [
             { name: "Steuerung", url: getHomeUrl(), icon: FilterFramesIcon },
             { name: "Diashow", url: getSlideshowPageUrl(), icon: PhotoLibraryIcon },
+            { name: "Standardbilder", url: getDefaultImagesPageUrl(), icon: WallpaperIcon },
             { name: "Anpassung", url: getCustomizationUrl(), icon: TuneIcon },
             { name: "Netzwerk", url: getNetworkUrl(), icon: WifiIcon },
             { name: "Updates", url: getUpdatesyUrl(), icon: UpdateIcon },

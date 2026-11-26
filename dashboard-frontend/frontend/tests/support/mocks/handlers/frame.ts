@@ -1,13 +1,14 @@
 import { http, HttpResponse } from 'msw';
 import * as api from '@/assets/endpoints/api/frame';
-import { makeDisplayStats, makeSlideshowImages, makeSlideshowStatus, type SlideshowImagesPayload } from '../../fixtures';
+import { makeDefaultImage, makeDefaultImages, makeDisplayStats, makeSlideshowImages, makeSlideshowStatus, type DefaultImagesPayload, type SlideshowImagesPayload } from '../../fixtures';
 import { apiPath, apiUrl } from '../apiUrl';
-import { ok } from '../envelope';
+import { fail, ok } from '../envelope';
 
 // The toggle thunk polls the status until it flips, so the default world must remember it.
 const initialBoard = () => ({
   slideshowActive: true,
   slideshowImages: makeSlideshowImages() as SlideshowImagesPayload,
+  defaultImages: makeDefaultImages() as DefaultImagesPayload,
   showSender: false,
   // How long the panel rests after a paint; restUntil is when the last one ends (ms).
   restAfterPaintSecs: 0,
@@ -63,6 +64,23 @@ export const frameHandlers = [
   }),
   http.get(apiUrl(api.getSlideshowImagesUrl()), () => ok(board.slideshowImages)),
   http.get(apiPath(api.getImageFileUrl(0)), () => image('image/jpeg')),
+  http.get(apiUrl(api.getDefaultImagesUrl()), () => ok(board.defaultImages)),
+  http.get(apiPath(api.getDefaultImageFileUrl('')), () => image('image/jpeg')),
+  // Mirrors the board's limits; the panel similarity check is the board's alone.
+  http.post(apiUrl(api.getDefaultImagesUrl()), () => {
+    const set = board.defaultImages;
+    if (set.images.length >= set.max) return fail('Too many default images', 409);
+    board.defaultImages = { ...set, images: [...set.images, makeDefaultImage(set.images.length + 1)] };
+    return ok(board.defaultImages);
+  }),
+  http.post(apiUrl(api.getRemoveDefaultImageUrl()), async ({ request }) => {
+    const { name } = (await request.json()) as { name: string };
+    const set = board.defaultImages;
+    if (!set.images.some((img) => img.name === name)) return fail('Picture not found', 404);
+    if (set.images.length <= set.min) return fail('Too few default images', 409);
+    board.defaultImages = { ...set, images: set.images.filter((img) => img.name !== name) };
+    return ok(board.defaultImages);
+  }),
   http.post(apiUrl(api.getSlideshowOrderUrl()), async ({ request }) => {
     const { mode, custom_order } = (await request.json()) as { mode: SlideshowImagesPayload['mode']; custom_order?: number[] };
     board.slideshowImages = applyOrder(board.slideshowImages, mode, custom_order);

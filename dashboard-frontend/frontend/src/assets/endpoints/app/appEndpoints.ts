@@ -4,6 +4,7 @@ export const getNetworkUrl = () => "network/";
 export const getAddNetworkUrl = () => "network/add/";
 
 export const getSlideshowPageUrl = () => "slideshow/";
+export const getDefaultImagesPageUrl = () => "default-images/";
 
 export const getCustomizationUrl = () => "customization/";
 

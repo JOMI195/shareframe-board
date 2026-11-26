@@ -139,6 +139,8 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
         const auto screen = display_.screenSnapshot();
         int64_t imageId = 0;
         std::string sender;
+        std::string kind;
+        std::string defaultImage;
         if (screen.state == PanelContent::Image)
         {
             const auto all = images_.getAll();
@@ -147,7 +149,15 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
             {
                 imageId = it->id;
                 sender = it->sender;
+                kind = "sent";
             }
+            else if (const auto name = loop_.defaultImageName(screen.source))
+            {
+                kind = "default";
+                defaultImage = *name;
+            }
+            else
+                kind = "system";
         }
         return {
             {"seq", screen.seq},
@@ -156,6 +166,8 @@ nlohmann::json DisplayIpc::handle(const IpcMessage& msg)
             {"updated_at", screen.updatedAt},
             {"image_id", imageId},
             {"sender", sender},
+            {"kind", kind},
+            {"default_image", defaultImage},
         };
     }
 
