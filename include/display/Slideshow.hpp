@@ -68,6 +68,8 @@ struct Requests
     bool skip = false;
     bool newPicture = false;
     bool panelWiped = false;
+    /// A sign drawn over the frame came or went.
+    bool overlayChanged = false;
     /// Picture to show next, 0 for none.
     int64_t showId = 0;
 };
@@ -101,18 +103,19 @@ constexpr bool endsHold(const Content held, const Requests& requests, const bool
     return requests.newPicture && !night;
 }
 
-enum class WipeResponse
+enum class StaleResponse
 {
     Ignore,
     LeaveToNext, ///< the next frame is due before the panel may refresh again
     Repaint
 };
 
-/// What to do about the frame on hold after the daily clear.
-constexpr WipeResponse onPanelWiped(const bool panelBlank, const int64_t refreshAllowedInMs, const int64_t nextDueInMs)
+/// What to do about the frame on hold once the panel no longer shows it as it should,
+/// wiped by the daily clear or with a sign that came or went.
+constexpr StaleResponse onFrameStale(const bool stale, const int64_t refreshAllowedInMs, const int64_t nextDueInMs)
 {
-    if (!panelBlank)
-        return WipeResponse::Ignore;
-    return refreshAllowedInMs >= nextDueInMs ? WipeResponse::LeaveToNext : WipeResponse::Repaint;
+    if (!stale)
+        return StaleResponse::Ignore;
+    return refreshAllowedInMs >= nextDueInMs ? StaleResponse::LeaveToNext : StaleResponse::Repaint;
 }
 } // namespace slideshow

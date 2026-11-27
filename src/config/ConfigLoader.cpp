@@ -130,6 +130,9 @@ void ConfigLoader::validate(const AppConfig& cfg)
     req(cfg.expiryCleanup.intervalSecs > 0, "expiry_cleanup.interval_secs must be > 0");
     req(cfg.display.intervalSecs > 0, "display.interval_secs must be > 0");
     req(cfg.display.minRefreshSecs > 0, "display.min_refresh_secs must be > 0");
+    req(cfg.display.maxPartialRefreshes >= 0, "display.max_partial_refreshes must be >= 0");
+    req(cfg.display.partialMaxAreaPercent >= 0 && cfg.display.partialMaxAreaPercent <= 100,
+        "display.partial_max_area_percent must be in 0..100");
     req(cfg.display.clearTargetHour >= 0 && cfg.display.clearTargetHour <= 23,
         "display.clear_target_hour must be in 0..23");
     req(cfg.display.nightStartHour >= 0 && cfg.display.nightStartHour <= 23,

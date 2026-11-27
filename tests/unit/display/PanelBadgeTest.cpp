@@ -41,3 +41,47 @@ TEST(PanelBadge, RandomPlacementShrinksBoxesLargerThanTheVisibleArea)
     const auto r = panel_badge::randomPlacement(5000, 5000, rng, {});
     EXPECT_TRUE(inside(r, panel_text::SAFE_AREA));
 }
+
+namespace
+{
+bool isBlack(const std::vector<uint8_t>& buffer, const int x, const int y)
+{
+    const int i = y * DisplayManager::WIDTH + x;
+    return !(buffer[i / 8] & (0x80 >> (i % 8)));
+}
+}
+
+TEST(PanelBadge, TheWifiOffSignStaysInItsBoxInTheVisibleArea)
+{
+    constexpr auto box = panel_badge::wifiOffArea();
+    EXPECT_TRUE(inside(box, panel_text::SAFE_AREA));
+    for (const auto corner : {panel_badge::Corner::TopRight, panel_badge::Corner::BottomRight})
+        EXPECT_FALSE(overlaps(box, panel_badge::area(corner)));
+
+    std::vector<uint8_t> buffer(DisplayManager::BUFFER_SIZE, 0x00);
+    panel_badge::drawWifiOff(buffer);
+    int changed = 0;
+    for (int y = 0; y < DisplayManager::HEIGHT; ++y)
+        for (int x = 0; x < DisplayManager::WIDTH; ++x)
+            if (!isBlack(buffer, x, y))
+            {
+                ++changed;
+                EXPECT_TRUE(inside({x, y, x + 1, y + 1}, box)) << x << "," << y;
+            }
+    EXPECT_GT(changed, 0) << "the box is white behind the sign";
+}
+
+TEST(PanelBadge, TheWifiOffSignIsABoxedSignStruckThrough)
+{
+    constexpr auto box = panel_badge::wifiOffArea();
+    std::vector<uint8_t> buffer(DisplayManager::BUFFER_SIZE, 0xFF);
+    panel_badge::drawWifiOff(buffer);
+
+    EXPECT_TRUE(isBlack(buffer, box.x0, box.y0)) << "border";
+    EXPECT_TRUE(isBlack(buffer, box.x1 - 1, box.y1 - 1)) << "border";
+    EXPECT_TRUE(isBlack(buffer, box.x0 + 22, box.y0 + 33)) << "dot";
+    EXPECT_TRUE(isBlack(buffer, box.x0 + 22, box.y0 + 12)) << "outer arc";
+    EXPECT_TRUE(isBlack(buffer, box.x0 + 14, box.y0 + 14)) << "strike";
+    EXPECT_TRUE(isBlack(buffer, box.x0 + 33, box.y0 + 33)) << "strike";
+    EXPECT_FALSE(isBlack(buffer, box.x0 + 5, box.y0 + 38)) << "inside the box";
+}

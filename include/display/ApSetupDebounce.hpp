@@ -6,6 +6,7 @@
 /// It shows before the first connection of this boot: for a frame that never joined a Wi-Fi
 /// for as long as it takes, for one set up before only within the boot window, so outages keep
 /// the photos up. Station retries (`connecting`) keep the verdict, so they don't flap the panel.
+/// The frame counts as offline from the hotspot until it connects again, retries included.
 class ApSetupDebounce
 {
 public:
@@ -18,16 +19,23 @@ public:
         {
             seenConnected_ = true;
             required_ = false;
+            offline_ = false;
         }
         else if (mode == "ap")
+        {
             required_ = allowed;
+            offline_ = true;
+        }
         else
             required_ = required_ && allowed;
         return required_;
     }
 
+    [[nodiscard]] bool offline() const { return offline_; }
+
 private:
     int64_t bootWindowSecs_;
     bool seenConnected_ = false;
     bool required_ = false;
+    bool offline_ = false;
 };

@@ -123,11 +123,14 @@ void DisplayManager::_clearHw()
             _writeMockPanel(std::vector<uint8_t>(BUFFER_SIZE, 0xFF), PanelContent::Blank, {});
         _recordScreen(PanelContent::Blank, {});
         _lastDisplayTime.store(std::chrono::steady_clock::now());
+        _shown.assign(BUFFER_SIZE, 0xFF);
+        _partialsInARow = 0;
         return;
     }
 
 #ifdef EPD_HARDWARE_ENABLED
     pmsg("paint start", "clear");
+    _shown.clear();
     if (!_hwInit())
         return;
 
@@ -154,6 +157,8 @@ void DisplayManager::_clearHw()
         _metrics.setIfUnset("epd_first_use_at", nowUnix());
         _consecutiveFailures = 0;
         _recordScreen(PanelContent::Blank, {});
+        _shown.assign(BUFFER_SIZE, 0xFF);
+        _partialsInARow = 0;
         _logger->info("Display cleared (panel refresh {} ms)", ms);
     }
 #else
@@ -166,6 +171,37 @@ bool DisplayManager::displayBuffer(const std::vector<uint8_t>& buffer, const std
                                    const std::vector<std::string>& text)
 {
     std::lock_guard lock(_hwMutex);
+    if (!_readyToPaint(source, st, policy))
+        return false;
+    return _sendBufferHw(buffer, source, text);
+}
+
+bool DisplayManager::displayChanges(const std::vector<uint8_t>& buffer, const std::string& source,
+                                    const std::stop_token st, const RefreshPolicy policy,
+                                    const std::vector<std::string>& text)
+{
+    std::lock_guard lock(_hwMutex);
+    if (buffer.size() != BUFFER_SIZE)
+        return _sendBufferHw(buffer, source, text);
+
+    const auto window = partial_refresh::changedWindow(_shown, buffer);
+    const partial_refresh::Limits limits{_cfg.display.partialRefresh, _cfg.display.maxPartialRefreshes,
+                                         _cfg.display.partialMaxAreaPercent};
+    const auto kind = partial_refresh::choose(_shown, window, _partialsInARow, limits);
+    if (kind == partial_refresh::Kind::None)
+    {
+        _logger->debug("Panel already shows {}, no refresh", source);
+        return true;
+    }
+    if (!_readyToPaint(source, st, policy))
+        return false;
+    if (kind == partial_refresh::Kind::Full)
+        return _sendBufferHw(buffer, source, text);
+    return _sendPartialHw(buffer, *window, source, text);
+}
+
+bool DisplayManager::_readyToPaint(const std::string& source, const std::stop_token& st, const RefreshPolicy policy)
+{
     if (policy == RefreshPolicy::Immediate)
     {
         if (const int wait = secondsUntilRefreshReady(); wait > 0)
@@ -185,7 +221,7 @@ bool DisplayManager::displayBuffer(const std::vector<uint8_t>& buffer, const std
         _logger->info("Shutdown in progress, skipping display of {}", source);
         return false;
     }
-    return _sendBufferHw(buffer, source, text);
+    return true;
 }
 
 bool DisplayManager::paintForShutdown(const std::vector<uint8_t>& buffer, const std::string& source)
@@ -213,17 +249,22 @@ bool DisplayManager::_sendBufferHw(const std::vector<uint8_t>& buffer, const std
             _writeMockPanel(buffer, PanelContent::Image, source, text);
         _recordScreen(PanelContent::Image, source);
         _lastDisplayTime.store(std::chrono::steady_clock::now());
+        _shown = buffer;
+        _partialsInARow = 0;
         return true;
     }
 
 #ifdef EPD_HARDWARE_ENABLED
     pmsg("paint start", source);
+    _shown.clear();
+    // The driver inverts the buffer in place while sending it.
+    auto painted = buffer;
     if (!_hwInit())
         return false;
 
     _logger->debug("Sending buffer to panel ({} bytes) and refreshing", buffer.size());
     const auto t0 = std::chrono::steady_clock::now();
-    const UBYTE rc = EPD_7IN5_V2_Display(const_cast<UBYTE*>(buffer.data()));
+    const UBYTE rc = EPD_7IN5_V2_Display(painted.data());
     const auto refreshMs = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - t0).count();
     _lastDisplayTime.store(std::chrono::steady_clock::now());
@@ -244,7 +285,74 @@ bool DisplayManager::_sendBufferHw(const std::vector<uint8_t>& buffer, const std
     _metrics.setIfUnset("epd_first_use_at", nowUnix());
     _consecutiveFailures = 0;
     _recordScreen(PanelContent::Image, source);
+    _shown = std::move(painted);
+    _partialsInARow = 0;
     _logger->info("Displayed {} (panel refresh {} ms)", source, refreshMs);
+    return true;
+#else
+    _logger->warn("EPD hardware not available (built without ENABLE_EPD_HARDWARE)");
+    return false;
+#endif
+}
+
+bool DisplayManager::_sendPartialHw(const std::vector<uint8_t>& buffer, const partial_refresh::Window& window,
+                                    const std::string& source, const std::vector<std::string>& text)
+{
+    if (_cfg.display.mockDisplay)
+    {
+        _logger->info("[mock] Partial display: {} ({},{} {}x{})", source, window.x0, window.y0,
+                      window.x1 - window.x0, window.y1 - window.y0);
+        if (!_cfg.display.mockOutputDir.empty())
+            _writeMockPanel(buffer, PanelContent::Image, source, text, true);
+        _recordScreen(PanelContent::Image, source);
+        _lastDisplayTime.store(std::chrono::steady_clock::now());
+        _shown = buffer;
+        ++_partialsInARow;
+        return true;
+    }
+
+#ifdef EPD_HARDWARE_ENABLED
+    constexpr int kRowBytes = WIDTH / 8;
+    const int windowBytes = (window.x1 - window.x0) / 8;
+    std::vector<uint8_t> before, after;
+    before.reserve(static_cast<size_t>(windowBytes) * (window.y1 - window.y0));
+    after.reserve(before.capacity());
+    for (int y = window.y0; y < window.y1; ++y)
+    {
+        const auto row = static_cast<size_t>(y) * kRowBytes + window.x0 / 8;
+        before.insert(before.end(), _shown.begin() + row, _shown.begin() + row + windowBytes);
+        after.insert(after.end(), buffer.begin() + row, buffer.begin() + row + windowBytes);
+    }
+
+    pmsg("partial start", source);
+    _shown.clear();
+    if (!_hwInit(true))
+        return false;
+
+    const auto t0 = std::chrono::steady_clock::now();
+    const UBYTE rc = EPD_7IN5_V2_Display_PartOld(before.data(), after.data(), window.x0, window.y0, window.x1,
+                                                 window.y1);
+    const auto refreshMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - t0).count();
+    _lastDisplayTime.store(std::chrono::steady_clock::now());
+    _hwSleep();
+    pmsg("partial done", source);
+    if (rc != 0)
+    {
+        _metrics.increment("epd_refresh_fail_total");
+        ++_consecutiveFailures;
+        _logger->error("Partial panel refresh FAILED (BUSY timeout, {} ms): {}", refreshMs, source);
+        return false;
+    }
+    _metrics.increment("epd_partial_refresh_total");
+    _metrics.increment("epd_busy_ms_total", refreshMs);
+    _metrics.set("epd_last_refresh_at", nowUnix());
+    _consecutiveFailures = 0;
+    _recordScreen(PanelContent::Image, source);
+    _shown = buffer;
+    ++_partialsInARow;
+    _logger->info("Displayed {} as a partial refresh of {}x{} at {},{} ({} ms)", source, window.x1 - window.x0,
+                  window.y1 - window.y0, window.x0, window.y0, refreshMs);
     return true;
 #else
     _logger->warn("EPD hardware not available (built without ENABLE_EPD_HARDWARE)");
@@ -296,7 +404,7 @@ nlohmann::json DisplayManager::healthSnapshot() const
     return j;
 }
 
-bool DisplayManager::_hwInit()
+bool DisplayManager::_hwInit(const bool partial)
 {
 #ifdef EPD_HARDWARE_ENABLED
     if (_power.state() == PanelPower::Off && DEV_Module_Init() != 0)
@@ -308,7 +416,7 @@ bool DisplayManager::_hwInit()
     }
     _power.moveTo(PanelPower::Awake);
     const auto t0 = std::chrono::steady_clock::now();
-    if (EPD_7IN5_V2_Init() != 0)
+    if ((partial ? EPD_7IN5_V2_Init_Part() : EPD_7IN5_V2_Init()) != 0)
     {
         _metrics.increment("epd_poweron_fail_total");
         ++_consecutiveFailures;
@@ -372,7 +480,8 @@ void DisplayManager::_recordScreen(const PanelContent content, const std::string
 }
 
 void DisplayManager::_writeMockPanel(const std::vector<uint8_t>& buffer, const PanelContent content,
-                                     const std::string& source, const std::vector<std::string>& text)
+                                     const std::string& source, const std::vector<std::string>& text,
+                                     const bool partial)
 {
     const std::filesystem::path dir(_cfg.display.mockOutputDir);
     std::filesystem::create_directories(dir);
@@ -389,13 +498,18 @@ void DisplayManager::_writeMockPanel(const std::vector<uint8_t>& buffer, const P
     {
         std::ofstream meta(dir / "panel.json.tmp");
         meta << nlohmann::json{{"state", std::string(toString(content))}, {"source", source}, {"seq", ++_mockSeq},
-                               {"text", text}}
+                               {"text", text}, {"refresh", partial ? "partial" : "full"}}
             .dump();
     }
     std::filesystem::rename(dir / "panel.json.tmp", dir / "panel.json");
 
-    _metrics.increment("epd_refresh_total");
-    _metrics.increment(content == PanelContent::Image ? "epd_image_refresh_total" : "epd_clear_total");
+    if (partial)
+        _metrics.increment("epd_partial_refresh_total");
+    else
+    {
+        _metrics.increment("epd_refresh_total");
+        _metrics.increment(content == PanelContent::Image ? "epd_image_refresh_total" : "epd_clear_total");
+    }
     _metrics.set("epd_last_refresh_at", nowUnix());
     _metrics.setIfUnset("epd_first_use_at", nowUnix());
 }

@@ -219,6 +219,7 @@ target_link_libraries(shareframe-websocket PRIVATE shareframe-websocket-lib)
 set(DISPLAY_SOURCES
         src/display/DisplayIpc.cpp
         src/display/DisplayManager.cpp
+        src/display/PartialRefresh.cpp
         src/display/ApNetworkSetupScreenRenderer.cpp
         src/display/QrLayout.cpp
         src/display/RegistrationScreenRenderer.cpp

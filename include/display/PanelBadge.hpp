@@ -24,6 +24,13 @@ constexpr panel_text::Rect area(const Corner corner)
                                       : panel_text::Rect{s.x1 - 300, s.y1 - 44, s.x1, s.y1};
 }
 
+/// Where the struck Wi-Fi sign sits: the corner no text badge uses.
+constexpr panel_text::Rect wifiOffArea()
+{
+    constexpr auto& s = panel_text::SAFE_AREA;
+    return {s.x0, s.y0, s.x0 + 44, s.y0 + 44};
+}
+
 std::string nightText(int endHour);
 
 inline constexpr std::string_view NO_IMAGES_TEXT = "Keine Fotos – schick selbst welche oder frag Freunde";
@@ -35,6 +42,13 @@ panel_text::Rect randomPlacement(int width, int height, std::mt19937& rng, const
 /// Draws `text` boxed into area(corner), cut short with an ellipsis when it doesn't fit;
 /// the buffer is left as is when the font fails to load.
 void draw(std::vector<uint8_t>& buffer, const std::string& fontPath, const std::string& text, Corner corner);
+
+/// Draws the boxed, struck-through Wi-Fi sign into wifiOffArea(): the frame runs its hotspot.
+void drawWifiOff(std::vector<uint8_t>& buffer);
+
+/// Draws `text` boxed at `box`, a spot drawAnywhere() returned for the same text.
+void drawAt(std::vector<uint8_t>& buffer, const std::string& fontPath, const std::string& text,
+            const panel_text::Rect& box);
 
 /// Draws `text` boxed at a random spot clear of `avoid`; returns where it went, or
 /// nothing when the font fails to load.

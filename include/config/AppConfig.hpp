@@ -56,6 +56,10 @@ struct DisplayConfig
     std::string mockOutputDir;
     int intervalSecs = 900;
     int minRefreshSecs = 120;
+    // Small changes refresh only their window; a full refresh follows after a few to clear ghosting.
+    bool partialRefresh = true;
+    int maxPartialRefreshes = 5;
+    int partialMaxAreaPercent = 25;
     std::string loadingImagePath = "assets/image/loading";
     // Bundled, read-only: the factory state of the default images.
     std::string defaultImagesPath = "assets/image/default";

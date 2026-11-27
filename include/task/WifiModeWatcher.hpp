@@ -4,7 +4,7 @@
 #include "task/PeriodicTask.hpp"
 
 /// Polls the Wi-Fi daemon's mode file and publishes AP_SETUP_STATE when the verdict
-/// or the AP credentials change.
+/// or the AP credentials change, or the frame goes offline or back online.
 class WifiModeWatcher : public PeriodicTask
 {
 public:

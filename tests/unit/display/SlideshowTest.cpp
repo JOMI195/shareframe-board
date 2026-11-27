@@ -71,10 +71,10 @@ TEST(Slideshow, SkippingOrSwitchingOffEndsAnyHold)
     }
 }
 
-TEST(Slideshow, AWipedFrameComesBackOnlyWhenThePanelMayRefreshBeforeTheNextOne)
+TEST(Slideshow, AStaleFrameComesBackOnlyWhenThePanelMayRefreshBeforeTheNextOne)
 {
-    EXPECT_EQ(onPanelWiped(false, 0, 60'000), WipeResponse::Ignore);
-    EXPECT_EQ(onPanelWiped(true, 30'000, 60'000), WipeResponse::Repaint);
-    EXPECT_EQ(onPanelWiped(true, 60'000, 60'000), WipeResponse::LeaveToNext);
-    EXPECT_EQ(onPanelWiped(true, 90'000, 60'000), WipeResponse::LeaveToNext);
+    EXPECT_EQ(onFrameStale(false, 0, 60'000), StaleResponse::Ignore);
+    EXPECT_EQ(onFrameStale(true, 30'000, 60'000), StaleResponse::Repaint);
+    EXPECT_EQ(onFrameStale(true, 60'000, 60'000), StaleResponse::LeaveToNext);
+    EXPECT_EQ(onFrameStale(true, 90'000, 60'000), StaleResponse::LeaveToNext);
 }
