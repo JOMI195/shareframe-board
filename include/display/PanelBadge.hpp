@@ -46,6 +46,10 @@ void draw(std::vector<uint8_t>& buffer, const std::string& fontPath, const std::
 /// Draws the boxed, struck-through Wi-Fi sign into wifiOffArea(): the frame runs its hotspot.
 void drawWifiOff(std::vector<uint8_t>& buffer);
 
+/// Draws `text` boxed at `box`, a spot drawAnywhere() returned for the same text.
+void drawAt(std::vector<uint8_t>& buffer, const std::string& fontPath, const std::string& text,
+            const panel_text::Rect& box);
+
 /// Draws `text` boxed at a random spot clear of `avoid`; returns where it went, or
 /// nothing when the font fails to load.
 std::optional<panel_text::Rect> drawAnywhere(std::vector<uint8_t>& buffer, const std::string& fontPath,

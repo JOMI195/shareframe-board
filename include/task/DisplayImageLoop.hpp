@@ -15,6 +15,7 @@
 #include <vector>
 
 class RuntimeSettings;
+struct ApSetupStateEvent;
 struct SetSlideshowActiveEvent;
 struct ShowImageEvent;
 struct UpdateCustomizationEvent;
@@ -76,12 +77,17 @@ private:
     void _armNextChange(); // schedule next change = now + interval
     /// Paints the frame with its badges. A sample gets the no-images note at a new spot each time.
     [[nodiscard]] bool _paint(const Frame& frame, const std::stop_token& st);
+    /// The frame with its badges; empty when the picture can't be read. `newNoteSpot` moves a
+    /// sample's note, else it stays where the panel has it.
+    [[nodiscard]] std::vector<uint8_t> _render(const Frame& frame, bool newNoteSpot);
     /// Keeps the frame up until the armed change is due or something ends its turn. Repaints
-    /// it once the refresh interval allows if the daily clear wiped it before then.
+    /// it once the refresh interval allows if the daily clear wiped it or the Wi-Fi sign came
+    /// or went before then; the sign alone is a partial refresh.
     void _hold(const std::stop_token& st, const Frame& frame);
     /// Call under lock.
     [[nodiscard]] bool _endsHold(slideshow::Content held) const;
     void _onScheduledClear();
+    void _onWifiState(const ApSetupStateEvent& evt);
     void _onImageRemoved(const std::vector<int64_t>& removedIds);
     void _onImageNew();
     void _onSkipImage();
@@ -112,6 +118,9 @@ private:
     size_t defaultImageIdx_ = 0;
     std::mt19937 noteRng_{std::random_device{}()};
     std::optional<panel_text::Rect> lastNote_;
+    bool offline_ = false;
+    /// Whether the frame on the panel carries the Wi-Fi sign. Loop thread only.
+    bool paintedOffline_ = false;
     // steady_clock ms at which the next image change is due; 0 = none scheduled.
     std::atomic<int64_t> nextChangeAtMs_{0};
     std::atomic<bool> ready_{false};

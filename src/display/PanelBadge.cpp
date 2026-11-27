@@ -151,6 +151,16 @@ void draw(std::vector<uint8_t>& buffer, const std::string& fontPath, const std::
     drawBox(buffer, font, line, {x0, y0, box.x1, y1});
 }
 
+void drawAt(std::vector<uint8_t>& buffer, const std::string& fontPath, const std::string& text,
+            const panel_text::Rect& box)
+{
+    panel_text::Font font;
+    if (!loadFont(font, fontPath))
+        return;
+    constexpr auto& s = panel_text::SAFE_AREA;
+    drawBox(buffer, font, fitLine(font, text, s.x1 - s.x0), box);
+}
+
 std::optional<panel_text::Rect> drawAnywhere(std::vector<uint8_t>& buffer, const std::string& fontPath,
                                              const std::string& text, std::mt19937& rng,
                                              const std::vector<panel_text::Rect>& avoid)

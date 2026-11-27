@@ -51,6 +51,8 @@ void DisplayImageLoop::subscribe()
         [this](const UpdateCustomizationEvent& evt) { _onUpdateCustomization(evt); });
     bus_.subscribe<Topic::SCHEDULED_CLEAR>(
         [this](const ScheduledClearEvent&) { _onScheduledClear(); });
+    bus_.subscribe<Topic::AP_SETUP_STATE>(
+        [this](const ApSetupStateEvent& evt) { _onWifiState(evt); });
 }
 
 void DisplayImageLoop::start()
@@ -285,32 +287,50 @@ void DisplayImageLoop::_recover(const std::stop_token& st)
 
 bool DisplayImageLoop::_paint(const Frame& frame, const std::stop_token& st)
 {
-    const bool sample = frame.content == Content::Sample;
-    auto buffer = PhotoRenderer::render(frame.path);
+    const auto buffer = _render(frame, true);
     lastPaintUnreadable_ = buffer.empty();
     if (lastPaintUnreadable_)
         return false;
+    return display_.displayBuffer(buffer, frame.path.string(), st);
+}
+
+std::vector<uint8_t> DisplayImageLoop::_render(const Frame& frame, const bool newNoteSpot)
+{
+    auto buffer = PhotoRenderer::render(frame.path);
+    if (buffer.empty())
+        return buffer;
     const bool nightHold = settings_.nightState() == NightState::Hold;
-    if (!buffer.empty() && nightHold)
+    if (nightHold)
     {
         const auto text = panel_badge::nightText(settings_.getNightEndHour());
         logger_->info("Holding for the night, drawing badge \"{}\"", text);
         panel_badge::draw(buffer, cfg_.display.boldFontPath, text, panel_badge::Corner::BottomRight);
     }
-    if (!buffer.empty() && sample)
+    if (frame.content == Content::Sample)
     {
-        std::vector<panel_text::Rect> avoid;
-        if (nightHold)
-            avoid.push_back(panel_badge::area(panel_badge::Corner::BottomRight));
-        if (lastNote_)
-            avoid.push_back(*lastNote_);
-        if (const auto note = panel_badge::drawAnywhere(buffer, cfg_.display.boldFontPath,
-                                                        std::string(panel_badge::NO_IMAGES_TEXT), noteRng_, avoid))
-            lastNote_ = note;
+        const std::string note(panel_badge::NO_IMAGES_TEXT);
+        if (!newNoteSpot && lastNote_)
+            panel_badge::drawAt(buffer, cfg_.display.boldFontPath, note, *lastNote_);
+        else
+        {
+            std::vector avoid{panel_badge::wifiOffArea()};
+            if (nightHold)
+                avoid.push_back(panel_badge::area(panel_badge::Corner::BottomRight));
+            if (lastNote_)
+                avoid.push_back(*lastNote_);
+            if (const auto spot = panel_badge::drawAnywhere(buffer, cfg_.display.boldFontPath, note, noteRng_, avoid))
+                lastNote_ = spot;
+        }
     }
-    if (!buffer.empty() && !frame.sender.empty() && settings_.isShowSender())
+    if (!frame.sender.empty() && settings_.isShowSender())
         panel_badge::draw(buffer, cfg_.display.boldFontPath, frame.sender, panel_badge::Corner::TopRight);
-    return display_.displayBuffer(buffer, frame.path.string(), st);
+    {
+        std::lock_guard lk(mtx_);
+        paintedOffline_ = offline_;
+    }
+    if (paintedOffline_)
+        panel_badge::drawWifiOff(buffer);
+    return buffer;
 }
 
 void DisplayImageLoop::_hold(const std::stop_token& st, const Frame& frame)
@@ -319,30 +339,38 @@ void DisplayImageLoop::_hold(const std::stop_token& st, const Frame& frame)
     using std::chrono::milliseconds;
     const Clock::time_point due{milliseconds(nextChangeAtMs_.load())};
     const auto endsHold = [this, &frame] { return _endsHold(frame.content); };
+    const auto stale = [this] { return display_.isCleared() || offline_ != paintedOffline_; };
     std::unique_lock lk(mtx_);
     while (true)
     {
-        cv_.wait_until(lk, st, due, [&] { return endsHold() || requests_.panelWiped; });
-        if (!std::exchange(requests_.panelWiped, false) || st.stop_requested() || endsHold())
+        cv_.wait_until(lk, st, due, [&] { return endsHold() || requests_.panelWiped || requests_.overlayChanged; });
+        const bool wiped = std::exchange(requests_.panelWiped, false);
+        const bool overlay = std::exchange(requests_.overlayChanged, false);
+        if (!(wiped || overlay) || st.stop_requested() || endsHold())
             return;
 
         const auto refreshAllowedIn = std::chrono::seconds(display_.secondsUntilRefreshReady());
         const auto nextDueIn = std::chrono::duration_cast<milliseconds>(due - Clock::now());
-        const auto response = slideshow::onPanelWiped(display_.isCleared(), milliseconds(refreshAllowedIn).count(),
+        const auto response = slideshow::onFrameStale(stale(), milliseconds(refreshAllowedIn).count(),
                                                       nextDueIn.count());
-        if (response == slideshow::WipeResponse::LeaveToNext)
-            logger_->info("Panel cleared, next image due before a repaint is allowed");
-        if (response != slideshow::WipeResponse::Repaint)
+        if (response == slideshow::StaleResponse::LeaveToNext)
+            logger_->info("Panel out of date, next image due before a refresh is allowed");
+        if (response != slideshow::StaleResponse::Repaint)
             continue;
         if (cv_.wait_until(lk, st, Clock::now() + refreshAllowedIn, endsHold) || st.stop_requested())
             return;
+        if (!stale())
+            continue;
 
+        const bool blank = display_.isCleared();
+        const char* why = blank ? "after the daily clear" : "for the Wi-Fi sign";
         phase_.moveTo(Phase::Painting);
         lk.unlock();
-        if (_paint(frame, st))
-            logger_->info("Repainted {} after the daily clear", frame.path.string());
+        const auto buffer = _render(frame, blank);
+        if (!buffer.empty() && display_.displayChanges(buffer, frame.path.string(), st))
+            logger_->info("Repainted {} {}", frame.path.string(), why);
         else if (!st.stop_requested())
-            logger_->error("Failed to repaint {} after the daily clear", frame.path.string());
+            logger_->error("Failed to repaint {} {}", frame.path.string(), why);
         lk.lock();
         phase_.moveTo(Phase::Holding);
     }
@@ -358,6 +386,16 @@ void DisplayImageLoop::_onScheduledClear()
 {
     std::lock_guard lk(mtx_);
     requests_.panelWiped = true;
+    cv_.notify_one();
+}
+
+void DisplayImageLoop::_onWifiState(const ApSetupStateEvent& evt)
+{
+    std::lock_guard lk(mtx_);
+    if (std::exchange(offline_, evt.offline) == evt.offline)
+        return;
+    logger_->info("Frame {}, {} the Wi-Fi sign", evt.offline ? "offline" : "online", evt.offline ? "adding" : "removing");
+    requests_.overlayChanged = true;
     cv_.notify_one();
 }
 

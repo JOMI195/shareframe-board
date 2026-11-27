@@ -392,3 +392,78 @@ TEST_F(DisplayImageLoopTest, AnUnreadablePictureIsPassedOverForGood)
     ASSERT_TRUE(waitFor([&] { return seq() > shown; }));
     EXPECT_EQ(source(), good.string()) << "the unreadable one came back";
 }
+
+namespace
+{
+std::vector<uint8_t> withWifiOff(std::vector<uint8_t> buffer)
+{
+    panel_badge::drawWifiOff(buffer);
+    return buffer;
+}
+}
+
+TEST_F(DisplayImageLoopTest, GoingOfflineAndBackOnlyRefreshesTheWifiSign)
+{
+    cfg.display.boldFontPath = std::string(SHAREFRAME_ASSETS_DIR) + "/font/DejaVuSans-Bold.ttf";
+    start();
+    ASSERT_TRUE(waitFor([&] { return seq() >= 1; }));
+    const auto online = shownBuffer();
+    const auto shown = source();
+
+    bus.publish<Topic::AP_SETUP_STATE>({.offline = true});
+    ASSERT_TRUE(waitFor([&] { return seq() == 2; }));
+    EXPECT_EQ(panel().value("refresh", ""), "partial");
+    EXPECT_EQ(source(), shown);
+    EXPECT_EQ(shownBuffer(), withWifiOff(online)) << "the sample's note stays where it was";
+
+    bus.publish<Topic::AP_SETUP_STATE>({});
+    ASSERT_TRUE(waitFor([&] { return seq() == 3; }));
+    EXPECT_EQ(panel().value("refresh", ""), "partial");
+    EXPECT_EQ(shownBuffer(), online);
+    EXPECT_EQ(metrics.get("epd_partial_refresh_total"), 2);
+}
+
+TEST_F(DisplayImageLoopTest, EveryPictureShownOfflineCarriesTheWifiSign)
+{
+    const auto picture = db.dir() / "user.jpg";
+    std::filesystem::copy_file(std::string(SHAREFRAME_ASSETS_DIR) + "/image/default/sample_2.jpg", picture);
+    repo.save({42, "alice", picture, std::time(nullptr) + 3600});
+    loop.subscribe();
+    bus.publish<Topic::AP_SETUP_STATE>({.offline = true});
+    loop.start();
+    bus.start();
+
+    ASSERT_TRUE(waitFor([&] { return source() == picture.string(); }));
+    EXPECT_EQ(shownBuffer(), withWifiOff(PhotoRenderer::render(picture)));
+    bus.publish<Topic::SKIP_IMAGE>({});
+    ASSERT_TRUE(waitFor([&] { return seq() >= 2; }));
+    EXPECT_EQ(shownBuffer(), withWifiOff(PhotoRenderer::render(picture)));
+    EXPECT_EQ(metrics.get("epd_partial_refresh_total"), 0);
+}
+
+TEST_F(DisplayImageLoopTest, AnOutageOverBeforeThePanelMayRefreshLeavesItAlone)
+{
+    start();
+    ASSERT_TRUE(waitFor([&] { return seq() >= 1; }));
+    cfg.display.minRefreshSecs = 1;
+
+    bus.publish<Topic::AP_SETUP_STATE>({.offline = true});
+    bus.publish<Topic::AP_SETUP_STATE>({});
+    std::this_thread::sleep_for(1500ms);
+    EXPECT_EQ(seq(), 1);
+}
+
+TEST_F(DisplayImageLoopTest, TheWifiSignWaitsForTheNextPictureWhenThatComesFirst)
+{
+    settings.setDisplayInterval(2);
+    start();
+    ASSERT_TRUE(waitFor([&] { return seq() >= 1; }));
+    const auto shown = source();
+    cfg.display.minRefreshSecs = 4;
+
+    bus.publish<Topic::AP_SETUP_STATE>({.offline = true});
+    ASSERT_TRUE(waitFor([&] { return source() != shown; }, 6000ms));
+    EXPECT_EQ(panel().value("refresh", ""), "full");
+    EXPECT_EQ(metrics.get("epd_partial_refresh_total"), 0);
+    EXPECT_EQ(shownBuffer(), withWifiOff(shownBuffer())) << "the new picture has the sign";
+}
