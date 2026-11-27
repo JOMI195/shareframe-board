@@ -43,3 +43,18 @@ TEST(ApSetupDebounce, AFrameThatNeverJoinedAWifiKeepsTheSetupScreenPastTheWindow
     EXPECT_TRUE(debounce.update("ap", 50000, false)) << "an unboxed frame left alone for hours";
     EXPECT_FALSE(debounce.update("connected", 50010, false));
 }
+
+TEST(ApSetupDebounce, TheFrameIsOfflineFromTheHotspotUntilItConnectsAgain)
+{
+    ApSetupDebounce debounce(kWindow);
+    EXPECT_FALSE(debounce.offline());
+    debounce.update("connecting", 10);
+    EXPECT_FALSE(debounce.offline()) << "the first attempt after boot isn't an outage yet";
+    debounce.update("connected", 60);
+    debounce.update("ap", 5000);
+    EXPECT_TRUE(debounce.offline()) << "past the boot window too, while the photos stay";
+    debounce.update("connecting", 5180);
+    EXPECT_TRUE(debounce.offline()) << "station retries don't flap it";
+    debounce.update("connected", 5200);
+    EXPECT_FALSE(debounce.offline());
+}

@@ -61,7 +61,7 @@ TEST_F(WifiModeWatcherTest, TheHotspotWithItsCredentialsAsksForTheSetupScreen)
     ASSERT_TRUE(waitFor([&] { return states.size() == 1; }));
     const auto code = panel_code::read(cfg.display.setupCodePath);
     ASSERT_EQ(code.size(), 6u);
-    EXPECT_EQ(states.get()[0], (ApSetupStateEvent{true, "frame", "hotspot-1", code}));
+    EXPECT_EQ(states.get()[0], (ApSetupStateEvent{true, "frame", "hotspot-1", code, "", true}));
 }
 
 TEST_F(WifiModeWatcherTest, ThePanelHearsWhyTheLastAttemptFailed)
@@ -94,6 +94,7 @@ TEST_F(WifiModeWatcherTest, ConnectingAfterwardsEndsItAndAnUnchangedModeIsNotRep
     watcher.runNow();
     ASSERT_TRUE(waitFor([&] { return states.size() == 2; }));
     EXPECT_FALSE(states.get()[1].required);
+    EXPECT_FALSE(states.get()[1].offline);
 }
 
 // A QR code without an SSID would send the owner nowhere.
@@ -102,8 +103,8 @@ TEST_F(WifiModeWatcherTest, AHotspotWithoutAnSsidKeepsTheCurrentScreen)
     mode({{"mode", "connected"}, {"ssid", "home"}});
     mode({{"mode", "ap"}, {"ap_password", "hotspot-1"}});
     start();
-    std::this_thread::sleep_for(300ms);
-    EXPECT_EQ(states.size(), 0u);
+    ASSERT_TRUE(waitFor([&] { return states.size() == 1; }));
+    EXPECT_EQ(states.get()[0], (ApSetupStateEvent{.offline = true})) << "offline, but no setup screen";
 }
 
 TEST_F(WifiModeWatcherTest, AMissingOrBrokenFileIsNoHotspot)
@@ -144,6 +145,28 @@ TEST_F(WifiModeWatcherWindowTest, AFrameSetUpBeforeKeepsItsPhotosPastTheBootWind
     bus.start();
     std::this_thread::sleep_for(1500ms);
     windowed->stop();
+    ASSERT_FALSE(states.get().empty());
     for (const auto& s : states.get())
         EXPECT_FALSE(s.required);
+    EXPECT_TRUE(states.get().back().offline) << "the photos stay, offline";
+}
+
+TEST_F(WifiModeWatcherWindowTest, StationRetriesKeepTheFrameOfflineUntilItConnects)
+{
+    std::ofstream(cfg.display.wifiJoinedPath) << "1700000000\n";
+    mode({{"mode", "ap"}, {"ap_ssid", "frame"}, {"ap_password", "hotspot-1"}});
+    windowed->start();
+    bus.start();
+    ASSERT_TRUE(waitFor([&] { return states.size() == 1 && states.get()[0].offline; }));
+
+    mode({{"mode", "connecting"}});
+    windowed->runNow();
+    std::this_thread::sleep_for(300ms);
+    EXPECT_EQ(states.size(), 1u) << "a station retry changes nothing on the panel";
+
+    mode({{"mode", "connected"}, {"ssid", "home"}});
+    windowed->runNow();
+    ASSERT_TRUE(waitFor([&] { return states.size() == 2; }));
+    EXPECT_FALSE(states.get()[1].offline);
+    windowed->stop();
 }
