@@ -1,6 +1,7 @@
 #pragma once
 #include "config/AppConfig.hpp"
 #include "display/PanelState.hpp"
+#include "display/PartialRefresh.hpp"
 #include "fsm/Machine.hpp"
 #include "repository/DisplayMetricsRepository.hpp"
 #include <atomic>
@@ -65,6 +66,13 @@ public:
                                      RefreshPolicy policy = RefreshPolicy::RespectMinInterval,
                                      const std::vector<std::string>& text = {});
 
+    /// Like displayBuffer(), but refreshes only the window that differs from what the panel
+    /// holds when that is small; nothing at all when it holds the buffer already.
+    [[nodiscard]] bool displayChanges(const std::vector<uint8_t>& buffer, const std::string& source,
+                                      std::stop_token st = {},
+                                      RefreshPolicy policy = RefreshPolicy::RespectMinInterval,
+                                      const std::vector<std::string>& text = {});
+
     [[nodiscard]] bool isCleared() const { return _content.load() == PanelContent::Blank; }
 
     /// Seconds until the next refresh is allowed (0 if ready). Lock-free so a
@@ -89,14 +97,18 @@ public:
     static constexpr int64_t RATED_REFRESHES = 1'000'000;
 
 private:
-    [[nodiscard]] bool _hwInit();
+    [[nodiscard]] bool _hwInit(bool partial = false);
+    /// Call under the hardware lock; false when the paint should not happen.
+    [[nodiscard]] bool _readyToPaint(const std::string& source, const std::stop_token& st, RefreshPolicy policy);
     void _hwSleep();
     void _waitMinRefresh(const std::stop_token& st = {}) const;
     void _clearHw();
     [[nodiscard]] bool _sendBufferHw(const std::vector<uint8_t>& buffer, const std::string& source,
                                      const std::vector<std::string>& text = {});
+    [[nodiscard]] bool _sendPartialHw(const std::vector<uint8_t>& buffer, const partial_refresh::Window& window,
+                                      const std::string& source, const std::vector<std::string>& text);
     void _writeMockPanel(const std::vector<uint8_t>& buffer, PanelContent content, const std::string& source,
-                         const std::vector<std::string>& text = {});
+                         const std::vector<std::string>& text = {}, bool partial = false);
     /// Call after a refresh that succeeded.
     void _recordScreen(PanelContent content, const std::string& source);
 
@@ -114,6 +126,9 @@ private:
     /// by the hw threads.
     std::atomic<std::chrono::steady_clock::time_point> _lastDisplayTime{};
     std::mutex _hwMutex; ///< serializes all EPD hardware access (init/clear/display/sleep)
+    /// What the panel holds, empty when unknown; under the hardware lock.
+    std::vector<uint8_t> _shown;
+    int _partialsInARow = 0;
     int64_t _mockSeq = 0;
     mutable std::mutex _screenMtx;
     ScreenSnapshot _screen;

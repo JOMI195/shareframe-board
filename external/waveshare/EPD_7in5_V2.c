@@ -383,6 +383,46 @@ void EPD_7IN5_V2_Display_Part(UBYTE *blackimage,UDOUBLE x_start, UDOUBLE y_start
     EPD_7IN5_V2_TurnOnDisplay();
 }
 
+/*
+    Like Display_Part, but also sends what the window holds now: deep sleep loses the
+    controller's RAM, and the partial waveform drives each pixel from old to new.
+    Both images are window-sized; x_start and x_end are multiples of 8, the ends exclusive.
+*/
+UBYTE EPD_7IN5_V2_Display_PartOld(UBYTE *oldimage, UBYTE *newimage, UDOUBLE x_start, UDOUBLE y_start,
+                                  UDOUBLE x_end, UDOUBLE y_end)
+{
+    UDOUBLE Width = (x_end - x_start) / 8;
+    UDOUBLE Height = y_end - y_start;
+    UDOUBLE x_last = x_end - 1;
+    UDOUBLE y_last = y_end - 1;
+
+    EPD_SendCommand(0x50);
+    EPD_SendData(0xA9);
+    EPD_SendData(0x07);
+
+    EPD_SendCommand(0x91);
+    EPD_SendCommand(0x90);
+    EPD_SendData(x_start / 256);
+    EPD_SendData(x_start % 256);
+    EPD_SendData(x_last / 256);
+    EPD_SendData(x_last % 256);
+    EPD_SendData(y_start / 256);
+    EPD_SendData(y_start % 256);
+    EPD_SendData(y_last / 256);
+    EPD_SendData(y_last % 256);
+    EPD_SendData(0x01);
+
+    EPD_SendCommand(0x10);
+    for (UDOUBLE j = 0; j < Height; j++) {
+        EPD_SendData2(oldimage + j * Width, Width);
+    }
+    EPD_SendCommand(0x13);
+    for (UDOUBLE j = 0; j < Height; j++) {
+        EPD_SendData2(newimage + j * Width, Width);
+    }
+    return EPD_7IN5_V2_TurnOnDisplay();
+}
+
 void EPD_7IN5_V2_Display_4Gray(const UBYTE *Image)
 {
     UDOUBLE i,j,k;

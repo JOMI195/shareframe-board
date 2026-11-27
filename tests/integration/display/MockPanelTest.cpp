@@ -136,3 +136,119 @@ TEST_F(MockPanelTest, StopCancelsRefreshWaitingForMinInterval)
     EXPECT_FALSE(painted);
     EXPECT_EQ(meta()["seq"], 1);
 }
+
+namespace
+{
+std::vector<uint8_t> withBlackCorner(std::vector<uint8_t> buffer)
+{
+    for (int y = 0; y < 16; ++y)
+        buffer[static_cast<size_t>(y) * (DisplayManager::WIDTH / 8)] = 0x00;
+    return buffer;
+}
+} // namespace
+
+TEST_F(MockPanelTest, ASmallChangeIsAPartialRefreshOfTheWholeFrame)
+{
+    DisplayManager display(cfg, metrics);
+    const auto photo = PhotoRenderer::render(kLoadingImage);
+    ASSERT_TRUE(display.displayBuffer(photo, "photo"));
+    const auto changed = withBlackCorner(photo);
+
+    ASSERT_TRUE(display.displayChanges(changed, "photo+icon"));
+
+    EXPECT_EQ(meta()["refresh"], "partial");
+    EXPECT_EQ(meta()["source"], "photo+icon");
+    EXPECT_EQ(meta()["seq"], 2);
+    std::string expected;
+    for (const uint8_t b : changed)
+        expected.push_back(static_cast<char>(~b));
+    EXPECT_EQ(read("panel.pbm").substr(kHeader.size()), expected);
+    EXPECT_EQ(metrics.get("epd_partial_refresh_total"), 1);
+    EXPECT_EQ(metrics.get("epd_refresh_total"), 1) << "partials don't count as wear of the whole panel";
+}
+
+TEST_F(MockPanelTest, WhatThePanelAlreadyShowsIsNotRefreshedAgain)
+{
+    DisplayManager display(cfg, metrics);
+    const auto photo = PhotoRenderer::render(kLoadingImage);
+    ASSERT_TRUE(display.displayBuffer(photo, "photo"));
+
+    ASSERT_TRUE(display.displayChanges(photo, "photo"));
+
+    EXPECT_EQ(meta()["seq"], 1);
+    EXPECT_EQ(display.screenSnapshot().seq, 1);
+}
+
+TEST_F(MockPanelTest, AnUnknownPanelOrABigChangeGetsAFullRefresh)
+{
+    DisplayManager display(cfg, metrics);
+    const auto photo = PhotoRenderer::render(kLoadingImage);
+    ASSERT_TRUE(display.displayChanges(photo, "first"));
+    EXPECT_EQ(meta()["refresh"], "full");
+
+    ASSERT_TRUE(display.displayChanges(std::vector<uint8_t>(DisplayManager::BUFFER_SIZE, 0x00), "black page"));
+    EXPECT_EQ(meta()["refresh"], "full");
+    EXPECT_EQ(metrics.get("epd_partial_refresh_total"), 0);
+}
+
+TEST_F(MockPanelTest, AFullRefreshClearsTheGhostingOfPartialsInARow)
+{
+    cfg.display.maxPartialRefreshes = 2;
+    DisplayManager display(cfg, metrics);
+    const auto photo = PhotoRenderer::render(kLoadingImage);
+    ASSERT_TRUE(display.displayBuffer(photo, "photo"));
+
+    ASSERT_TRUE(display.displayChanges(withBlackCorner(photo), "on"));
+    ASSERT_TRUE(display.displayChanges(photo, "off"));
+    ASSERT_TRUE(display.displayChanges(withBlackCorner(photo), "on again"));
+
+    EXPECT_EQ(meta()["refresh"], "full");
+    EXPECT_EQ(metrics.get("epd_partial_refresh_total"), 2);
+}
+
+TEST_F(MockPanelTest, SwitchedOffPartialRefreshesPaintInFull)
+{
+    cfg.display.partialRefresh = false;
+    DisplayManager display(cfg, metrics);
+    const auto photo = PhotoRenderer::render(kLoadingImage);
+    ASSERT_TRUE(display.displayBuffer(photo, "photo"));
+
+    ASSERT_TRUE(display.displayChanges(withBlackCorner(photo), "photo+icon"));
+
+    EXPECT_EQ(meta()["refresh"], "full");
+}
+
+TEST_F(MockPanelTest, APartialRefreshWaitsForTheMinIntervalLikeAnyOther)
+{
+    cfg.display.minRefreshSecs = 3600;
+    DisplayManager display(cfg, metrics);
+    const auto photo = PhotoRenderer::render(kLoadingImage);
+    ASSERT_TRUE(display.displayBuffer(photo, "photo"));
+
+    std::atomic<bool> done{false};
+    std::atomic<bool> painted{true};
+    std::jthread pending([&](const std::stop_token& st)
+    {
+        painted = display.displayChanges(withBlackCorner(photo), "photo+icon", st);
+        done = true;
+    });
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT_FALSE(done.load());
+    pending.request_stop();
+
+    ASSERT_TRUE(waitFor([&] { return done.load(); }));
+    EXPECT_FALSE(painted);
+    EXPECT_EQ(meta()["seq"], 1);
+}
+
+TEST_F(MockPanelTest, AfterAClearASmallDrawingIsAPartialRefresh)
+{
+    DisplayManager display(cfg, metrics);
+    ASSERT_TRUE(paint(display, kLoadingImage));
+    display.clear();
+
+    ASSERT_TRUE(display.displayChanges(withBlackCorner(std::vector<uint8_t>(DisplayManager::BUFFER_SIZE, 0xFF)), "note"));
+
+    EXPECT_EQ(meta()["refresh"], "partial");
+    EXPECT_EQ(meta()["state"], "image");
+}
